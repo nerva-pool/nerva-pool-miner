@@ -43,7 +43,7 @@
 //MOD
 //#define MEMORY         (1 << 21) // 2MB scratchpad
 //#define ITER           (1 << 20)
-#define MEMORY         (1 << 26) // 64MB scratchpad
+#define MEMORY         (1 << 20) // 1MB scratchpad
 #define AES_BLOCK_SIZE  16
 #define AES_KEY_SIZE    32
 #define INIT_SIZE_BLK   8
