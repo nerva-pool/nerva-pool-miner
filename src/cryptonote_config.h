@@ -52,7 +52,6 @@
 #define CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V2           60*24
 #define BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V2            12
 
-
 // MONEY_SUPPLY - total number coins to be generated
 #define MONEY_SUPPLY                                    ((uint64_t)(-1))
 #define EMISSION_SPEED_FACTOR_PER_MINUTE                (18)

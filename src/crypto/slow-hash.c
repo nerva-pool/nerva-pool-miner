@@ -28,6 +28,7 @@
 //
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
+
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -39,8 +40,10 @@
 #include "hash-ops.h"
 #include "oaes_lib.h"
 
-#define MEMORY         (1 << 21) // 2MB scratchpad
-#define ITER           (1 << 20)
+//MOD
+//#define MEMORY         (1 << 21) // 2MB scratchpad
+//#define ITER           (1 << 20)
+#define MEMORY         (1 << 26) // 64MB scratchpad
 #define AES_BLOCK_SIZE  16
 #define AES_KEY_SIZE    32
 #define INIT_SIZE_BLK   8
@@ -564,7 +567,7 @@ void slow_hash_free_state(void)
  * @param length the length in bytes of the data
  * @param hash a pointer to a buffer in which the final 256 bit hash will be stored
  */
-void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed)
+void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters)
 {
     RDATA_ALIGN16 uint8_t expandedKey[240];  /* These buffers are aligned to use later with SSE functions */
 
@@ -641,7 +644,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     // the useAes test is only performed once, not every iteration.
     if(useAes)
     {
-        for(i = 0; i < ITER / 2; i++)
+        for(i = 0; i < iters; i++)
         {
             pre_aes();
             _c = _mm_aesenc_si128(_c, _a);
@@ -650,7 +653,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     }
     else
     {
-        for(i = 0; i < ITER / 2; i++)
+        for(i = 0; i < iters; i++)
         {
             pre_aes();
             aesb_single_round((uint8_t *) &_c, (uint8_t *) &_c, (uint8_t *) &_a);
