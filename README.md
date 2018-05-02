@@ -1,4 +1,6 @@
-# Masari
+# NERVA
+
+Copyright (c) 2018 The NERVA Project.
 
 Copyright (c) 2017-2018 The Masari Project.
 
@@ -6,82 +8,12 @@ Copyright (c) 2014-2018 The Monero Project.
 
 Portions Copyright (c) 2012-2013 The Cryptonote developers.
 
-## Development resources
-
-- Web: [getmasari.org](https://getmasari.org)
-- Forum: [forum.getmasari.org](https://forum.getmasari.org)
-- GitHub: [https://github.com/masari-project/masari](https://github.com/masari-project/masari)
-- IRC: [#masari on Freenode](http://webchat.freenode.net/?randomnick=1&channels=%23masari&prompt=1&uio=d4)
-
-## Vulnerability response
-
-- Our [Vulnerability Response Process](https://github.com/masari-project/meta/blob/master/VULNERABILITY_RESPONSE_PROCESS.md) encourages responsible disclosure
-
-## Coverage
-
-| Type      | Status |
-|-----------|--------|
-| License   | [![License](https://img.shields.io/badge/license-BSD3-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-
-## Introduction
-
-Masari is a private, secure, untraceable, decentralised digital currency. You are your bank, you control your funds, and nobody can trace your transfers unless you allow them to do so.
-
-**Privacy:** Masari uses a cryptographically sound system to allow you to send and receive funds without your transactions being easily revealed on the blockchain (the ledger of transactions that everyone has). This ensures that your purchases, receipts, and all transfers remain absolutely private by default.
-
-**Security:** Using the power of a distributed peer-to-peer consensus network, every transaction on the network is cryptographically secured. Individual wallets have a 25 word mnemonic seed that is only displayed once, and can be written down to backup the wallet. Wallet files are encrypted with a passphrase to ensure they are useless if stolen.
-
-**Untraceability:** By taking advantage of ring signatures, a special property of a certain type of cryptography, Masari is able to ensure that transactions are not only untraceable, but have an optional measure of ambiguity that ensures that transactions cannot easily be tied back to an individual user or computer.
-
-**Scalability:** By taking advantage of ring signatures, a special property of a certain type of cryptography, Masari is able to ensure that transactions are not only untraceable, but have an optional measure of ambiguity that ensures that transactions cannot easily be tied back to an individual user or computer.
-
-## About this project
-
-This is the core implementation of Masari, a scalability-focused fork of Monero. It is open source and completely free to use without restrictions, except for those specified in the license agreement below. There are no restrictions on anyone creating an alternative implementation of Masari that uses the protocol and network in a compatible manner.
-
-As with many development projects, the repository on Github is considered to be the "staging" area for the latest changes. Before changes are merged into that branch on the main repository, they are tested by individual developers in their own branches, submitted as a pull request, and then subsequently tested by contributors who focus on testing and code reviews. That having been said, the repository should be carefully considered before using it in a production environment, unless there is a patch in the repository for a particular show-stopping issue you are experiencing. It is generally a better idea to use a tagged release for stability.
-
-**Anyone is welcome to contribute to Masari's codebase!** If you have a fix or code change, feel free to submit it as a pull request directly to the "master" branch. In cases where the change is relatively small or does not affect other parts of the codebase it may be merged in immediately by any one of the collaborators. On the other hand, if the change is particularly large or complex, it is expected that it will be discussed at length either well in advance of the pull request being submitted, or even directly on the pull request.
-
-## Supporting the project
-
-Masari is a 100% community-sponsored endeavor. If you want to join our efforts, the easiest thing you can do is support the project financially.
-
-The Masari donation address is: `5nYWvcvNThsLaMmrsfpRLBRou1RuGtLabUwYH7v6b88bem2J4aUwsoF33FbJuqMDgQjpDRTSpLCZu3dXpqXicE2uSWS4LUP` (viewkey: `99e21e00cce073c126e9aed800c9e2e82518534b3924b035a29436ff4f75bc0c`)
-
-The Monero donation address is: `4A57eA3so6bEE8FUcaN1KtMXD3sxjjbvcKD3MF1pUgRi5PNHTpB7sYN2DmJv3EXxtZCWeG88tsVLzdfZJcmUFm52SbrfJWr` (viewkey: `c7a7c141581ac4436ba8bfb81dd67234720c565c696ef154a25c7e7314ce4b08`)
-
-The Bitcoin donation address is: `1J1he4qtTuNpCxyEBozkeKfDpoeYxfE3rj`
-
-There are a few mining pools that kindly donate a portion of their fees, [a list of them can be found on our Bitcointalk post](https://bitcointalk.org/index.php?topic=2159114.740). Others can be found on [MasariPools](http://masaripools.org/) and [CryptoIsMe](https://cryptoisme.com/coin/masari).
 
 ## License
 
 See [LICENSE](LICENSE).
 
-## Contributing
-
-If you want to help out, see [CONTRIBUTING](CONTRIBUTING.md) for a set of guidelines.
-
-## Scheduled software upgrades
-
-Masari uses a fixed-schedule software upgrade (hard fork) mechanism to implement new features. This means that users of Masari (end users and service providers) should run current versions and upgrade their software on a regular schedule. Software upgrades occur during the months of April and October. The required software for these upgrades will be available prior to the scheduled date. Please check the repository prior to this date for the proper Masari software version. Below is the historical schedule and the projected schedule for the next upgrade.
-Dates are provided in the format YYYY-MM-DD. 
-
-| Fork Date         | Consensus version | Minimum Masari Version | Recommended Masari Version | Details                                                             |
-| ----------------- | ----------------- | ---------------------- | -------------------------- | --------------------------------------------------------------------|
-| 2017-10-05        | v2                | 0.1.2.0                | 0.1.2.0                    | Difficulty adjustment algorithm adjusted                            |
-| 2017-11-29        | v3                | 0.1.3.0                | 0.1.3.1                    | Difficulty adjustment algorithm updated to WWHM                     |
-| 2017-12-06        | v4                | 0.1.4.0                | 0.1.4.0                    | Difficulty adjustment tweaks                                        |
-| 2018-05-01        | v5                | 0.2.0.0                | 0.2.0.0                    | Upstream track of v0.12.0 with Multisig, Subaddresses, CN variant 1 |
-
-X's indicate that these details have not been determined as of commit date.
-
-## Release staging schedule and protocol
-
-Approximately three months prior to a scheduled software upgrade, a branch from Master will be created with the new release version tag. Pull requests that address bugs should then be made to both Master and the new release branch. Pull requests that require extensive review and testing (generally, optimizations and new features) should *not* be made to the release branch. 
-
-## Compiling Masari from source
+## Compiling NERVA from source
 
 ### Dependencies
 
@@ -122,15 +54,11 @@ build the library binary manually. This can be done with the following command `
 
 Clone recursively to pull-in needed submodule(s):
 
-`$ git clone --recursive https://github.com/masari-project/masari`
-
-If you already have a repo cloned, initialize and update:
-
-`$ cd masari && git submodule init && git submodule update`
+$ git clone https://bitbucket.org/nerva-project/nerva
 
 ### Build instructions
 
-Masari uses the CMake build system and a top-level [Makefile](Makefile) that
+NERVA uses the CMake build system and a top-level [Makefile](Makefile) that
 invokes cmake commands as needed.
 
 #### On Linux and OS X
@@ -138,7 +66,7 @@ invokes cmake commands as needed.
 * Install the dependencies
 * Change to the root of the source code directory and build:
 
-        cd masari
+        cd nerva
         make
 
     *Optional*: If your machine has several cores and enough memory, enable
@@ -151,9 +79,9 @@ invokes cmake commands as needed.
 
 * The resulting executables can be found in `build/release/bin`
 
-* Add `PATH="$PATH:$HOME/masari/build/release/bin"` to `.profile`
+* Add `PATH="$PATH:$HOME/nerva/build/release/bin"` to `.profile`
 
-* Run Masari with `masarid --detach`
+* Run NERVA with `nervad --detach`
 
 * **Optional**: build and run the test suite to verify the binaries:
 
@@ -280,16 +208,7 @@ cmake ..
 doas make install
 ```
 
-Build masari: `env DEVELOPER_LOCAL_TOOLS=1 BOOST_ROOT=/usr/local make release-static`
-
-### On Linux for Android (using docker):
-
-        # Build image (select android64.Dockerfile for aarch64)
-        cd utils/build_scripts/ && docker build -f android32.Dockerfile -t masari-android .
-        # Create container
-        docker create -it --name masari-android masari-android bash
-        # Get binaries
-        docker cp masari-android:/opt/android/masari/build/release/bin .
+Build NERVA: `env DEVELOPER_LOCAL_TOOLS=1 BOOST_ROOT=/usr/local make release-static`
 
 ### Building portable statically linked binaries
 
@@ -303,15 +222,15 @@ By default, in either dynamically or statically linked builds, binaries target t
 * ```make release-static-win64``` builds binaries on 64-bit Windows portable across 64-bit Windows systems
 * ```make release-static-win32``` builds binaries on 64-bit or 32-bit Windows portable across 32-bit Windows systems
 
-## Running masarid
+## Running nervad
 
 The build places the binary in `bin/` sub-directory within the build directory
 from which cmake was invoked (repository root by default). To run in
 foreground:
 
-    ./bin/masarid
+    ./bin/nervad
 
-To list all available options, run `./bin/masarid --help`.  Options can be
+To list all available options, run `./bin/nervad --help`.  Options can be
 specified either on the command line or in a configuration file passed by the
 `--config-file` argument.  To specify an option in the configuration file, add
 a line with the syntax `argumentname=value`, where `argumentname` is the name
@@ -319,61 +238,21 @@ of the argument without the leading dashes, for example `log-level=1`.
 
 To run in background:
 
-    ./bin/masarid --log-file masarid.log --detach
+    ./bin/nervad --log-file nervad.log --detach
 
 To run as a systemd service, copy
-[masarid.service](utils/systemd/masarid.service) to `/etc/systemd/system/` and
-[masarid.conf](utils/conf/masarid.conf) to `/etc/`. The [example
-service](utils/systemd/masarid.service) assumes that the user `masari` exists
+[nervad.service](utils/systemd/nervad.service) to `/etc/systemd/system/` and
+[nervad.conf](utils/conf/nervad.conf) to `/etc/`. The [example
+service](utils/systemd/nervad.service) assumes that the user `nerva` exists
 and its home is the data directory specified in the [example
-config](utils/conf/masarid.conf).
+config](utils/conf/nervad.conf).
 
 If you're on Mac, you may need to add the `--max-concurrency 1` option to
-masari-wallet-cli, and possibly masarid, if you get crashes refreshing.
-
-## Internationalization
-
-See [README.i18n.md](README.i18n.md).
-
-## Using Tor
-
-While Masari isn't made to integrate with Tor, it can be used wrapped with torsocks, by
-setting the following configuration parameters and environment variables:
-
-* `--p2p-bind-ip 127.0.0.1` on the command line or `p2p-bind-ip=127.0.0.1` in
-  masarid.conf to disable listening for connections on external interfaces.
-* `--no-igd` on the command line or `no-igd=1` in masarid.conf to disable IGD
-  (UPnP port forwarding negotiation), which is pointless with Tor.
-* `DNS_PUBLIC=tcp` or `DNS_PUBLIC=tcp://x.x.x.x` where x.x.x.x is the IP of the
-  desired DNS server, for DNS requests to go over TCP, so that they are routed
-  through Tor. When IP is not specified, masarid uses the default list of
-  servers defined in [src/common/dns_utils.cpp](src/common/dns_utils.cpp).
-* `TORSOCKS_ALLOW_INBOUND=1` to tell torsocks to allow masarid to bind to interfaces
-   to accept connections from the wallet. On some Linux systems, torsocks
-   allows binding to localhost by default, so setting this variable is only
-   necessary to allow binding to local LAN/VPN interfaces to allow wallets to
-   connect from remote hosts. On other systems, it may be needed for local wallets
-   as well.
-* Do NOT pass `--detach` when running through torsocks with systemd, (see
-  [utils/systemd/masarid.service](utils/systemd/masarid.service) for details).
-
-Example command line to start masarid through Tor:
-
-    DNS_PUBLIC=tcp torsocks masarid --p2p-bind-ip 127.0.0.1 --no-igd
-
-### Using Tor on Tails
-
-TAILS ships with a very restrictive set of firewall rules. Therefore, you need
-to add a rule to allow this connection too, in addition to telling torsocks to
-allow inbound connections. Full example:
-
-    sudo iptables -I OUTPUT 2 -p tcp -d 127.0.0.1 -m tcp --dport 18081 -j ACCEPT
-    DNS_PUBLIC=tcp torsocks ./masarid --p2p-bind-ip 127.0.0.1 --no-igd --rpc-bind-ip 127.0.0.1 \
-        --data-dir /home/amnesia/Persistent/your/directory/to/the/blockchain
+nerva-wallet-cli, and possibly nervad, if you get crashes refreshing.
 
 ## Debugging
 
-This section contains general instructions for debugging failed installs or problems encountered with Masari. First ensure you are running the latest version built from the Github repo.
+This section contains general instructions for debugging failed installs or problems encountered with NERVA. First ensure you are running the latest version built from the Github repo.
 
 ### Obtaining stack traces and core dumps on Unix systems
 
@@ -386,7 +265,7 @@ Run the build.
 Once it stalls, enter the following command:
 
 ```
-gdb /path/to/masarid `pidof masarid`
+gdb /path/to/nervad `pidof nervad`
 ```
 
 Type `thread apply all bt` within gdb in order to obtain the stack trace
@@ -399,27 +278,27 @@ Enter `echo core | sudo tee /proc/sys/kernel/core_pattern` to stop cores from be
 
 Run the build.
 
-When it terminates with an output along the lines of "Segmentation fault (core dumped)", there should be a core dump file in the same directory as masarid. It may be named just `core`, or `core.xxxx` with numbers appended.
+When it terminates with an output along the lines of "Segmentation fault (core dumped)", there should be a core dump file in the same directory as nervad. It may be named just `core`, or `core.xxxx` with numbers appended.
 
 You can now analyse this core dump with `gdb` as follows:
 
-`gdb /path/to/masarid /path/to/dumpfile`
+`gdb /path/to/nervad /path/to/dumpfile`
 
 Print the stack trace with `bt`
 
-* To run masari within gdb:
+* To run NERVA within gdb:
 
-Type `gdb /path/to/masarid`
+Type `gdb /path/to/nervad`
 
 Pass command-line options with `--args` followed by the relevant arguments
 
-Type `run` to run masarid
+Type `run` to run nervad
 
 ### Analysing memory corruption
 
 We use the tool `valgrind` for this.
 
-Run with `valgrind /path/to/masarid`. It will be slow.
+Run with `valgrind /path/to/nervad`. It will be slow.
 
 ### LMDB
 
@@ -427,7 +306,7 @@ Instructions for debugging suspected blockchain corruption as per @HYC
 
 There is an `mdb_stat` command in the LMDB source that can print statistics about the database but it's not routinely built. This can be built with the following command:
 
-`cd ~/masari/external/db_drivers/liblmdb && make`
+`cd ~/NERVA/external/db_drivers/liblmdb && make`
 
 The output of `mdb_stat -ea <path to blockchain dir>` will indicate inconsistencies in the blocks, block_heights and block_info table.
 
