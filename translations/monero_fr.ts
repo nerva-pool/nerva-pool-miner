@@ -1559,8 +1559,8 @@ Cette transaction sera déverrouillée au bloc %llu, dans approximativement %s j
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="1622"/>
-        <source>Donate &lt;amount&gt; to the development team (donate.getmasari.org).</source>
-        <translation>Donner &lt;montant&gt; à l&apos;équipe de développement (donate.getmasari.org).</translation>
+        <source>Donate &lt;amount&gt; to the development team (getnerva.org).</source>
+        <translation>Donner &lt;montant&gt; à l&apos;équipe de développement (getnerva.org).</translation>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="1625"/>
