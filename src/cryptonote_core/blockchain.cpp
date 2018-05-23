@@ -83,7 +83,7 @@ DISABLE_VS_WARNINGS(4267)
 
 // used to overestimate the block reward when estimating a per kB to use
 #define BLOCK_REWARD_OVERESTIMATE (10 * 1000000000000)
-
+//hf: todo: add hardfork block for mainnet
 static const struct {
   uint8_t version;
   uint64_t height;
@@ -94,7 +94,7 @@ static const struct {
   { 2, 2, 0, 1507601066 },
   { 3, 3, 0, 1512206452 },
   { 4, 4, 0, 1513136914 },
-  { 5, 5, 0, 1525150523},
+  { 5, 5, 0, 1525150523 },
 };
 
 static const struct {
@@ -107,7 +107,8 @@ static const struct {
   { 2, 2, 0, 1507182919 },
   { 3, 3, 0, 1511981038 },
   { 4, 4, 0, 1512627130 },
-  { 5, 5, 0, 1524112219 }
+  { 5, 5, 0, 1524112219 },
+  { 6, 6, 0, 1538221184 }
 }; //HF in rapid succession to get to same version as Masari
 
 static const struct {
