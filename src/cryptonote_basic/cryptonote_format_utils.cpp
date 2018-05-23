@@ -855,7 +855,7 @@ namespace cryptonote
   {
     blobdata bd = get_block_hashing_blob(b);
     int cn_variant = b.major_version >= 5 ? 1 : 0;
-    int cn_iters = b.major_version >= 6 ? 0x20000 : 0x80000;
+    int cn_iters = b.major_version >= 6 ? 0x40000 : 0x80000;
     cn_iters += ((height + 1) % 1024);
     crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant, cn_iters);
     return true;
