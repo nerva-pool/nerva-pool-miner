@@ -20,6 +20,9 @@ cscope.out
 cscope.in.out
 cscope.po.out
 
+translations
+generate_translations_header-prefix/
+
 external/miniupnpc/Makefile
 miniupnpcstrings.h
 version/
@@ -57,11 +60,12 @@ version/
 
 
 ### CMake ###
-CMakeCache.txt
-CMakeFiles
-cmake_install.cmake
-install_manifest.txt
-cmake-build-debug/
+**/CMakeCache.txt
+**/Makefile
+**/CMakeFiles
+**/*.cmake
+**/install_manifest.txt
+**/cmake-build-debug/
 
 ### Linux ###
 *~
@@ -69,6 +73,9 @@ cmake-build-debug/
 # KDE directory preferences
 .directory
 
+version.cpp
+CMakeDoxyfile.in
+Doxygen.extra.css
 
 ### Eclipse ###
 *.pydevproject
