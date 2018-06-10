@@ -1,0 +1,40 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/usr/include",
+                "${workspaceFolder}",
+                "${workspaceFolder}/contrib/epee/include",
+                "${workspaceFolder}/external/easylogging++",
+                "${workspaceFolder}/external/rapidjson",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/common",
+                "${workspaceFolder}/src/crypto",
+                "${workspaceFolder}/src/common/cryptonote_basic",
+                "${workspaceFolder}/src/common/cryptonote_core",
+                "${workspaceFolder}/src/common/cryptonote_protocol",
+                "${workspaceFolder}/src/common/daemon",
+                "${workspaceFolder}/src/common/daemonizer",
+                "${workspaceFolder}/src/common/device",
+                "${workspaceFolder}/src/p2p",
+                "${workspaceFolder}/src/platform",
+                "${workspaceFolder}/src/rpc",
+                "${workspaceFolder}/src/serialization"
+
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}

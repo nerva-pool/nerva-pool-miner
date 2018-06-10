@@ -1,0 +1,92 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/nervad",
+            "args": [
+                "--testnet",
+                "--data-dir", "~/testnet/node_04",
+                "--rpc-bind-port", "0",
+                "--p2p-bind-port", "58080",
+                "--zmq-rpc-bind-port", "58082",
+                "--add-exclusive-node", "127.0.0.1:28080",
+                "--add-exclusive-node", "127.0.0.1:38080",
+                "--add-exclusive-node", "127.0.0.1:48080"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "TestNode 2 Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/nervad",
+            "args": [
+                "--testnet",
+                "--data-dir", "~/testnet/node_02",
+                "--rpc-bind-port", "38081",
+                "--p2p-bind-port", "38080",
+                "--zmq-rpc-bind-port", "38082",
+                "--add-exclusive-node", "127.0.0.1:28080",
+                "--add-exclusive-node", "127.0.0.1:48080"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "TestNode 3 Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/nervad",
+            "args": [
+                "--testnet",
+                "--data-dir", "~/testnet/node_03",
+                "--rpc-bind-port", "48081",
+                "--p2p-bind-port", "48080",
+                "--zmq-rpc-bind-port", "48082",
+                "--add-exclusive-node", "127.0.0.1:28080",
+                "--add-exclusive-node", "127.0.0.1:38080",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

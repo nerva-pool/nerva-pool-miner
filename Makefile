@@ -909,6 +909,32 @@ blockchain_export/fast:
 .PHONY : blockchain_export/fast
 
 #=============================================================================
+# Target rules for targets named object_sizes
+
+# Build rule for target.
+object_sizes: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 object_sizes
+.PHONY : object_sizes
+
+# fast build rule for target.
+object_sizes/fast:
+	$(MAKE) -f src/debug_utilities/CMakeFiles/object_sizes.dir/build.make src/debug_utilities/CMakeFiles/object_sizes.dir/build
+.PHONY : object_sizes/fast
+
+#=============================================================================
+# Target rules for targets named cn_deserialize
+
+# Build rule for target.
+cn_deserialize: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 cn_deserialize
+.PHONY : cn_deserialize
+
+# fast build rule for target.
+cn_deserialize/fast:
+	$(MAKE) -f src/debug_utilities/CMakeFiles/cn_deserialize.dir/build.make src/debug_utilities/CMakeFiles/cn_deserialize.dir/build
+.PHONY : cn_deserialize/fast
+
+#=============================================================================
 # Target rules for targets named device
 
 # Build rule for target.
@@ -1004,6 +1030,8 @@ help:
 	@echo "... blockchain_blackball"
 	@echo "... blockchain_usage"
 	@echo "... blockchain_export"
+	@echo "... object_sizes"
+	@echo "... cn_deserialize"
 	@echo "... device"
 	@echo "... obj_device"
 .PHONY : help
