@@ -5057,11 +5057,11 @@ bool simple_wallet::donate(const std::vector<std::string> &args_)
   amount_str = local_args.back();
   local_args.pop_back();
   // push back address, amount, payment id
-  local_args.push_back(HONEYPOT_DONATION_ADDR);
+  local_args.push_back(XNV_DONATION_ADDR);
   local_args.push_back(amount_str);
   if (!payment_id_str.empty())
     local_args.push_back(payment_id_str);
-  message_writer() << (boost::format(tr("Donating %s XNV to The NERVA Project (getnerva.org / %s ).")) % amount_str % HONEYPOT_DONATION_ADDR).str(); 
+  message_writer() << (boost::format(tr("Donating %s XNV to The NERVA Project (getnerva.org / %s ).")) % amount_str % XNV_DONATION_ADDR).str(); 
   transfer(local_args);
   return true;
 }
