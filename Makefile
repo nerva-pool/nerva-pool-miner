@@ -701,19 +701,6 @@ wallet_rpc_server/fast:
 .PHONY : wallet_rpc_server/fast
 
 #=============================================================================
-# Target rules for targets named wallet_merged
-
-# Build rule for target.
-wallet_merged: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 wallet_merged
-.PHONY : wallet_merged
-
-# fast build rule for target.
-wallet_merged/fast:
-	$(MAKE) -f src/wallet/CMakeFiles/wallet_merged.dir/build.make src/wallet/CMakeFiles/wallet_merged.dir/build
-.PHONY : wallet_merged/fast
-
-#=============================================================================
 # Target rules for targets named wallet
 
 # Build rule for target.
@@ -1001,7 +988,6 @@ help:
 	@echo "... serialization"
 	@echo "... obj_wallet"
 	@echo "... wallet_rpc_server"
-	@echo "... wallet_merged"
 	@echo "... wallet"
 	@echo "... wallet_api"
 	@echo "... obj_wallet_api"

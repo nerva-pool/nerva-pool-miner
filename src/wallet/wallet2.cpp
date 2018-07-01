@@ -295,6 +295,11 @@ std::unique_ptr<tools::wallet2> generate_from_json(const std::string& json_file,
     GET_FIELD_FROM_JSON_RETURN_ON_ERROR(json, scan_from_height, uint64_t, Uint64, false, 0);
     const bool recover = field_scan_from_height_found;
 
+    GET_FIELD_FROM_JSON_RETURN_ON_ERROR(json, seed_language, std::string, String, false, std::string());
+    std::string seed_lang = "English";
+    if (field_seed_language_found)
+      seed_lang = field_seed_language;
+
     GET_FIELD_FROM_JSON_RETURN_ON_ERROR(json, password, std::string, String, false, std::string());
 
     GET_FIELD_FROM_JSON_RETURN_ON_ERROR(json, viewkey, std::string, String, false, std::string());
@@ -403,6 +408,7 @@ std::unique_ptr<tools::wallet2> generate_from_json(const std::string& json_file,
     wallet.reset(make_basic(vm, opts, password_prompter).release());
     wallet->set_refresh_from_block_height(field_scan_from_height);
     wallet->explicit_refresh_from_block_height(field_scan_from_height_found);
+    wallet->set_seed_language(seed_lang);
 
     try
     {
