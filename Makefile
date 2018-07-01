@@ -701,6 +701,19 @@ wallet_rpc_server/fast:
 .PHONY : wallet_rpc_server/fast
 
 #=============================================================================
+# Target rules for targets named wallet_merged
+
+# Build rule for target.
+wallet_merged: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 wallet_merged
+.PHONY : wallet_merged
+
+# fast build rule for target.
+wallet_merged/fast:
+	$(MAKE) -f src/wallet/CMakeFiles/wallet_merged.dir/build.make src/wallet/CMakeFiles/wallet_merged.dir/build
+.PHONY : wallet_merged/fast
+
+#=============================================================================
 # Target rules for targets named wallet
 
 # Build rule for target.
@@ -909,32 +922,6 @@ blockchain_export/fast:
 .PHONY : blockchain_export/fast
 
 #=============================================================================
-# Target rules for targets named object_sizes
-
-# Build rule for target.
-object_sizes: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 object_sizes
-.PHONY : object_sizes
-
-# fast build rule for target.
-object_sizes/fast:
-	$(MAKE) -f src/debug_utilities/CMakeFiles/object_sizes.dir/build.make src/debug_utilities/CMakeFiles/object_sizes.dir/build
-.PHONY : object_sizes/fast
-
-#=============================================================================
-# Target rules for targets named cn_deserialize
-
-# Build rule for target.
-cn_deserialize: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 cn_deserialize
-.PHONY : cn_deserialize
-
-# fast build rule for target.
-cn_deserialize/fast:
-	$(MAKE) -f src/debug_utilities/CMakeFiles/cn_deserialize.dir/build.make src/debug_utilities/CMakeFiles/cn_deserialize.dir/build
-.PHONY : cn_deserialize/fast
-
-#=============================================================================
 # Target rules for targets named device
 
 # Build rule for target.
@@ -1014,6 +1001,7 @@ help:
 	@echo "... serialization"
 	@echo "... obj_wallet"
 	@echo "... wallet_rpc_server"
+	@echo "... wallet_merged"
 	@echo "... wallet"
 	@echo "... wallet_api"
 	@echo "... obj_wallet_api"
@@ -1030,8 +1018,6 @@ help:
 	@echo "... blockchain_blackball"
 	@echo "... blockchain_usage"
 	@echo "... blockchain_export"
-	@echo "... object_sizes"
-	@echo "... cn_deserialize"
 	@echo "... device"
 	@echo "... obj_device"
 .PHONY : help
