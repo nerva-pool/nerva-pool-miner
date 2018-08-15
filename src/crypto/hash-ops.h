@@ -78,8 +78,34 @@ enum {
   HASH_DATA_AREA = 136
 };
 
+#define RANDOM_VALUES 32
+
+enum {
+  NOP = 0,
+  ADD,
+  SUB,
+  XOR,
+  OR,
+  AND,
+  COMP,
+  EQ
+};
+
+typedef struct randomizer_values
+{
+  //list of bitwise functions to perform from the list above
+  uint8_t operators[RANDOM_VALUES];
+  //list of scratchpad locations to perform the bitwise operations on
+  //this has to be uint32_t as the scratchpad is too long to store every possible index in uint16_t
+  uint32_t indices[RANDOM_VALUES];
+  //a list of values to perform the bitwise operations with
+  int8_t values[RANDOM_VALUES];
+} random_values;
+
+void randomize_scratchpad(random_values *r, uint8_t *scratchpad);
+
 void cn_fast_hash(const void *data, size_t length, char *hash);
-void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iter);
+void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iter, random_values *r);
 
 void hash_extra_blake(const void *data, size_t length, char *hash);
 void hash_extra_groestl(const void *data, size_t length, char *hash);

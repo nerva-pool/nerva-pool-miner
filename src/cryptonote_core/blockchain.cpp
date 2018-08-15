@@ -109,7 +109,8 @@ static const struct {
   { 3, 3, 0, 1511981038 },
   { 4, 4, 0, 1512627130 },
   { 5, 500, 0, 1524112219 },
-  { 6, 1000, 0, 1538221184 }
+  { 6, 1000, 0, 1533221184 },
+  { 7, 89600, 0, 1534139799 },
 }; //HF in rapid succession to get to same version as Masari
 
 static const struct {
@@ -124,6 +125,9 @@ static const struct {
   { 2, 2, 0, 1521000000 },
   { 3, 3, 0, 1521120000 },
   { 4, 4, 0, 1521240000 },
+  { 5, 5, 0, 1521350000 },
+  { 6, 6, 0, 1521460000 },
+  { 7, 300, 0, 1521570000 }, //Stagenet v7 hardfork. Need to ber at least 256 blocks in before v7 will work properly
 };
 
 //------------------------------------------------------------------
@@ -286,6 +290,11 @@ bool Blockchain::scan_outputkeys_for_indexes(size_t tx_version, const txin_to_ke
   }
 
   return true;
+}
+
+HardFork* Blockchain::get_hardfork() const
+{
+  return m_hardfork;
 }
 //------------------------------------------------------------------
 uint64_t Blockchain::get_current_blockchain_height() const
@@ -1442,7 +1451,7 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     difficulty_type current_diff = get_next_difficulty_for_alternative_chain(alt_chain, bei);
     CHECK_AND_ASSERT_MES(current_diff, false, "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!");
     crypto::hash proof_of_work = null_hash;
-    get_block_longhash(bei.bl, proof_of_work, bei.height);
+    get_block_longhash(bei.bl, proof_of_work, bei.height, this);
     if(!check_hash(proof_of_work, current_diff))
     {
       MERROR_VER("Block with id: " << id << std::endl << " for alternative chain, does not have enough proof of work: " << proof_of_work << std::endl << " expected difficulty: " << current_diff);
@@ -3226,7 +3235,7 @@ leave:
       proof_of_work = it->second;
     }
     else
-      proof_of_work = get_block_longhash(bl, m_db->height());
+      proof_of_work = get_block_longhash(bl, m_db->height(), this);
 
     // validate proof_of_work versus difficulty target
     if(!check_hash(proof_of_work, current_diffic))
@@ -3604,7 +3613,7 @@ void Blockchain::block_longhash_worker(uint64_t height, const std::vector<block>
     if (m_cancel)
        break;
     crypto::hash id = get_block_hash(block);
-    crypto::hash pow = get_block_longhash(block, height++);
+    crypto::hash pow = get_block_longhash(block, height++, this);
     map.emplace(id, pow);
   }
 

@@ -42,6 +42,7 @@ using namespace epee;
 #include "crypto/crypto.h"
 #include "crypto/hash.h"
 #include "ringct/rctSigs.h"
+#include "cryptonote_core/blockchain.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -889,13 +890,83 @@ namespace cryptonote
     return p;
   }
   //---------------------------------------------------------------
-  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height)
+
+  uint64_t cached_height = 0;
+  uint8_t cn_bytes[128];
+  random_values *r;
+
+  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {
     blobdata bd = get_block_hashing_blob(b);
-    int cn_variant = b.major_version >= 5 ? 1 : 0;
-    int cn_iters = b.major_version >= 6 ? 0x40000 : 0x80000;
-    cn_iters += ((height + 1) % 1024);
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant, cn_iters);
+
+    if (b.major_version >= 7)
+    {
+      int cn_variant = 1;
+      int cn_iters = 0x40000;
+      cn_iters += ((height + 1) % 64);
+      
+      if (height != cached_height)
+      {
+        if (r == NULL)
+          r = (random_values *)malloc(sizeof(random_values));
+
+        uint64_t ht = bc->get_current_blockchain_height() - 1;
+        crypto::hash h0 = bc->get_block_id_by_height(ht);
+
+        uint8_t b1 = (uint8_t)(h0.data[0] ^ h0.data[16]);
+        uint8_t b2 = (uint8_t)(h0.data[4] ^ h0.data[20]);
+        uint8_t b3 = (uint8_t)(h0.data[8] ^ h0.data[24]);
+        uint8_t b4 = (uint8_t)(h0.data[12] ^ h0.data[28]);
+
+        crypto::hash h1 = bc->get_block_id_by_height(ht - b1);
+        crypto::hash h2 = bc->get_block_id_by_height(ht - b2);
+        crypto::hash h3 = bc->get_block_id_by_height(ht - b3);
+        crypto::hash h4 = bc->get_block_id_by_height(ht - b4);
+
+        int j = 0;
+        for (int i = 0; i < 128; i += 16)
+        {
+          std::memcpy(cn_bytes + i, h1.data + j, 4);
+          std::memcpy(cn_bytes + i + 4, h2.data + j, 4);
+          std::memcpy(cn_bytes + i + 8, h3.data + j, 4);
+          std::memcpy(cn_bytes + i + 12, h4.data + j, 4);
+          j += 4;
+        }
+
+        j = 0;
+        uint32_t sp_size = (1 << 20) - 1;
+        for (int i = 0; i < 128; i += 8)
+        {
+          r->operators[j] = (cn_bytes[i + 1] ^ cn_bytes[i + 3]) >> 5;
+          r->values[j] = cn_bytes[i + 5] ^ cn_bytes[i + 7];
+
+          r->indices[j++] = (
+            cn_bytes[i] << 24 | 
+            cn_bytes[i + 2] << 16 | 
+            cn_bytes[i + 4] << 8 | 
+            cn_bytes[i + 6]) % sp_size; 
+
+          r->operators[j] = (cn_bytes[i] ^ cn_bytes[i + 2]) >> 5;
+          r->values[j] = cn_bytes[i + 4] ^ cn_bytes[i + 6];
+              
+          r->indices[j++] = (
+            cn_bytes[i + 1] << 24 | 
+            cn_bytes[i + 3] << 16 | 
+            cn_bytes[i + 5] << 8 | 
+            cn_bytes[i + 7]) % sp_size;
+        }
+      }
+
+      crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant, cn_iters, r);
+    }
+    else
+    {
+      int cn_variant = b.major_version >= 5 ? 1 : 0;
+      int cn_iters = b.major_version >= 6 ? 0x40000 : 0x80000;
+      cn_iters += ((height + 1) % 1024);
+      crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant, cn_iters, NULL);
+    }
+
     return true;
   }
   //---------------------------------------------------------------
@@ -919,10 +990,10 @@ namespace cryptonote
     return res;
   }
   //---------------------------------------------------------------
-  crypto::hash get_block_longhash(const block& b, uint64_t height)
+  crypto::hash get_block_longhash(const block& b, uint64_t height, const cryptonote::Blockchain* bc)
   {
     crypto::hash p = null_hash;
-    get_block_longhash(b, p, height);
+    get_block_longhash(b, p, height, bc);
     return p;
   }
   //---------------------------------------------------------------

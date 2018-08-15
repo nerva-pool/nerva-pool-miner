@@ -68,6 +68,7 @@ target_link_libraries(cryptonote_basic
     common
     cncrypto
     checkpoints
+    cryptonote_core
     device
     ${Boost_DATE_TIME_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}

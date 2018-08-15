@@ -54,6 +54,7 @@ using namespace epee;
 #include "ringct/rctTypes.h"
 #include "blockchain_db/blockchain_db.h"
 #include "ringct/rctSigs.h"
+#include "cryptonote_basic/hardfork.h"
 #include "version.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
@@ -163,7 +164,7 @@ namespace cryptonote
   core::core(i_cryptonote_protocol* pprotocol):
               m_mempool(m_blockchain_storage),
               m_blockchain_storage(m_mempool),
-              m_miner(this),
+              m_miner(&m_blockchain_storage, this),
               m_miner_address(boost::value_initialized<account_public_address>()),
               m_starter_message_showed(false),
               m_target_blockchain_height(0),
@@ -882,7 +883,16 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------
   size_t core::get_block_sync_size(uint64_t height) const
   {
-    return BLOCKS_SYNCHRONIZING_DEFAULT_COUNT;
+    //HF v7 (CN-Adaptive-v2) MUST be synced one block at a time.
+    //We therefore enforce it regardless of any defaults or user defined values
+    size_t default_value = block_sync_size == 0 ? BLOCKS_SYNCHRONIZING_DEFAULT_COUNT : block_sync_size;
+    
+    cryptonote::HardFork* hardfork = get_blockchain_storage().get_hardfork();
+    uint64_t fork_height = hardfork->get_earliest_ideal_height_for_version(7);
+    bool fork_ready = (height + default_value + 1) > fork_height;
+
+    //uint8_t hf0 = get_blockchain_storage().get_db().get_hard_fork_version(height + default_value);
+    return fork_ready ? 1 : default_value;
   }
   //-----------------------------------------------------------------------------------------------
   bool core::are_key_images_spent_in_pool(const std::vector<crypto::key_image>& key_im, std::vector<bool> &spent) const

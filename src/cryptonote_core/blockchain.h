@@ -107,6 +107,8 @@ namespace cryptonote
      */
     Blockchain(tx_memory_pool& tx_pool);
 
+    HardFork* get_hardfork() const;
+
     /**
      * @brief Initialize the Blockchain state
      *

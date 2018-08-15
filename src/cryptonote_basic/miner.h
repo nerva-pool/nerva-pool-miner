@@ -47,6 +47,7 @@
 
 namespace cryptonote
 {
+  class Blockchain;
 
   struct i_miner_handler
   {
@@ -62,7 +63,7 @@ namespace cryptonote
   class miner
   {
   public: 
-    miner(i_miner_handler* phandler);
+    miner(cryptonote::Blockchain* bc, i_miner_handler* phandler);
     ~miner();
     bool init(const boost::program_options::variables_map& vm, network_type nettype);
     static void init_options(boost::program_options::options_description& desc);
@@ -147,6 +148,8 @@ namespace cryptonote
     std::list<uint64_t> m_last_hash_rates;
     bool m_do_print_hashrate;
     bool m_do_mining;
+
+    cryptonote::Blockchain* m_blockchain;
 
     // background mining stuffs ..
 
