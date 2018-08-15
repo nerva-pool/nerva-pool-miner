@@ -1,0 +1,90 @@
+#!/bin/bash
+
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Fairly basic build script
+# Just got sick of typing
+
+# basically run it like this
+# ./nerva-build clean
+# ./nerva-build init release ubuntu
+# ./nerva-build build 4
+
+# clean any previous builkd output
+# ./nerva-build clean
+
+# initialize the build (install deps, run cmake etc
+# ./build-nerva init <release> <distro>
+# where <release> is either 'debug' or 'release'
+# where <distro> is your linux distro name. Currently only 'ubuntu' is supported
+# If you are sure you have the required dependencies installed, you can skip the distro specific initialization with
+# ./nerva-build init <release>
+
+# build nerva
+# ./nerva-build build <threads>
+# Where <threads> is the number of threads to use with make
+
+
+function checkdistro()
+{
+	if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+
+		local os_distro="unknown"
+		local os_ver="unknown"
+
+		if [ -f /etc/os-release ]; then
+		    source /etc/os-release
+		    os_distro=$ID
+		    os_ver=$VERSION_ID
+		elif [ -f /etc/lsb-release ]; then
+		    source /etc/lsb-release
+		    os_distro=$DISTRIB_ID
+		    os_ver=$DISTRIB_RELEASE
+		fi
+
+		export NERVA_BUILD_DISTRO=${os_distro}
+		export NERVA_BUILD_DISTRO_VERSION=${os_ver}
+	fi
+}
+
+function clean()
+{
+	cd ${dir}
+	rm -rf ${dir}/build
+	find -name CMakeCache.txt | xargs rm
+	find -name CMakeFiles | xargs rm -rf
+	find -name *.a | xargs rm
+	find -name *.o | xargs rm
+	find -name *.so | xargs rm
+}
+
+function ubuntu()
+{
+	checkdistro
+
+	if [ $NERVA_BUILD_DISTRO == "ubuntu" ]
+	then
+		sudo apt install -y \
+		build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev libunbound-dev libsodium-dev \
+		libminiupnpc-dev libunwind8-dev liblzma-dev libreadline6-dev libldns-dev libexpat1-dev libgtest-dev doxygen graphviz
+	else
+		echo "Cannot install dependencies on your system. This distro is not officially supported"	
+		exit 1
+	fi
+}
+
+function init()
+{
+	$2
+	mkdir ${dir}/build
+	cd ${dir}/build
+	cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_SHARED_LIBS=OFF ..
+}
+
+function build()
+{
+	cd ${dir}/build
+	make -j $1
+}
+
+$1 $2 $3
