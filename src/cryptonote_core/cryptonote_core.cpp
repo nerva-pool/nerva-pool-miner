@@ -886,13 +886,8 @@ namespace cryptonote
     //HF v7 (CN-Adaptive-v2) MUST be synced one block at a time.
     //We therefore enforce it regardless of any defaults or user defined values
     size_t default_value = block_sync_size == 0 ? BLOCKS_SYNCHRONIZING_DEFAULT_COUNT : block_sync_size;
-    
-    cryptonote::HardFork* hardfork = get_blockchain_storage().get_hardfork();
-    uint64_t fork_height = hardfork->get_earliest_ideal_height_for_version(7);
-    bool fork_ready = (height + default_value + 1) > fork_height;
-
-    //uint8_t hf0 = get_blockchain_storage().get_db().get_hard_fork_version(height + default_value);
-    return fork_ready ? 1 : default_value;
+    uint64_t fork_height = get_blockchain_storage().get_hardfork()->get_earliest_ideal_height_for_version(7);
+    return (height + default_value + 1) > fork_height ? 1 : default_value;
   }
   //-----------------------------------------------------------------------------------------------
   bool core::are_key_images_spent_in_pool(const std::vector<crypto::key_image>& key_im, std::vector<bool> &spent) const
