@@ -385,7 +385,7 @@ namespace nodetool
     }
     else if (nettype == cryptonote::STAGENET)
     {
-      
+      // TODO-TK: address this
     }
     else
     {
