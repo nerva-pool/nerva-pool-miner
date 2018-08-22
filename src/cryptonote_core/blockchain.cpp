@@ -424,7 +424,7 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
     {
       if (num_popped_blocks > 0)
         MINFO("Initial popping done, top block: " << top_id << ", top height: " << top_height << ", block version: " << (uint64_t)top_block.major_version);
-        break;
+      break;
     }
     else
     {
@@ -1177,7 +1177,7 @@ uint64_t Blockchain::get_current_cumulative_blocksize_median() const
 // in a lot of places.  That flag is not referenced in any of the code
 // nor any of the makefiles, howeve.  Need to look into whether or not it's
 // necessary at all.
-bool Blockchain::create_block_template(block& b, const account_public_address& miner_address, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce)
+bool Blockchain::create_block_template(block& b, std::string miner_address, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
   size_t median_size;
@@ -2435,12 +2435,12 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
     }
   }
 
-  // from v7, allow bulletproofs
-  if (hf_version < 7) {
+  // from v8, allow bulletproofs
+  if (hf_version < 8) {
     const bool bulletproof = tx.rct_signatures.type == rct::RCTTypeFullBulletproof || tx.rct_signatures.type == rct::RCTTypeSimpleBulletproof;
     if (bulletproof || !tx.rct_signatures.p.bulletproofs.empty())
     {
-      MERROR("Bulletproofs are not allowed before v7");
+      MERROR("Bulletproofs are not allowed before v8");
       tvc.m_invalid_output = true;
       return false;
     }

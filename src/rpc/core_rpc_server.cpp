@@ -211,6 +211,15 @@ namespace cryptonote
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------
+  static cryptonote::blobdata get_pruned_tx_blob(cryptonote::transaction &tx)
+  {
+    std::stringstream ss;
+    binary_archive<true> ba(ss);
+    bool r = tx.serialize_base(ba);
+    CHECK_AND_ASSERT_MES(r, cryptonote::blobdata(), "Failed to serialize rct signatures base");
+    return ss.str();
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
   static cryptonote::blobdata get_pruned_tx_blob(const cryptonote::blobdata &blobdata)
   {
     cryptonote::transaction tx;
@@ -218,14 +227,10 @@ namespace cryptonote
     if (!cryptonote::parse_and_validate_tx_from_blob(blobdata, tx))
     {
       MERROR("Failed to parse and validate tx from blob");
-      return blobdata;
+      return cryptonote::blobdata();
     }
 
-    std::stringstream ss;
-    binary_archive<true> ba(ss);
-    bool r = tx.serialize_base(ba);
-    CHECK_AND_ASSERT_MES(r, blobdata, "Failed to serialize rct signatures base");
-    return ss.str();
+    return get_pruned_tx_blob(tx);
   }
   //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::on_get_blocks(const COMMAND_RPC_GET_BLOCKS_FAST::request& req, COMMAND_RPC_GET_BLOCKS_FAST::response& res)
@@ -635,7 +640,7 @@ namespace cryptonote
 
       crypto::hash tx_hash = *vhi++;
       e.tx_hash = *txhi++;
-      blobdata blob = t_serializable_object_to_blob(tx);
+      blobdata blob = req.prune ? get_pruned_tx_blob(tx) : t_serializable_object_to_blob(tx);
       e.as_hex = string_tools::buff_to_hex_nodelimer(blob);
       if (req.decode_as_json)
         e.as_json = obj_to_json_str(tx);
@@ -833,12 +838,6 @@ namespace cryptonote
       LOG_PRINT_L0(res.status);
       return true;
     }
-    if (info.is_subaddress)
-    {
-      res.status = "Mining to subaddress isn't supported yet";
-      LOG_PRINT_L0(res.status);
-      return true;
-    }
 
     unsigned int concurrency_count = boost::thread::hardware_concurrency() * 4;
 
@@ -860,7 +859,7 @@ namespace cryptonote
     boost::thread::attributes attrs;
     attrs.set_stack_size(THREAD_STACK_SIZE);
 
-    if(!m_core.get_miner().start(info.address, static_cast<size_t>(req.threads_count), attrs, req.do_background_mining, req.ignore_battery))
+    if(!m_core.get_miner().start(req.miner_address, static_cast<size_t>(req.threads_count), attrs, req.do_background_mining, req.ignore_battery))
     {
       res.status = "Failed, mining not started";
       LOG_PRINT_L0(res.status);
@@ -894,8 +893,7 @@ namespace cryptonote
     if ( lMiner.is_mining() ) {
       res.speed = lMiner.get_speed();
       res.threads_count = lMiner.get_threads_count();
-      const account_public_address& lMiningAdr = lMiner.get_mining_address();
-      res.address = get_account_address_as_str(m_nettype, false, lMiningAdr);
+      res.address = lMiner.get_mining_address();
     }
 
     res.status = CORE_RPC_STATUS_OK;
@@ -1126,7 +1124,7 @@ namespace cryptonote
     block b = AUTO_VAL_INIT(b);
     cryptonote::blobdata blob_reserve;
     blob_reserve.resize(req.reserve_size, 0);
-    if(!m_core.get_block_template(b, info.address, res.difficulty, res.height, res.expected_reward, blob_reserve))
+    if(!m_core.get_block_template(b, req.wallet_address, res.difficulty, res.height, res.expected_reward, blob_reserve))
     {
       error_resp.code = CORE_RPC_ERROR_CODE_INTERNAL_ERROR;
       error_resp.message = "Internal error: failed to create block template";
