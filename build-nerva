@@ -6,9 +6,9 @@ dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Just got sick of typing
 
 # basically run it like this
-# ./nerva-build clean
-# ./nerva-build init release ubuntu
-# ./nerva-build build 4
+# ./build-nerva clean
+# ./build-nerva init release ubuntu
+# ./build-nerva build 4
 
 # clean any previous builkd output
 # ./nerva-build clean
