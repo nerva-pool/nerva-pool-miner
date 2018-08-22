@@ -5,19 +5,77 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "name": "Stagenet Miner",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/nervad",
+            "program": "${workspaceFolder}/build/bin/nervad",
             "args": [
-                "--testnet",
-                "--data-dir", "~/testnet/node_04",
-                "--rpc-bind-port", "58081",
+                "--stagenet",
+                "--data-dir", "${workspaceFolder}/build/bin/stagenet/node4",
+                "--no-igd",
+                "--hide-my-port",
                 "--p2p-bind-port", "58080",
+                "--rpc-bind-port", "58081",
                 "--zmq-rpc-bind-port", "58082",
+                "--rpc-restricted-bind-port", "58083",
                 "--add-exclusive-node", "127.0.0.1:28080",
                 "--add-exclusive-node", "127.0.0.1:38080",
-                "--add-exclusive-node", "127.0.0.1:48080"
+                "--add-exclusive-node", "127.0.0.1:48080",
+                "--start-mining", "NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW",
+                "--mining-threads", "2"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Stagenet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/nervad",
+            "args": [
+                "--stagenet",
+                "--data-dir", "${workspaceFolder}/build/bin/stagenet/node4",
+                "--no-igd",
+                "--hide-my-port",
+                "--p2p-bind-port", "58080",
+                "--rpc-bind-port", "58081",
+                "--zmq-rpc-bind-port", "58082",
+                "--rpc-restricted-bind-port", "58083",
+                "--add-exclusive-node", "127.0.0.1:28080",
+                "--add-exclusive-node", "127.0.0.1:38080",
+                "--add-exclusive-node", "127.0.0.1:48080",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Testnet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/nervad",
+            "args": [
+                "--testnet",
+                "--block-sync-size", "1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

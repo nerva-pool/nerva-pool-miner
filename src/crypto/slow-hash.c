@@ -1,3 +1,5 @@
+// Copyright (c) 2018, The NERVA Project
+// Copyright (c) 2018, The Masari Project
 // Copyright (c) 2014-2018, The Monero Project
 //
 // All rights reserved.
@@ -35,14 +37,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "common/int-util.h"
 #include "hash-ops.h"
 #include "oaes_lib.h"
 
-//MOD
-//#define MEMORY         (1 << 21) // 2MB scratchpad
-//#define ITER           (1 << 20)
 #define MEMORY         (1 << 20) // 1MB scratchpad
 #define AES_BLOCK_SIZE  16
 #define AES_KEY_SIZE    32
@@ -567,7 +567,7 @@ void slow_hash_free_state(void)
  * @param length the length in bytes of the data
  * @param hash a pointer to a buffer in which the final 256 bit hash will be stored
  */
-void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters)
+void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters, random_values *r)
 {
     RDATA_ALIGN16 uint8_t expandedKey[240];  /* These buffers are aligned to use later with SSE functions */
 
@@ -628,6 +628,8 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
             memcpy(&hp_state[i * INIT_SIZE_BYTE], text, INIT_SIZE_BYTE);
         }
     }
+
+    randomize_scratchpad(r, hp_state);
 
     U64(a)[0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];
     U64(a)[1] = U64(&state.k[0])[1] ^ U64(&state.k[32])[1];
@@ -699,6 +701,40 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     memcpy(state.init, text, INIT_SIZE_BYTE);
     hash_permutation(&state.hs);
     extra_hashes[state.hs.b[0] & 3](&state, 200, hash);
+}
+
+void randomize_scratchpad(random_values *r, uint8_t *scratchpad)
+{
+    if (r == NULL)
+        return;
+
+    for (int i = 0; i < RANDOM_VALUES; i++)
+    {
+        switch (r->operators[i])
+        {
+            case ADD:
+                scratchpad[r->indices[i]] += r->values[i];
+                break;
+            case SUB:
+                scratchpad[r->indices[i]] -= r->values[i];
+                break;
+            case XOR:
+                scratchpad[r->indices[i]] ^= r->values[i];
+                break;
+            case OR:
+                scratchpad[r->indices[i]] |= r->values[i];
+                break;
+            case AND:
+                scratchpad[r->indices[i]] &= r->values[i];
+                break;
+            case COMP:
+                scratchpad[r->indices[i]] = ~r->values[i];
+                break;
+            case EQ:
+                scratchpad[r->indices[i]] = r->values[i];
+                break;
+        }
+    }
 }
 
 #elif !defined NO_AES && (defined(__arm__) || defined(__aarch64__))

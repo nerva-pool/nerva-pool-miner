@@ -157,22 +157,6 @@ namespace config
     } }; // Bender's nightmare
   std::string const GENESIS_TX = "010a01ff0001ffffffffffff0f029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101abf318a3dc8d66a0263839cffce83daa85963a27635a608a2ba9973055bcc8e400";
 
-  //std::string const GENESIS_TX =
-
-  //"01"                                                                  // version
-  //"0a"                                                                  // unlock time
-  //"01"                                                                  // vin length
-  //"ff"                                                                  // vin #1
-  //"00"                                                                  // height gen input
-  //"01"                                                                  // vout length
-  //"c8cf99b3e6cc99b366"                                                      // output #1 amount
-  //"02"                                                                  // output 1 type
-  //"962e1b942a57b69695f216946f8a4deea874c2bfb279558b9f456ab982651d4b"    // output #1 key
-  //"21"                                                                  // extra length in bytes
-  //"01"                                                                  // extra pubkey tag
-  //"a8b82cd907e11ac6b8db159e0963a857c956b5e782c1c3aafc3e4cc6ee86ae2600"; // tx pubkey
-
-
   uint32_t const GENESIS_NONCE = 10000;
 
   namespace testnet

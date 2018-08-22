@@ -385,15 +385,10 @@ namespace nodetool
     }
     else if (nettype == cryptonote::STAGENET)
     {
-      
+      // TODO-TK: address this
     }
     else
     {
-      //todo: remove these after the hardfork
-      full_addrs.insert("165.227.241.93:17565"); //USA
-      full_addrs.insert("167.99.28.215:17565"); //SG
-      full_addrs.insert("159.65.215.48:17565"); //UK
-
       full_addrs.insert("206.81.2.15:17565");
       full_addrs.insert("206.81.2.16:17565");
       full_addrs.insert("206.81.12.28:17565");
