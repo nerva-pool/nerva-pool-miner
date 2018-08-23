@@ -412,9 +412,9 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
   MINFO("Blockchain initialized. last block: " << m_db->height() - 1 << ", " << epee::misc_utils::get_time_interval_string(timestamp_diff) << " time ago, current difficulty: " << get_difficulty_for_next_block());
   m_db->block_txn_stop();
 
-  //XMR-CHERRY-PICK: Pop top if block version disagrees with the ideal fork version #3749
+  
   uint64_t num_popped_blocks = 0;
-  while (true)
+  while (!m_db->is_read_only())
   {
     const uint64_t top_height = m_db->height() - 1;
     const crypto::hash top_id = m_db->top_block_hash();
@@ -603,12 +603,6 @@ block Blockchain::pop_block_from_blockchain()
       }
     }
   }
-
-  m_blocks_longhash_table.clear();
-  m_scan_table.clear();
-  m_blocks_txs_check.clear();
-  m_check_txin_table.clear();
-
   update_next_cumulative_size_limit();
   m_tx_pool.on_blockchain_dec(m_db->height()-1, get_tail_id());
 
@@ -1514,7 +1508,7 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     }
     else
     {
-      LOG_PRINT_L3("----- BLOCK ADDED AS ALTERNATIVE ON HEIGHT " << bei.height << std::endl << "id:\t" << id << std::endl << "PoW:\t" << proof_of_work << std::endl << "difficulty:\t" << current_diff);
+      MGINFO_BLUE("----- BLOCK ADDED AS ALTERNATIVE ON HEIGHT " << bei.height << std::endl << "id:\t" << id << std::endl << "PoW:\t" << proof_of_work << std::endl << "difficulty:\t" << current_diff);
       return true;
     }
   }
