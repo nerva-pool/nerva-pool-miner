@@ -89,6 +89,28 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "MNainnet-BugTest",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/nerva-wallet-cli",
+            "args": [
+                "--wallet-file", "testerror",
+                "--password", ""
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         }
     ]
 }
