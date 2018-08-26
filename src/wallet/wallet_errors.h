@@ -398,6 +398,16 @@ namespace tools
       std::string to_string() const { return refresh_error::to_string(); }
     };
     //----------------------------------------------------------------------------------------------------
+    struct out_of_hashchain_bounds_error : public refresh_error
+    {
+      explicit out_of_hashchain_bounds_error(std::string&& loc)
+        : refresh_error(std::move(loc), "Index out of bounds of of hashchain")
+      {
+      }
+
+      std::string to_string() const { return refresh_error::to_string(); }
+    };
+    //----------------------------------------------------------------------------------------------------
     struct transfer_error : public wallet_logic_error
     {
     protected:
