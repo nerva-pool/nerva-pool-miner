@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:stable
 
 RUN apt-get update && apt-get install -y unzip automake build-essential curl file pkg-config git python libtool
 
@@ -9,7 +9,7 @@ RUN curl -s -O http://dl.google.com/android/android-sdk_r24.4.1-linux.tgz \
     && rm -f android-sdk_r24.4.1-linux.tgz
 
 ## INSTALL ANDROID NDK
-ENV ANDROID_NDK_REVISION 14
+ENV ANDROID_NDK_REVISION 17b
 RUN curl -s -O https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
     && unzip android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
     && rm -f android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip
@@ -30,7 +30,7 @@ RUN curl -s -L -o  boost_${BOOST_VERSION}.tar.bz2 https://sourceforge.net/projec
 ENV TOOLCHAIN_DIR ${WORKDIR}/toolchain-arm
 RUN ${ANDROID_NDK_ROOT}/build/tools/make_standalone_toolchain.py \
          --arch arm64 \
-         --api 21 \
+         --api 24 \
          --install-dir $TOOLCHAIN_DIR \
          --stl=libc++
 ENV PATH $TOOLCHAIN_DIR/aarch64-linux-android/bin:$TOOLCHAIN_DIR/bin:$PATH
@@ -81,15 +81,15 @@ RUN git clone https://github.com/zeromq/zeromq4-1.git \
 
 RUN ln -s /opt/android/openssl/libcrypto.a /opt/android/openssl/libssl.a ${TOOLCHAIN_DIR}/aarch64-linux-android/lib
 
-RUN git clone https://github.com/monero-project/monero.git \
-    && cd monero \
-    && mkdir -p build/release \
-    && cd build/release \
-    && CC=clang CXX=clang++ \
-         BOOST_ROOT=${WORKDIR}/boost_${BOOST_VERSION} BOOST_LIBRARYDIR=${WORKDIR}/boost_${BOOST_VERSION}/android64/lib/ \
-         OPENSSL_ROOT_DIR=${WORKDIR}/openssl/ \
-         CMAKE_INCLUDE_PATH=${WORKDIR}/cppzmq/ \
-         CMAKE_LIBRARY_PATH=${WORKDIR}/zeromq4-1/.libs \
-         CXXFLAGS="-I ${WORKDIR}/zeromq4-1/include/" \
-         cmake -D BUILD_TESTS=OFF -D ARCH="armv8-a" -D STATIC=ON -D BUILD_64=ON -D CMAKE_BUILD_TYPE=release -D ANDROID=true -D INSTALL_VENDORED_LIBUNBOUND=ON -D BUILD_TAG="android" ../.. \
-    && make -j3
+#RUN git clone https://bitbucket.org/nerva-project/nerva.git \
+#    && cd nerva \
+#    && mkdir -p build/release \
+#    && cd build/release \
+#    && CC=clang CXX=clang++ \
+#         BOOST_ROOT=${WORKDIR}/boost_${BOOST_VERSION} BOOST_LIBRARYDIR=${WORKDIR}/boost_${BOOST_VERSION}/android64/lib/ \
+#         OPENSSL_ROOT_DIR=${WORKDIR}/openssl/ \
+#         CMAKE_INCLUDE_PATH=${WORKDIR}/cppzmq/ \
+#         CMAKE_LIBRARY_PATH=${WORKDIR}/zeromq4-1/.libs \
+#         CXXFLAGS="-I ${WORKDIR}/zeromq4-1/include/" \
+#         cmake -D BUILD_TESTS=OFF -D ARCH="armv8-a" -D STATIC=ON -D BUILD_64=ON -D CMAKE_BUILD_TYPE=release -D ANDROID=true -D INSTALL_VENDORED_LIBUNBOUND=ON -D BUILD_TAG="android" ../.. \
+#    && make -j3
