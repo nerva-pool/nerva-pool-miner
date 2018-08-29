@@ -21,7 +21,22 @@ Discord is the preferred method of communication for NERVA
 
 ## Compiling NERVA from source
 
-Please refer to
+Linux users can build using the included `builder` script
+
+`./builder complete <release> <threads>`  
+
+where:  
+
+- <release> is the release type. Either `debug` or `release`  
+- <threads> is the number of CPU threads to use for the build
+	
+Example:
+
+`./builder complete release 4`
+
+Currently Ubuntu, Debian and Fedora are suppported
+
+For more information about NERVA, how to compile the software for other operating systems and basic usage, please refer to the following documents  
 
 [NERVA Release Structure](https://bitbucket.org/snippets/nerva-project/Ee7yMa/nerva-release-structure): To help you choose and compile the right version of NERVA
 
