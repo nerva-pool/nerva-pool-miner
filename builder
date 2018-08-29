@@ -1,28 +1,29 @@
 #!/bin/bash
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+installdir=/usr/local/bin
 
 # Fairly basic build script
 # Just got sick of typing
 
 # basically run it like this
-# ./build-nerva clean
-# ./build-nerva init release ubuntu
-# ./build-nerva build 4
+# ./builder clean
+# ./builder init release ubuntu
+# ./builder build 4
 
 # clean any previous builkd output
-# ./nerva-build clean
+# ./nervaer clean
 
 # initialize the build (install deps, run cmake etc
-# ./build-nerva init <release> <distro>
+# ./builder init <release>
 # where <release> is either 'debug' or 'release'
-# where <distro> is your linux distro name. Currently only 'ubuntu' is supported
-# If you are sure you have the required dependencies installed, you can skip the distro specific initialization with
-# ./nerva-build init <release>
 
 # build nerva
-# ./nerva-build build <threads>
+# ./builder build <threads>
 # Where <threads> is the number of threads to use with make
+
+# Do it all in one line
+# ./builder complete release 4
 
 
 function checkdistro()
@@ -47,8 +48,19 @@ function checkdistro()
 	fi
 }
 
+function install()
+{
+	sudo cp ${dir}/nerva* ${installdir}
+}
+
+function uninstall()
+{
+	sudo rm ${installdir}/nerva*
+}
+
 function clean()
 {
+	uninstall
 	cd ${dir}
 	rm -rf ${dir}/build
 	find -name CMakeCache.txt | xargs rm
@@ -58,24 +70,23 @@ function clean()
 	find -name *.so | xargs rm
 }
 
-function ubuntu()
+function init()
 {
 	checkdistro
 
-	if [ $NERVA_BUILD_DISTRO == "ubuntu" ]
-	then
+	if [ $NERVA_BUILD_DISTRO == "ubuntu" ] || [ $NERVA_BUILD_DISTRO == "debian" ]; then
 		sudo apt install -y \
-		build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev libunbound-dev libsodium-dev \
+		git build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev libunbound-dev libsodium-dev \
 		libminiupnpc-dev libunwind8-dev liblzma-dev libreadline6-dev libldns-dev libexpat1-dev libgtest-dev doxygen graphviz
+	elif [ $NERVA_BUILD_DISTRO == "fedora" ]; then
+		sudo dnf install -y \
+		git make automake cmake gcc-c++ boost-devel miniupnpc-devel graphviz \
+    	doxygen unbound-devel libunwind-devel pkgconfig cppzmq-devel openssl-devel libcurl-devel --setopt=install_weak_deps=False
 	else
 		echo "Cannot install dependencies on your system. This distro is not officially supported"	
 		exit 1
 	fi
-}
 
-function init()
-{
-	$2
 	mkdir ${dir}/build
 	cd ${dir}/build
 	cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_SHARED_LIBS=OFF ..
@@ -85,6 +96,14 @@ function build()
 {
 	cd ${dir}/build
 	make -j $1
+}
+
+function complete()
+{
+	clean
+	init $1
+	build $2
+	install
 }
 
 $1 $2 $3
