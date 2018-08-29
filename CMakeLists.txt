@@ -412,7 +412,7 @@ if(STATIC AND NOT IOS)
   endif()
 endif()
 
-find_package(PCSC)
+#find_package(PCSC)
 
 add_definition_if_library_exists(c memset_s "string.h" HAVE_MEMSET_S)
 add_definition_if_library_exists(c explicit_bzero "strings.h" HAVE_EXPLICIT_BZERO)
