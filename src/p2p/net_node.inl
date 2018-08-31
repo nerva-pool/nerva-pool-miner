@@ -713,7 +713,7 @@ namespace nodetool
       }
       else if (rsp.version != MONERO_VERSION)
       {
-        MGINFO_CYAN("Peer " << context.m_remote_address.str() << " replied with incorrect version: " << rsp.version);
+        MGINFO_CYAN("Peer " << context.m_remote_address.str() << " has incorrect version: " << rsp.version);
         hsh_result = false;
       }
 
@@ -744,6 +744,19 @@ namespace nodetool
       if(code < 0)
       {
         LOG_WARNING_CC(context, "COMMAND_HANDSHAKE invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
+        return;
+      }
+
+      if (rsp.node_data.version.size() == 0)
+      {
+        MGINFO_CYAN("Peer " << context.m_remote_address.str() << " did not provide version information");
+        block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+        return;
+      }
+      else if (rsp.node_data.version != MONERO_VERSION)
+      {
+        MGINFO_CYAN("Peer " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
+        block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
         return;
       }
 
@@ -1411,6 +1424,7 @@ namespace nodetool
     time(&local_time);
     node_data.local_time = local_time;
     node_data.peer_id = m_config.m_peer_id;
+    node_data.version = MONERO_VERSION;
     if(!m_hide_my_port)
       node_data.my_port = m_external_port ? m_external_port : m_listening_port;
     else
@@ -1683,9 +1697,24 @@ namespace nodetool
   template<class t_payload_net_handler>
   int node_server<t_payload_net_handler>::handle_handshake(int command, typename COMMAND_HANDSHAKE::request& arg, typename COMMAND_HANDSHAKE::response& rsp, p2p_connection_context& context)
   {
+    if (arg.node_data.version.size() == 0)
+    {
+      MGINFO_CYAN("Peer " << context.m_remote_address.str() << " did not provide version information");
+      drop_connection(context);
+      block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+      return 1;
+    }
+
+    if (arg.node_data.version != MONERO_VERSION)
+    {
+      MGINFO_CYAN("Peer " << context.m_remote_address.str() << " has incorrect version: " << arg.node_data.version);
+      drop_connection(context);
+      block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+      return 1;
+    }
+
     if(arg.node_data.network_id != m_network_id)
     {
-
       LOG_INFO_CC(context, "WRONG NETWORK AGENT CONNECTED! id=" << epee::string_tools::get_str_from_guid_a(arg.node_data.network_id));
       drop_connection(context);
       add_host_fail(context.m_remote_address);
