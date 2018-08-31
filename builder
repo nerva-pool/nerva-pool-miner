@@ -3,28 +3,22 @@
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 installdir=/usr/local/bin
 
-# Fairly basic build script
-# Just got sick of typing
-
 # basically run it like this
 # ./builder clean
-# ./builder init release ubuntu
-# ./builder build 4
+# ./builder init release
+# ./builder build release 6
 
 # clean any previous builkd output
-# ./nervaer clean
+# ./builder clean
 
-# initialize the build (install deps, run cmake etc
+# initialize the build (install deps, run cmake etc)
 # ./builder init <release>
 # where <release> is either 'debug' or 'release'
 
 # build nerva
-# ./builder build <threads>
+# ./builder build <release> <threads>
+# where <release> is either 'debug' or 'release'
 # Where <threads> is the number of threads to use with make
-
-# Do it all in one line
-# ./builder complete release 4
-
 
 function checkdistro()
 {
@@ -60,7 +54,6 @@ function uninstall()
 
 function clean()
 {
-	uninstall
 	cd ${dir}
 	rm -rf ${dir}/build
 	find -name CMakeCache.txt | xargs rm
@@ -87,23 +80,15 @@ function init()
 		exit 1
 	fi
 
-	mkdir ${dir}/build
-	cd ${dir}/build
-	cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_SHARED_LIBS=OFF ..
+	mkdir -p ${dir}/build/$1
+	cd ${dir}/build/$1
+	cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_SHARED_LIBS=OFF ../..
 }
 
 function build()
 {
-	cd ${dir}/build
-	make -j $1
-}
-
-function complete()
-{
-	clean
-	init $1
-	build $2
-	install
+	cd ${dir}/build/$1
+	make -j $2
 }
 
 $1 $2 $3

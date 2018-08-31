@@ -4,14 +4,15 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Stagenet Miner",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/nervad",
+            "program": "${workspaceFolder}/build/debug/bin/nervad",
             "args": [
                 "--stagenet",
-                "--data-dir", "${workspaceFolder}/build/bin/stagenet/node4",
+                "--data-dir", "${workspaceFolder}/build/debug/bin/stagenet/node4",
                 "--no-igd",
                 "--hide-my-port",
                 "--p2p-bind-port", "58080",
@@ -21,7 +22,7 @@
                 "--add-exclusive-node", "127.0.0.1:28080",
                 "--add-exclusive-node", "127.0.0.1:38080",
                 "--add-exclusive-node", "127.0.0.1:48080",
-                "--start-mining", "NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW",
+                "--start-mining", "7QSfkG3wNa6U9dSKHTSQGuTVf3t8pet9ScoePGrJxi8GRX3iwwAY5oURKKKoAFtCsdJUb67X6y8dhiRhmCLDJwjf7UCdt7A",
                 "--mining-threads", "2"
             ],
             "stopAtEntry": false,
@@ -41,10 +42,10 @@
             "name": "Stagenet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/nervad",
+            "program": "${workspaceFolder}/build/debug/bin/nervad",
             "args": [
                 "--stagenet",
-                "--data-dir", "${workspaceFolder}/build/bin/stagenet/node4",
+                "--data-dir", "${workspaceFolder}/build/debug/bin/stagenet/node4",
                 "--no-igd",
                 "--hide-my-port",
                 "--p2p-bind-port", "58080",
@@ -72,7 +73,7 @@
             "name": "Testnet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/nervad",
+            "program": "${workspaceFolder}/build/debug/bin/nervad",
             "args": [
                 "--testnet",
                 "--block-sync-size", "1"
@@ -91,13 +92,12 @@
             ]
         },
         {
-            "name": "MNainnet-BugTest",
+            "name": "Mainnet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/nerva-wallet-cli",
+            "program": "${workspaceFolder}/build/debug/bin/nervad",
             "args": [
-                "--wallet-file", "testerror",
-                "--password", ""
+                "--block-sync-size", "1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
