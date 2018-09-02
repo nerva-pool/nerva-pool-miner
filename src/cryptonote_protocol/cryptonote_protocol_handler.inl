@@ -276,6 +276,11 @@ namespace cryptonote
           MCLOG_RED(el::Level::Warning, "global", context << " peer claims higher version (" <<
               (unsigned)hshd.top_version << " for " << (hshd.current_height - 1) << " instead of " << (unsigned)version <<
               ") - check https://getnerva.org for updates");
+
+        //PROPOSAL: Should we stop mining if informed of a node with a higher block version?
+        //if (m_core.get_miner().is_mining())
+        //  m_core.get_miner().stop();
+
         return false;
       }
     }
