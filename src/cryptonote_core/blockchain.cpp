@@ -430,9 +430,9 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
     else
     {
       if (num_popped_blocks == 0)
-        MINFO("Current top block " << top_id << " at height " << top_height << " has version " << (uint64_t)top_block.major_version << " which disagrees with the ideal version " << (uint64_t)ideal_hf_version);
+        MGINFO_RED("Current top block " << top_id << " at height " << top_height << " has version " << (uint64_t)top_block.major_version << " which disagrees with the ideal version " << (uint64_t)ideal_hf_version);
       if (num_popped_blocks % 100 == 0)
-        MINFO("Popping blocks... " << top_height);
+        MGINFO_YELLOW("Popping blocks... " << top_height);
       ++num_popped_blocks;
       block popped_block;
       std::vector<transaction> popped_txs;
