@@ -118,7 +118,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/debug/bin/nervad",
             "args": [
-                "--data-dir", "${workspaceFolder}/build/debug/bin/darknet-blockchain"
+                "--data-dir", "${workspaceFolder}/build/debug/bin/darknet-blockchain",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

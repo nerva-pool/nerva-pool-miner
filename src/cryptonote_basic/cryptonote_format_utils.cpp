@@ -861,6 +861,13 @@ namespace cryptonote
   {
     blobdata bd = get_block_hashing_blob(b);
 
+    uint64_t ht = 1;
+
+    if (b.major_version >= 8)
+      ht = bc->get_current_blockchain_height() - 256;
+    else if (b.major_version >= 7)
+      ht = bc->get_current_blockchain_height() - 1;
+
     if (b.major_version >= 7)
     {
       int cn_variant = 1;
@@ -872,7 +879,6 @@ namespace cryptonote
         if (r == NULL)
           r = (random_values *)malloc(sizeof(random_values));
 
-        uint64_t ht = bc->get_current_blockchain_height() - 1;
         crypto::hash h0 = bc->get_block_id_by_height(ht);
 
         uint8_t b1 = (uint8_t)(h0.data[0] ^ h0.data[16]);
