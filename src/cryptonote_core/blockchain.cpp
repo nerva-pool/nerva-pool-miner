@@ -97,6 +97,7 @@ static const struct {
   { 5, 5, 0, 1525150523 },
   { 6, 44500, 0, 1527818400 },
   { 7, 173500, 0, 1535348069 },
+  { 8, 180000, 0, 1535963934 },
 };
 
 static const struct {
@@ -111,7 +112,7 @@ static const struct {
   { 4, 4, 0, 1512627130 },
   { 5, 500, 0, 1524112219 },
   { 6, 1000, 0, 1533221184 },
-  { 7, 89600, 0, 1534139799 },
+  { 7, 89600, 0, 1535963934 },
 }; //HF in rapid succession to get to same version as Masari
 
 static const struct {
