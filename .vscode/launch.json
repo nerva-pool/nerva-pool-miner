@@ -97,7 +97,8 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/debug/bin/nervad",
             "args": [
-                "--block-sync-size", "1"
+                "--block-sync-size", "1",
+                "--data-dir", "${workspaceFolder}/build/debug/bin/fn"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

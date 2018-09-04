@@ -864,9 +864,9 @@ namespace cryptonote
     uint64_t ht = 1;
 
     if (b.major_version >= 8)
-      ht = bc->get_current_blockchain_height() - 256;
+      ht = height - 256;
     else if (b.major_version >= 7)
-      ht = bc->get_current_blockchain_height() - 1;
+      ht = height - 1;
 
     if (b.major_version >= 7)
     {
