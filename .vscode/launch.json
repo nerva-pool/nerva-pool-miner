@@ -114,12 +114,13 @@
             ]
         },
         {
-            "name": "Darknet",
+            "name": "Import",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/bin/nervad",
+            "program": "${workspaceFolder}/build/debug/bin/nerva-blockchain-import",
             "args": [
-                "--data-dir", "${workspaceFolder}/build/debug/bin/darknet-blockchain",
+                "--data-dir", "${workspaceFolder}/build/debug/bin/import-test",
+                "--input-file", "${workspaceFolder}/build/debug/bin/mainnet-180950.raw",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
