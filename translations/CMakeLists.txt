@@ -28,9 +28,6 @@
 
 cmake_minimum_required(VERSION 2.8.7)
 
-unset(ENV{CC})
-unset(ENV{CXX})
-
 project(translations)
 
 # when crosscompiling import the executable targets from a file
@@ -39,6 +36,7 @@ IF(CMAKE_CROSSCOMPILING)
   SET(IMPORT_EXECUTABLES "${CMAKE_CURRENT_BINARY_DIR}/ImportExecutables.cmake" CACHE FILEPATH "Point it to the export file from a native build")
   INCLUDE(${IMPORT_EXECUTABLES})
 ENDIF(CMAKE_CROSSCOMPILING)
+
  # only build the generator if not crosscompiling
 IF(NOT CMAKE_CROSSCOMPILING)
   add_executable(generate_translations_header generate_translations_header.c)
