@@ -44,7 +44,7 @@ function checkdistro()
 
 function install()
 {
-	sudo cp ${dir}/build/bin/nerva* ${installdir}
+	sudo cp ${dir}/build/release/bin/nerva* ${installdir}
 }
 
 function uninstall()
