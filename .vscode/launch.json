@@ -23,7 +23,8 @@
                 "--add-exclusive-node", "127.0.0.1:38080",
                 "--add-exclusive-node", "127.0.0.1:48080",
                 "--start-mining", "7QSfkG3wNa6U9dSKHTSQGuTVf3t8pet9ScoePGrJxi8GRX3iwwAY5oURKKKoAFtCsdJUb67X6y8dhiRhmCLDJwjf7UCdt7A",
-                "--mining-threads", "2"
+                "--mining-threads", "1",
+                "--block-sync-size", "1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
