@@ -703,40 +703,6 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     extra_hashes[state.hs.b[0] & 3](&state, 200, hash);
 }
 
-void randomize_scratchpad(random_values *r, uint8_t *scratchpad)
-{
-    if (r == NULL)
-        return;
-
-    for (int i = 0; i < RANDOM_VALUES; i++)
-    {
-        switch (r->operators[i])
-        {
-            case ADD:
-                scratchpad[r->indices[i]] += r->values[i];
-                break;
-            case SUB:
-                scratchpad[r->indices[i]] -= r->values[i];
-                break;
-            case XOR:
-                scratchpad[r->indices[i]] ^= r->values[i];
-                break;
-            case OR:
-                scratchpad[r->indices[i]] |= r->values[i];
-                break;
-            case AND:
-                scratchpad[r->indices[i]] &= r->values[i];
-                break;
-            case COMP:
-                scratchpad[r->indices[i]] = ~r->values[i];
-                break;
-            case EQ:
-                scratchpad[r->indices[i]] = r->values[i];
-                break;
-        }
-    }
-}
-
 #elif !defined NO_AES && (defined(__arm__) || defined(__aarch64__))
 void slow_hash_allocate_state(void)
 {
@@ -1416,3 +1382,37 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
 }
 
 #endif
+
+void randomize_scratchpad(random_values *r, uint8_t *scratchpad)
+{
+    if (r == NULL)
+        return;
+
+    for (int i = 0; i < RANDOM_VALUES; i++)
+    {
+        switch (r->operators[i])
+        {
+            case ADD:
+                scratchpad[r->indices[i]] += r->values[i];
+                break;
+            case SUB:
+                scratchpad[r->indices[i]] -= r->values[i];
+                break;
+            case XOR:
+                scratchpad[r->indices[i]] ^= r->values[i];
+                break;
+            case OR:
+                scratchpad[r->indices[i]] |= r->values[i];
+                break;
+            case AND:
+                scratchpad[r->indices[i]] &= r->values[i];
+                break;
+            case COMP:
+                scratchpad[r->indices[i]] = ~r->values[i];
+                break;
+            case EQ:
+                scratchpad[r->indices[i]] = r->values[i];
+                break;
+        }
+    }
+}
