@@ -4,9 +4,9 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Debug",
+            "label": "build-debug",
             "type": "shell",
-            "command": "${workspaceFolder}/builder build debug 6",
+            "command": "cd ${workspaceFolder}/build/debug && make -j6",
             "group": {
                 "kind": "build",
                 "isDefault": true

@@ -75,8 +75,11 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/debug/bin/nervad",
+            "preLaunchTask": "build-debug",
             "args": [
                 "--testnet",
+                "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
+                "--mining-threads", "1",
                 "--block-sync-size", "1"
             ],
             "stopAtEntry": false,
@@ -98,8 +101,9 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/debug/bin/nervad",
             "args": [
-                "--block-sync-size", "1",
-                "--data-dir", "${workspaceFolder}/build/debug/bin/fn"
+                "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
+                "--mining-threads", "8",
+                "--block-sync-size", "1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

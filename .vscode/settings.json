@@ -65,6 +65,7 @@
         "streambuf": "cpp",
         "string_view": "cpp",
         "valarray": "cpp",
-        "intrin.h": "c"
+        "intrin.h": "c",
+        "forward_list": "cpp"
     }
 }
