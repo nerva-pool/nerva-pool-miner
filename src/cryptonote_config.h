@@ -34,7 +34,6 @@
 #include <string>
 #include <set>
 #include <boost/uuid/uuid.hpp>
-#include <arpa/inet.h>
 
 #define CRYPTONOTE_DNS_TIMEOUT_MS                       20000
 
