@@ -49,6 +49,8 @@
 #include "crypto/crypto.h"
 #include "storages/levin_abstract_invoke2.h"
 #include "cryptonote_core/cryptonote_core.h"
+#include "cryptonote_config.h"
+#include "blacklist.h"
 
 #include <miniupnp/miniupnpc/miniupnpc.h>
 #include <miniupnp/miniupnpc/upnpcommands.h>
@@ -370,22 +372,16 @@ namespace nodetool
   std::set<std::string> node_server<t_payload_net_handler>::get_seed_nodes(cryptonote::network_type nettype) const
   {
     std::set<std::string> full_addrs;
+
     if (nettype == cryptonote::TESTNET)
-    {
-      full_addrs.insert("204.48.17.173:18565");
-      full_addrs.insert("206.81.2.10:18565");
-      full_addrs.insert("206.81.2.12:18565");
-    }
+      full_addrs = ::config::testnet::seed_nodes;
     else if (nettype == cryptonote::STAGENET)
     {
       // TODO-TK: address this
     }
     else
-    {
-      full_addrs.insert("206.81.2.15:17565");
-      full_addrs.insert("206.81.2.16:17565");
-      full_addrs.insert("206.81.12.28:17565");
-    }
+      full_addrs = ::config::seed_nodes;
+
     return full_addrs;
   }
 
@@ -701,15 +697,32 @@ namespace nodetool
 
       if (rsp.version.size() == 0)
       {
-        MGINFO_CYAN("Peer " << context.m_remote_address.str() << " did not provide version information");
+        MGINFO_CYAN("Host " << context.m_remote_address.str() << " did not provide version information");
         hsh_result = false;
       }
 
-      uint32_t rsp_ver = version_string_to_integer(rsp.version);
-      if (rsp_ver < SUPPORTED_MIN_VERSION)
+      if (hsh_result)
       {
-        MGINFO_CYAN("Peer " << context.m_remote_address.str() << " has incorrect version: " << rsp.version);
-        hsh_result = false;
+        std::string host_compare = blacklist::get_host(context.m_remote_address.str());
+        for (auto i : blacklist::get_ip_list())
+        {
+          if (i == host_compare)
+          {
+            MGINFO_CYAN("Host " << i << " is on blacklist");
+            hsh_result = false;
+            break;
+          }
+        }
+      }
+
+      if (hsh_result)
+      {
+        uint32_t rsp_ver = version_string_to_integer(rsp.version);
+        if (rsp_ver < SUPPORTED_MIN_VERSION)
+        {
+          MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.version);
+          hsh_result = false;
+        }
       }
 
     }, P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT);
@@ -742,9 +755,20 @@ namespace nodetool
         return;
       }
 
+      std::string host_compare = blacklist::get_host(context.m_remote_address.str());
+      for (auto i : blacklist::get_ip_list())
+      {
+        if (i == host_compare)
+        {
+          MGINFO_CYAN("Host " << i << " is on blacklist");
+          block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+          return;
+        }
+      }
+
       if (rsp.node_data.version.size() == 0)
       {
-        MGINFO_CYAN("Peer " << context.m_remote_address.str() << " did not provide version information");
+        MGINFO_CYAN("Host " << context.m_remote_address.str() << " did not provide version information");
         block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
         return;
       }
@@ -752,7 +776,7 @@ namespace nodetool
       uint32_t rsp_ver = version_string_to_integer(rsp.node_data.version);
       if (rsp_ver < SUPPORTED_MIN_VERSION)
       {
-        MGINFO_CYAN("Peer " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
+        MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
         block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
         return;
       }
@@ -1696,16 +1720,27 @@ namespace nodetool
   {
     if (arg.node_data.version.size() == 0)
     {
-      MGINFO_CYAN("Peer " << context.m_remote_address.str() << " did not provide version information");
+      MGINFO_CYAN("Host " << context.m_remote_address.str() << " did not provide version information");
       drop_connection(context);
       block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
       return 1;
     }
 
+    std::string host_compare = blacklist::get_host(context.m_remote_address.str());
+    for (auto i : blacklist::get_ip_list())
+    {
+      if (i == host_compare)
+      {
+        MGINFO_CYAN("Host " << i << " is on blacklist");
+        block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+        return 1;
+      }
+    }
+
     uint32_t rsp_ver = version_string_to_integer(arg.node_data.version);
     if (rsp_ver < SUPPORTED_MIN_VERSION)
     {
-      MGINFO_CYAN("Peer " << context.m_remote_address.str() << " has incorrect version: " << arg.node_data.version);
+      MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << arg.node_data.version);
       drop_connection(context);
       block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
       return 1;

@@ -220,7 +220,6 @@ namespace nodetool
     void cache_connect_fail_info(const epee::net_utils::network_address& addr);
     bool is_addr_recently_failed(const epee::net_utils::network_address& addr);
     bool is_priority_node(const epee::net_utils::network_address& na);
-    std::set<std::string> get_seed_nodes(cryptonote::network_type nettype) const;
     bool connect_to_seed();
 
     template <class Container>
@@ -279,6 +278,9 @@ namespace nodetool
       m_save_graph = save_graph;
       epee::net_utils::connection_basic::set_save_graph(save_graph);
     }
+
+    cryptonote::network_type get_network_type() { return m_nettype; }
+    std::set<std::string> get_seed_nodes(cryptonote::network_type nettype) const;
   private:
     std::string m_config_folder;
 

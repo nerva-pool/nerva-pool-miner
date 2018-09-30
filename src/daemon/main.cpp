@@ -46,6 +46,7 @@
 #include "daemon/command_line_args.h"
 #include "blockchain_db/db_types.h"
 #include "version.h"
+#include "p2p/blacklist.h"
 
 #ifdef STACK_TRACE
 #include "common/stack_trace.h"
@@ -279,6 +280,11 @@ int main(int argc, char const * argv[])
 
     // logging is now set up
     MGINFO("NERVA '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")");
+
+    blacklist::read_blacklist_from_url(testnet);
+
+    if (blacklist::get_ip_list().size() > 0)
+      MGINFO_CYAN("Blacklist loaded: " << blacklist::get_ip_list().size() << " items");
 
     MINFO("Moving from main() into the daemonize now.");
 
