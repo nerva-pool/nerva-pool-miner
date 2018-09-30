@@ -704,7 +704,9 @@ namespace nodetool
         MGINFO_CYAN("Peer " << context.m_remote_address.str() << " did not provide version information");
         hsh_result = false;
       }
-      else if (rsp.version != MONERO_VERSION)
+
+      uint32_t rsp_ver = version_string_to_integer(rsp.version);
+      if (rsp_ver < SUPPORTED_MIN_VERSION)
       {
         MGINFO_CYAN("Peer " << context.m_remote_address.str() << " has incorrect version: " << rsp.version);
         hsh_result = false;
@@ -746,7 +748,9 @@ namespace nodetool
         block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
         return;
       }
-      else if (rsp.node_data.version != MONERO_VERSION)
+
+      uint32_t rsp_ver = version_string_to_integer(rsp.node_data.version);
+      if (rsp_ver < SUPPORTED_MIN_VERSION)
       {
         MGINFO_CYAN("Peer " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
         block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
@@ -1698,7 +1702,8 @@ namespace nodetool
       return 1;
     }
 
-    if (arg.node_data.version != MONERO_VERSION)
+    uint32_t rsp_ver = version_string_to_integer(arg.node_data.version);
+    if (rsp_ver < SUPPORTED_MIN_VERSION)
     {
       MGINFO_CYAN("Peer " << context.m_remote_address.str() << " has incorrect version: " << arg.node_data.version);
       drop_connection(context);

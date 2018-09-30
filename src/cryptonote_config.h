@@ -33,6 +33,7 @@
 
 #include <string>
 #include <boost/uuid/uuid.hpp>
+#include <arpa/inet.h>
 
 #define CRYPTONOTE_DNS_TIMEOUT_MS                       20000
 
@@ -115,6 +116,10 @@
 #define P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT       70
 #define P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT            2
 
+//Current release 0.1.3.6, we will support 0.1.3.5 only
+//version_string_to_integer(0.1.3.5) = 66309
+#define SUPPORTED_MIN_VERSION                           version_string_to_integer("0.1.3.5")
+
 #define P2P_FAILED_ADDR_FORGET_SECONDS                  (60*60)     //1 hour
 #define P2P_IP_BLOCKTIME                                (60*60*24)  //24 hour
 #define P2P_IP_FAILS_BEFORE_BLOCK                       10
@@ -129,7 +134,7 @@
 #define CRYPTONOTE_POOLDATA_FILENAME            "poolstate.bin"
 #define CRYPTONOTE_BLOCKCHAINDATA_FILENAME      "data.mdb"
 #define CRYPTONOTE_BLOCKCHAINDATA_LOCK_FILENAME "lock.mdb"
-#define P2P_NET_DATA_FILENAME                   "p2pstate.bin"
+#define P2P_NET_DATA_FILENAME                   "p2pstate.66310.bin"
 #define MINER_CONFIG_FILE_NAME                  "miner_conf.json"
 
 #define THREAD_STACK_SIZE                       5 * 1024 * 1024
@@ -185,6 +190,35 @@ namespace config
       } }; // Bender's daydream
   }
 }
+
+#ifndef VERSION_TO_INT
+#define VERSION_TO_INT
+
+inline uint64_t version_to_integer(uint8_t major, uint8_t minor, uint8_t point)
+{
+  return (major << 16) + (minor << 8) + point;
+}
+
+inline uint32_t version_string_to_integer(std::string data)
+{
+  const char* v = data.c_str();
+
+  unsigned int byte3;
+  unsigned int byte2;
+  unsigned int byte1;
+  unsigned int byte0;
+  char dummyString[2];
+
+  if (sscanf (v, "%u.%u.%u.%u%1s", &byte3, &byte2, &byte1, &byte0, dummyString) == 4)
+  {
+    if ((byte3 < 256) && (byte2 < 256) && (byte1 < 256) && (byte0 < 256))
+      return (byte3 << 24) + (byte2 << 16) + (byte1 << 8) +  byte0;
+  }
+
+  return 0;
+}
+
+#endif
 
 namespace cryptonote
 {
