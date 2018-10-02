@@ -199,6 +199,9 @@ namespace nodetool
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::block_host(const epee::net_utils::network_address &addr, time_t seconds)
   {
+    if (seconds == 0)
+      seconds = m_nettype == cryptonote::MAINNET ? P2P_IP_BLOCKTIME_MAINNET : P2P_IP_BLOCKTIME_TESTNET;
+
     CRITICAL_REGION_LOCAL(m_blocked_hosts_lock);
     m_blocked_hosts[addr.host_str()] = time(nullptr) + seconds;
 
@@ -761,7 +764,7 @@ namespace nodetool
         if (i == host_compare)
         {
           MGINFO_CYAN("Host " << i << " is on blacklist");
-          block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+          block_host(context.m_remote_address);
           return;
         }
       }
@@ -769,7 +772,7 @@ namespace nodetool
       if (rsp.node_data.version.size() == 0)
       {
         MGINFO_CYAN("Host " << context.m_remote_address.str() << " did not provide version information");
-        block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+        block_host(context.m_remote_address);
         return;
       }
 
@@ -777,7 +780,7 @@ namespace nodetool
       if (rsp_ver < SUPPORTED_MIN_VERSION)
       {
         MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
-        block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+        block_host(context.m_remote_address);
         return;
       }
 
@@ -1000,7 +1003,7 @@ namespace nodetool
     res = do_request_peer_id(pi, con, just_take_peerlist);
     if (!res)
     {
-      block_host(con.m_remote_address, P2P_IP_BLOCKTIME);
+      block_host(con.m_remote_address);
       return false;
     }
 
@@ -1072,7 +1075,7 @@ namespace nodetool
     res = do_request_peer_id(pi, con, true);
     if (!res)
     {
-      block_host(con.m_remote_address, P2P_IP_BLOCKTIME);
+      block_host(con.m_remote_address);
       return false;
     }
 
@@ -1722,7 +1725,7 @@ namespace nodetool
     {
       MGINFO_CYAN("Host " << context.m_remote_address.str() << " did not provide version information");
       drop_connection(context);
-      block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+      block_host(context.m_remote_address);
       return 1;
     }
 
@@ -1732,7 +1735,7 @@ namespace nodetool
       if (i == host_compare)
       {
         MGINFO_CYAN("Host " << i << " is on blacklist");
-        block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+        block_host(context.m_remote_address);
         return 1;
       }
     }
@@ -1742,7 +1745,7 @@ namespace nodetool
     {
       MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << arg.node_data.version);
       drop_connection(context);
-      block_host(context.m_remote_address, P2P_IP_BLOCKTIME);
+      block_host(context.m_remote_address);
       return 1;
     }
 

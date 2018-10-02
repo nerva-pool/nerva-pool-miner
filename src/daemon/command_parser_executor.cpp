@@ -514,7 +514,7 @@ bool t_command_parser_executor::ban(const std::vector<std::string>& args)
 {
   if (args.size() != 1 && args.size() != 2) return false;
   std::string ip = args[0];
-  time_t seconds = P2P_IP_BLOCKTIME;
+  time_t seconds = 0;
   if (args.size() > 1)
   {
     try
@@ -525,11 +525,8 @@ bool t_command_parser_executor::ban(const std::vector<std::string>& args)
     {
       return false;
     }
-    if (seconds == 0)
-    {
-      return false;
-    }
   }
+
   return m_executor.ban(ip, seconds);
 }
 

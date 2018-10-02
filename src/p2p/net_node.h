@@ -122,7 +122,7 @@ namespace nodetool
     peerlist_manager& get_peerlist_manager(){return m_peerlist;}
     void delete_out_connections(size_t count);
     void delete_in_connections(size_t count);
-    virtual bool block_host(const epee::net_utils::network_address &adress, time_t seconds = P2P_IP_BLOCKTIME);
+    virtual bool block_host(const epee::net_utils::network_address &adress, time_t seconds = 0);
     virtual bool unblock_host(const epee::net_utils::network_address &address);
     virtual std::map<std::string, time_t> get_blocked_hosts() { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return m_blocked_hosts; }
   private:
