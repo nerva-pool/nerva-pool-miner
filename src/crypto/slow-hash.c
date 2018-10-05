@@ -567,7 +567,7 @@ void slow_hash_free_state(void)
  * @param length the length in bytes of the data
  * @param hash a pointer to a buffer in which the final 256 bit hash will be stored
  */
-void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters, random_values *r)
+void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters, random_values *r, const char* sp_bytes)
 {
     RDATA_ALIGN16 uint8_t expandedKey[240];  /* These buffers are aligned to use later with SSE functions */
 
@@ -629,7 +629,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         }
     }
 
-    randomize_scratchpad(r, hp_state);
+    randomize_scratchpad(r, sp_bytes, hp_state, variant);
 
     U64(a)[0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];
     U64(a)[1] = U64(&state.k[0])[1] ^ U64(&state.k[32])[1];
@@ -910,7 +910,7 @@ STATIC INLINE void aes_pseudo_round_xor(const uint8_t *in, uint8_t *out, const u
 	}
 }
 
-void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters, random_values *r)
+void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters, random_values *r, const char* sp_bytes)
 {
     RDATA_ALIGN16 uint8_t expandedKey[240];
     RDATA_ALIGN16 uint8_t hp_state[MEMORY];
@@ -953,7 +953,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         memcpy(&hp_state[i * INIT_SIZE_BYTE], text, INIT_SIZE_BYTE);
     }
 
-    randomize_scratchpad(r, hp_state);
+    randomize_scratchpad(r, sp_bytes, hp_state, variant);
 
     U64(a)[0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];
     U64(a)[1] = U64(&state.k[0])[1] ^ U64(&state.k[32])[1];
@@ -1112,7 +1112,7 @@ STATIC INLINE void xor_blocks(uint8_t* a, const uint8_t* b)
   U64(a)[1] ^= U64(b)[1];
 }
 
-void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters, random_values *r)
+void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters, random_values *r, const char* sp_bytes)
 {
     uint8_t text[INIT_SIZE_BYTE];
     uint8_t a[AES_BLOCK_SIZE];
@@ -1159,7 +1159,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         memcpy(&long_state[i * INIT_SIZE_BYTE], text, INIT_SIZE_BYTE);
     }
 
-    randomize_scratchpad(r, long_state);
+    randomize_scratchpad(r, sp_bytes, long_state, variant);
 
     U64(a)[0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];
     U64(a)[1] = U64(&state.k[0])[1] ^ U64(&state.k[32])[1];
@@ -1383,10 +1383,18 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
 
 #endif
 
-void randomize_scratchpad(random_values *r, uint8_t *scratchpad)
+void randomize_scratchpad(random_values *r, const char* salt, uint8_t* scratchpad, uint32_t variant)
 {
-    if (r == NULL)
+    if (variant <= 1)
         return;
+
+    if (variant >= 3)
+    {
+        uint32_t step = MEMORY / (32 * 128);
+        uint32_t x = 0;
+        for (uint32_t i = 0; i < MEMORY; i += step)
+            scratchpad[i] = scratchpad[i] ^ salt[x++];
+    }
 
     for (int i = 0; i < RANDOM_VALUES; i++)
     {

@@ -1,3 +1,4 @@
+// Copyright (c) 2018, The NERVA Project
 // Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2018, The Monero Project
 // 
@@ -43,6 +44,7 @@ using namespace epee;
 #include "crypto/hash.h"
 #include "ringct/rctSigs.h"
 #include "cryptonote_core/blockchain.h"
+#include "mersenne_twister.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -854,8 +856,138 @@ namespace cryptonote
   //---------------------------------------------------------------
 
   uint64_t cached_height = 0;
-  uint8_t cn_bytes[128];
-  random_values *r;
+  uint32_t cached_nonce = 0;
+  uint8_t* cn_bytes = NULL;
+  random_values *r = NULL;
+
+  char* chunk_bytes = NULL;
+  char* sp_bytes = NULL;
+  char* r2 = NULL;
+
+  static const uint32_t v3_iterations = 32;
+  static const uint32_t chunk_bytes_size = 128;
+  static const uint32_t sp_bytes_size = chunk_bytes_size * v3_iterations;
+
+  bool v2_initialized = false;
+  bool v3_initialized = false;
+  
+  void generate_v2_data(uint64_t ht, const cryptonote::Blockchain* bc)
+  {
+    if (!v2_initialized)
+    {
+      cn_bytes = (uint8_t*)malloc(128);
+      r = (random_values *)malloc(sizeof(random_values));
+      v2_initialized = true;
+    }
+
+    crypto::hash h0 = bc->get_block_id_by_height(ht);
+
+    uint8_t b1 = (uint8_t)(h0.data[0] ^ h0.data[16]);
+    uint8_t b2 = (uint8_t)(h0.data[4] ^ h0.data[20]);
+    uint8_t b3 = (uint8_t)(h0.data[8] ^ h0.data[24]);
+    uint8_t b4 = (uint8_t)(h0.data[12] ^ h0.data[28]);
+
+    crypto::hash h1 = bc->get_block_id_by_height(ht - b1);
+    crypto::hash h2 = bc->get_block_id_by_height(ht - b2);
+    crypto::hash h3 = bc->get_block_id_by_height(ht - b3);
+    crypto::hash h4 = bc->get_block_id_by_height(ht - b4);
+
+    int j = 0;
+    for (int i = 0; i < 128; i += 16)
+    {
+      std::memcpy(cn_bytes + i, h1.data + j, 4);
+      std::memcpy(cn_bytes + i + 4, h2.data + j, 4);
+      std::memcpy(cn_bytes + i + 8, h3.data + j, 4);
+      std::memcpy(cn_bytes + i + 12, h4.data + j, 4);
+      j += 4;
+    }
+
+    j = 0;
+    uint32_t sp_size = (1 << 20) - 1;
+    for (int i = 0; i < 128; i += 8)
+    {
+      r->operators[j] = (cn_bytes[i + 1] ^ cn_bytes[i + 3]) >> 5;
+      r->values[j] = cn_bytes[i + 5] ^ cn_bytes[i + 7];
+
+      r->indices[j++] = (
+        cn_bytes[i] << 24 | 
+        cn_bytes[i + 2] << 16 | 
+        cn_bytes[i + 4] << 8 | 
+        cn_bytes[i + 6]) % sp_size; 
+
+      r->operators[j] = (cn_bytes[i] ^ cn_bytes[i + 2]) >> 5;
+      r->values[j] = cn_bytes[i + 4] ^ cn_bytes[i + 6];
+              
+      r->indices[j++] = (
+        cn_bytes[i + 1] << 24 | 
+        cn_bytes[i + 3] << 16 | 
+        cn_bytes[i + 5] << 8 | 
+        cn_bytes[i + 7]) % sp_size;
+    }
+  }
+
+  char const hex[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A',   'B','C','D','E','F'};
+
+  std::string byte_2_str(const char* bytes, int size)
+  {
+    std::string str;
+    for (int i = 0; i < size; ++i)
+    {
+      const char ch = bytes[i];
+      str.append(&hex[(ch  & 0xF0) >> 4], 1);
+      str.append(&hex[ch & 0xF], 1);
+    }
+    return str;
+  }
+
+  void generate_v3_data(uint64_t ht, uint32_t nonce, const cryptonote::Blockchain* bc)
+  {
+    if (!v3_initialized)
+    {
+      sp_bytes = (char*)malloc(sp_bytes_size);
+      chunk_bytes = (char*)malloc(chunk_bytes_size);
+      r2 = (char*)malloc(32);
+      v3_initialized = true;
+    }
+    
+    angrywasp::mersenne_twister mt(nonce ^ (uint32_t)ht);
+
+    for (uint32_t i = 0; i < v3_iterations; i++)
+    {
+      //get a random number
+      uint32_t x = mt.next(5, (uint32_t)(ht - 5));
+
+      //read the hash at x height
+      crypto::hash hash = bc->get_block_id_by_height(x);
+      //get the blobdata from the hash
+      const char* blob = bc->get_db().get_block_blob(hash).c_str();
+      
+      //read r random 4 timestamps and difficulty values from x-5 - x+5
+      uint8_t y = 0;
+      for (uint32_t j = 0; j < 4; j++)
+      {
+        //the top 32-bits of a timestamp is 0 and most likey so are the top 32-bits of the difficulty value
+        //so we cast back to uint32_t to get rid of the 0 bytes and prevent trimming of the data buffer
+        uint32_t ts = (uint32_t)bc->get_db().get_block_timestamp(mt.next(x - 5, x + 5));
+        uint32_t d = (uint32_t)bc->block_difficulty(mt.next(x - 5, x + 5));
+        std::memcpy(r2 + y, &ts, 4);
+        y += 4;
+        std::memcpy(r2 + y, &d, 4);
+        y += 4;
+      }
+
+      std::memcpy(chunk_bytes, hash.data, 32);
+      std::memcpy(chunk_bytes + 32, &blob[32], 32);
+      std::memcpy(chunk_bytes + 64, r2, 32);
+      std::memcpy(chunk_bytes + 96, &blob[64], 32);
+
+      std::memcpy(sp_bytes + (i * chunk_bytes_size), chunk_bytes, chunk_bytes_size);
+    }
+
+    //std::cout << "==============================================" << std::endl;
+    //std::cout << byte_2_str(sp_bytes, sp_bytes_size) << std::endl;
+    //std::cout << "." << std::endl;
+  }
 
   bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {
@@ -870,69 +1002,32 @@ namespace cryptonote
 
     if (b.major_version >= 7)
     {
-      int cn_variant = 1;
-      int cn_iters = 0x40000;
-      cn_iters += ((height + 1) % 64);
-      
-      if (height != cached_height)
+      int cn_iters = 0x40000 + ((height + 1) % 64);
+      int cn_variant = 2;
+
+      if (height != cached_height || !v2_initialized)
+          generate_v2_data(ht, bc);
+
+      if (b.major_version >= 9)
       {
-        if (r == NULL)
-          r = (random_values *)malloc(sizeof(random_values));
+        cn_variant = 3;
 
-        crypto::hash h0 = bc->get_block_id_by_height(ht);
-
-        uint8_t b1 = (uint8_t)(h0.data[0] ^ h0.data[16]);
-        uint8_t b2 = (uint8_t)(h0.data[4] ^ h0.data[20]);
-        uint8_t b3 = (uint8_t)(h0.data[8] ^ h0.data[24]);
-        uint8_t b4 = (uint8_t)(h0.data[12] ^ h0.data[28]);
-
-        crypto::hash h1 = bc->get_block_id_by_height(ht - b1);
-        crypto::hash h2 = bc->get_block_id_by_height(ht - b2);
-        crypto::hash h3 = bc->get_block_id_by_height(ht - b3);
-        crypto::hash h4 = bc->get_block_id_by_height(ht - b4);
-
-        int j = 0;
-        for (int i = 0; i < 128; i += 16)
+        uint16_t x = (uint16_t)(b.nonce >> 16U);
+        
+        if (cached_nonce != x || !v3_initialized)
         {
-          std::memcpy(cn_bytes + i, h1.data + j, 4);
-          std::memcpy(cn_bytes + i + 4, h2.data + j, 4);
-          std::memcpy(cn_bytes + i + 8, h3.data + j, 4);
-          std::memcpy(cn_bytes + i + 12, h4.data + j, 4);
-          j += 4;
-        }
-
-        j = 0;
-        uint32_t sp_size = (1 << 20) - 1;
-        for (int i = 0; i < 128; i += 8)
-        {
-          r->operators[j] = (cn_bytes[i + 1] ^ cn_bytes[i + 3]) >> 5;
-          r->values[j] = cn_bytes[i + 5] ^ cn_bytes[i + 7];
-
-          r->indices[j++] = (
-            cn_bytes[i] << 24 | 
-            cn_bytes[i + 2] << 16 | 
-            cn_bytes[i + 4] << 8 | 
-            cn_bytes[i + 6]) % sp_size; 
-
-          r->operators[j] = (cn_bytes[i] ^ cn_bytes[i + 2]) >> 5;
-          r->values[j] = cn_bytes[i + 4] ^ cn_bytes[i + 6];
-              
-          r->indices[j++] = (
-            cn_bytes[i + 1] << 24 | 
-            cn_bytes[i + 3] << 16 | 
-            cn_bytes[i + 5] << 8 | 
-            cn_bytes[i + 7]) % sp_size;
+          cached_nonce = x;
+          generate_v3_data(ht,x, bc);
         }
       }
 
-      crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant, cn_iters, r);
+      crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant, cn_iters, r, sp_bytes);
     }
     else
     {
       int cn_variant = b.major_version >= 5 ? 1 : 0;
-      int cn_iters = b.major_version >= 6 ? 0x40000 : 0x80000;
-      cn_iters += ((height + 1) % 1024);
-      crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant, cn_iters, NULL);
+      int cn_iters = (b.major_version >= 6 ? 0x40000 : 0x80000) + ((height + 1) % 1024);
+      crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant, cn_iters, NULL, NULL);
     }
 
     return true;

@@ -6,7 +6,7 @@
         {
             "label": "build-debug",
             "type": "shell",
-            "command": "cd ${workspaceFolder}/build/debug && make -j6",
+            "command": "cd ${workspaceFolder}/build/debug && make -j2",
             "group": {
                 "kind": "build",
                 "isDefault": true

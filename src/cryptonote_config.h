@@ -1,3 +1,4 @@
+// Copyright (c) 2017-2018, The NERVA Project
 // Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2018, The Monero Project
 // 
@@ -116,9 +117,7 @@
 #define P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT       70
 #define P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT            2
 
-//Current release 0.1.3.6, we will support 0.1.3.5 only
-//version_string_to_integer(0.1.3.5) = 66309
-#define SUPPORTED_MIN_VERSION                           version_string_to_integer("0.1.3.5")
+#define SUPPORTED_MIN_VERSION                           version_string_to_integer("0.1.3.6")
 
 #define P2P_FAILED_ADDR_FORGET_SECONDS                  (60*60)     //1 hour
 #define P2P_IP_BLOCKTIME_MAINNET                        (60*60*24)  //24 hour
@@ -135,7 +134,7 @@
 #define CRYPTONOTE_POOLDATA_FILENAME            "poolstate.bin"
 #define CRYPTONOTE_BLOCKCHAINDATA_FILENAME      "data.mdb"
 #define CRYPTONOTE_BLOCKCHAINDATA_LOCK_FILENAME "lock.mdb"
-#define P2P_NET_DATA_FILENAME                   "p2pstate.66310.bin"
+#define P2P_NET_DATA_FILENAME                   "p2pstate.9.bin"
 #define MINER_CONFIG_FILE_NAME                  "miner_conf.json"
 
 #define THREAD_STACK_SIZE                       5 * 1024 * 1024
@@ -190,11 +189,11 @@ namespace config
 
   namespace stagenet
   {
-    uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 38;
-    uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 39;
-    uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 47;
+    uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x3800;
+    uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x7081;
+    uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x1080;
     uint16_t const P2P_DEFAULT_PORT = 19565;
-    uint16_t const RPC_DEFAULT_PORT = 19565;
+    uint16_t const RPC_DEFAULT_PORT = 19566;
     uint16_t const ZMQ_RPC_DEFAULT_PORT = 19567;
     boost::uuids::uuid const NETWORK_ID = { {
         0x14 ,0x31, 0xF1, 0x22 , 0x54, 0x86 , 0x36, 0xFF, 0xAB, 0x51, 0x00, 0x4F, 0x3C, 0x3D, 0xAA, 0x16
@@ -204,11 +203,6 @@ namespace config
 
 #ifndef VERSION_TO_INT
 #define VERSION_TO_INT
-
-inline uint64_t version_to_integer(uint8_t major, uint8_t minor, uint8_t point)
-{
-  return (major << 16) + (minor << 8) + point;
-}
 
 inline uint32_t version_string_to_integer(std::string data)
 {

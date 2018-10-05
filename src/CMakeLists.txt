@@ -30,6 +30,7 @@
 
 if (WIN32 OR STATIC)
   add_definitions(-DSTATICLIB)
+  add_definitions(-DCURL_STATICLIB)
   # miniupnp changed their static define
   add_definitions(-DMINIUPNP_STATICLIB)
 endif ()

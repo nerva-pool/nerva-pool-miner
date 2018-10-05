@@ -102,10 +102,10 @@ typedef struct randomizer_values
   int8_t values[RANDOM_VALUES];
 } random_values;
 
-void randomize_scratchpad(random_values *r, uint8_t *scratchpad);
+void randomize_scratchpad(random_values *r, const char* salt, uint8_t* scratchpad, uint32_t variant);
 
 void cn_fast_hash(const void *data, size_t length, char *hash);
-void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iter, random_values *r);
+void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iter, random_values *r, const char* sp_bytes);
 
 void hash_extra_blake(const void *data, size_t length, char *hash);
 void hash_extra_groestl(const void *data, size_t length, char *hash);
