@@ -50,7 +50,7 @@ function start4()
 
 function pop4()
 {
-	${bindir}/nerva-blockchain-import --stagenet --data-dir "${bindir}/stagenet/node4" --pop-blocks $1
+	${bindir}/nerva-blockchain-import --stagenet --data-dir "${datadir}/node4" --pop-blocks $1
 }
 
 function pop()
