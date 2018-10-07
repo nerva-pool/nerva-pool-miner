@@ -863,6 +863,7 @@ namespace cryptonote
   char* chunk_bytes = NULL;
   char* sp_bytes = NULL;
   char* r2 = NULL;
+  char* blob = NULL;
 
   static const uint32_t v3_iterations = 32;
   static const uint32_t chunk_bytes_size = 128;
@@ -947,6 +948,7 @@ namespace cryptonote
       sp_bytes = (char*)malloc(sp_bytes_size);
       chunk_bytes = (char*)malloc(chunk_bytes_size);
       r2 = (char*)malloc(32);
+      blob = (char*)malloc(128);
       v3_initialized = true;
     }
     
@@ -957,21 +959,20 @@ namespace cryptonote
       //get a random number
       uint32_t x = mt.next(5, (uint32_t)(ht - 5));
 
-      //read the hash at x height
       crypto::hash hash = bc->get_block_id_by_height(x);
+
       //get the blobdata from the hash
-      const char* blob = bc->get_db().get_block_blob(hash).c_str();
-      
-      //read r random 4 timestamps and difficulty values from x-5 - x+5
+      const char* block_blob = bc->get_db().get_block_blob(hash).c_str();
+      std::memcpy(blob, (char*)block_blob, 128);
+
       uint8_t y = 0;
       for (uint32_t j = 0; j < 4; j++)
       {
-        //the top 32-bits of a timestamp is 0 and most likey so are the top 32-bits of the difficulty value
-        //so we cast back to uint32_t to get rid of the 0 bytes and prevent trimming of the data buffer
         uint32_t ts = (uint32_t)bc->get_db().get_block_timestamp(mt.next(x - 5, x + 5));
-        uint32_t d = (uint32_t)bc->block_difficulty(mt.next(x - 5, x + 5));
         std::memcpy(r2 + y, &ts, 4);
         y += 4;
+
+        uint32_t d = (uint32_t)bc->get_db().get_block_difficulty(mt.next(x - 5, x + 5));
         std::memcpy(r2 + y, &d, 4);
         y += 4;
       }
