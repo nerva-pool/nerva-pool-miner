@@ -22,23 +22,29 @@ installdir=/usr/local/bin
 
 function checkdistro()
 {
-	if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+	if [[ -z "${NERVA_BUILD_DISTRO}" ]]; then
+		if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
 
-		local os_distro="unknown"
-		local os_ver="unknown"
+			local os_distro="unknown"
+			local os_ver="unknown"
 
-		if [ -f /etc/os-release ]; then
-		    source /etc/os-release
-		    os_distro=$ID
-		    os_ver=$VERSION_ID
-		elif [ -f /etc/lsb-release ]; then
-		    source /etc/lsb-release
-		    os_distro=$DISTRIB_ID
-		    os_ver=$DISTRIB_RELEASE
+			if [ -f /etc/os-release ]; then
+				source /etc/os-release
+				os_distro=$ID
+				os_ver=$VERSION_ID
+			elif [ -f /etc/lsb-release ]; then
+				source /etc/lsb-release
+				os_distro=$DISTRIB_ID
+				os_ver=$DISTRIB_RELEASE
+			fi
+
+			export NERVA_BUILD_DISTRO=${os_distro}
+			export NERVA_BUILD_DISTRO_VERSION=${os_ver}
+
+			echo Distro detected as ${NERVA_BUILD_DISTRO}
 		fi
-
-		export NERVA_BUILD_DISTRO=${os_distro}
-		export NERVA_BUILD_DISTRO_VERSION=${os_ver}
+	else
+		echo Distro manually defined as ${NERVA_BUILD_DISTRO}
 	fi
 }
 
