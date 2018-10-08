@@ -12,7 +12,7 @@
             "program": "${workspaceFolder}/build/debug/bin/nervad",
             "args": [
                 "--stagenet",
-                "--data-dir", "${workspaceFolder}/build/debug/bin/stagenet/node4",
+                "--data-dir", "~/.nerva/stagenet/node4",
                 "--no-igd",
                 "--hide-my-port",
                 "--p2p-bind-port", "58080",

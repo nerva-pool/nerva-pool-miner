@@ -2,7 +2,7 @@
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-bindir=${dir}/build/debug/bin
+bindir=${dir}/build/release/bin
 
 nd=${bindir}/nervad
 nw=${bindir}/nerva-wallet-cli
