@@ -610,6 +610,11 @@ bool t_command_parser_executor::print_coinbase_tx_sum(const std::vector<std::str
   return m_executor.print_coinbase_tx_sum(height, count);
 }
 
+bool t_command_parser_executor::print_generated_coins(const std::vector<std::string>& args)
+{
+  return m_executor.print_generated_coins();
+}
+
 bool t_command_parser_executor::alt_chain_info(const std::vector<std::string>& args)
 {
   if(args.size())

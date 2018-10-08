@@ -2258,4 +2258,23 @@ namespace cryptonote
     };
   };
 
+  struct COMMAND_RPC_GET_GENERATED_COINS
+  {
+    struct request
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::string status;
+      uint64_t coins;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(coins)
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+
 }

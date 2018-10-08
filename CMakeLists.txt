@@ -830,7 +830,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "(SunOS|Solaris)")
   set(EXTRA_LIBRARIES socket nsl resolv)
 elseif(NOT MSVC)
   find_library(RT rt)
-  set(EXTRA_LIBRARIES ${RT})
+  set(EXTRA_LIBRARIES ${RT};curl)
 endif()
 
 list(APPEND EXTRA_LIBRARIES ${CMAKE_DL_LIBS})

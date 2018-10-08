@@ -71,7 +71,8 @@ set(daemon_private_headers
   ../p2p/net_peerlist.h
   ../p2p/net_peerlist_boost_serialization.h
   ../p2p/p2p_protocol_defs.h
-  ../p2p/stdafx.h)
+  ../p2p/stdafx.h
+  ../p2p/blacklist.h)
 
 monero_private_headers(daemon
   ${daemon_private_headers})
@@ -94,6 +95,7 @@ target_link_libraries(daemon
     serialization
     daemon_rpc_server
     epee
+    curl
     ${EPEE_READLINE}
     version
     ${Boost_CHRONO_LIBRARY}

@@ -1626,6 +1626,34 @@ bool t_rpc_command_executor::print_coinbase_tx_sum(uint64_t height, uint64_t cou
   return true;
 }
 
+bool t_rpc_command_executor::print_generated_coins()
+{
+  cryptonote::COMMAND_RPC_GET_GENERATED_COINS::request req;
+  cryptonote::COMMAND_RPC_GET_GENERATED_COINS::response res;
+  epee::json_rpc::error error_resp;
+
+  std::string fail_message = "Unsuccessful";
+
+  if (m_is_rpc)
+  {
+    if (!m_rpc_client->json_rpc_request(req, res, "get_generated_coins", fail_message.c_str()))
+    {
+      return true;
+    }
+  }
+  else
+  {
+    if (!m_rpc_server->on_get_generated_coins(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << make_error(fail_message, res.status);
+      return true;
+    }
+  }
+
+  tools::msg_writer() << "Generated coins: " << cryptonote::print_money(res.coins);
+  return true;
+}
+
 bool t_rpc_command_executor::alt_chain_info()
 {
   cryptonote::COMMAND_RPC_GET_INFO::request ireq;
