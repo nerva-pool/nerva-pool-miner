@@ -1012,14 +1012,7 @@ namespace cryptonote
       if (b.major_version >= 9)
       {
         cn_variant = 3;
-
-        uint16_t x = (uint16_t)(b.nonce >> 16U);
-        
-        if (cached_nonce != x || !v3_initialized)
-        {
-          cached_nonce = x;
-          generate_v3_data(ht,x, bc);
-        }
+        generate_v3_data(ht, b.nonce, bc);
       }
 
       crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant, cn_iters, r, sp_bytes);
