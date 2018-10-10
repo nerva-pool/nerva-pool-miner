@@ -382,7 +382,7 @@ namespace cryptonote
     for(; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++)
     {
       crypto::hash h;
-      get_block_longhash(bl, h, height, NULL);
+      get_block_longhash(bl, h, height, false, NULL);
 
       if(check_hash(h, diffic))
       {
@@ -480,12 +480,18 @@ namespace cryptonote
 
       b.nonce = nonce;
       crypto::hash h;
-      get_block_longhash(b, h, height, m_blockchain);
+      get_block_longhash(b, h, height, false, m_blockchain);
 
       if(check_hash(h, local_diff))
       {
         //we lucky!
         ++m_config.current_extra_message_index;
+        if (b.major_version >= 9)
+        {
+          char* v3_salt = (char*)malloc(128 * 32);
+          generate_v3_data(v3_salt, b.nonce, height - 256, true, m_blockchain);
+        }
+
         MGINFO_GREEN("Found block " << get_block_hash(b) << " at height " << height << " for difficulty: " << local_diff);
         if(!m_phandler->handle_block_found(b))
         {

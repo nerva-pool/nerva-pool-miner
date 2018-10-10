@@ -856,21 +856,10 @@ namespace cryptonote
   //---------------------------------------------------------------
 
   uint64_t cached_height = 0;
-  uint32_t cached_nonce = 0;
   uint8_t* cn_bytes = NULL;
   random_values *r = NULL;
 
-  char* chunk_bytes = NULL;
-  char* sp_bytes = NULL;
-  char* r2 = NULL;
-  char* blob = NULL;
-
-  static const uint32_t v3_iterations = 32;
-  static const uint32_t chunk_bytes_size = 128;
-  static const uint32_t sp_bytes_size = chunk_bytes_size * v3_iterations;
-
   bool v2_initialized = false;
-  bool v3_initialized = false;
   
   void generate_v2_data(uint64_t ht, const cryptonote::Blockchain* bc)
   {
@@ -941,56 +930,24 @@ namespace cryptonote
     return str;
   }
 
-  void generate_v3_data(uint64_t ht, uint32_t nonce, const cryptonote::Blockchain* bc)
+  void generate_v3_data(char* v3_salt, uint32_t nonce, uint32_t height, bool debug_write, const cryptonote::Blockchain* bc)
   {
-    if (!v3_initialized)
+    uint32_t seed = nonce ^ height;
+    bc->get_db().get_v3_data(v3_salt, height, seed);
+
+    if (debug_write)
     {
-      sp_bytes = (char*)malloc(sp_bytes_size);
-      chunk_bytes = (char*)malloc(chunk_bytes_size);
-      r2 = (char*)malloc(32);
-      blob = (char*)malloc(128);
-      v3_initialized = true;
+      std::cout << "==============================================" << std::endl;
+      std::cout << nonce << std::endl;
+      std::cout << byte_2_str(&v3_salt[0], 32) << std::endl;
+      std::cout << byte_2_str(&v3_salt[32], 32) << std::endl;
+      std::cout << byte_2_str(&v3_salt[64], 32) << std::endl;
+      std::cout << byte_2_str(&v3_salt[96], 32) << std::endl;
+      std::cout << "----------------------------------------------" << std::endl;
     }
-    
-    angrywasp::mersenne_twister mt(nonce ^ (uint32_t)ht);
-
-    for (uint32_t i = 0; i < v3_iterations; i++)
-    {
-      //get a random number
-      uint32_t x = mt.next(5, (uint32_t)(ht - 5));
-
-      crypto::hash hash = bc->get_block_id_by_height(x);
-
-      //get the blobdata from the hash
-      const char* block_blob = bc->get_db().get_block_blob(hash).c_str();
-      std::memcpy(blob, (char*)block_blob, 128);
-
-      uint8_t y = 0;
-      for (uint32_t j = 0; j < 4; j++)
-      {
-        uint32_t ts = (uint32_t)bc->get_db().get_block_timestamp(mt.next(x - 5, x + 5));
-        std::memcpy(r2 + y, &ts, 4);
-        y += 4;
-
-        uint32_t d = (uint32_t)bc->get_db().get_block_difficulty(mt.next(x - 5, x + 5));
-        std::memcpy(r2 + y, &d, 4);
-        y += 4;
-      }
-
-      std::memcpy(chunk_bytes, hash.data, 32);
-      std::memcpy(chunk_bytes + 32, &blob[32], 32);
-      std::memcpy(chunk_bytes + 64, r2, 32);
-      std::memcpy(chunk_bytes + 96, &blob[64], 32);
-
-      std::memcpy(sp_bytes + (i * chunk_bytes_size), chunk_bytes, chunk_bytes_size);
-    }
-
-    //std::cout << "==============================================" << std::endl;
-    //std::cout << byte_2_str(sp_bytes, sp_bytes_size) << std::endl;
-    //std::cout << "." << std::endl;
   }
 
-  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
+  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, bool write_v3_data, const cryptonote::Blockchain* bc)
   {
     blobdata bd = get_block_hashing_blob(b);
 
@@ -1004,18 +961,18 @@ namespace cryptonote
     if (b.major_version >= 7)
     {
       int cn_iters = 0x40000 + ((height + 1) % 64);
-      int cn_variant = 2;
 
       if (height != cached_height || !v2_initialized)
           generate_v2_data(ht, bc);
 
       if (b.major_version >= 9)
       {
-        cn_variant = 3;
-        generate_v3_data(ht, b.nonce, bc);
+        char* v3_salt = (char*)malloc(128 * 32);
+        generate_v3_data(v3_salt, b.nonce, (uint32_t)ht, write_v3_data, bc);
+        crypto::cn_slow_hash(bd.data(), bd.size(), res, 3, cn_iters, r, v3_salt);
       }
-
-      crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant, cn_iters, r, sp_bytes);
+      else
+        crypto::cn_slow_hash(bd.data(), bd.size(), res, 2, cn_iters, r, NULL);
     }
     else
     {
@@ -1047,10 +1004,10 @@ namespace cryptonote
     return res;
   }
   //---------------------------------------------------------------
-  crypto::hash get_block_longhash(const block& b, uint64_t height, const cryptonote::Blockchain* bc)
+  crypto::hash get_block_longhash(const block& b, uint64_t height, bool write_v3_data, const cryptonote::Blockchain* bc)
   {
     crypto::hash p = null_hash;
-    get_block_longhash(b, p, height, bc);
+    get_block_longhash(b, p, height, write_v3_data, bc);
     return p;
   }
   //---------------------------------------------------------------

@@ -38,6 +38,7 @@
 #include "string_tools.h"
 #include "common/util.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
+#include "cryptonote_basic/mersenne_twister.h"
 #include "crypto/crypto.h"
 #include "profile_tools.h"
 #include "ringct/rctOps.h"
@@ -1150,6 +1151,9 @@ void BlockchainLMDB::open(const std::string& filename, const int db_flags)
     (result = mdb_env_set_maxreaders(m_env, threads+16)))
     throw0(DB_ERROR(lmdb_error("Failed to set max number of readers: ", result).c_str()));
 
+  //todo: how about a less ridiculous number of max readers?
+  mdb_env_set_maxreaders(m_env, 10000000);
+
   size_t mapsize = DEFAULT_MAPSIZE;
 
   if (db_flags & DBF_FAST)
@@ -1160,6 +1164,8 @@ void BlockchainLMDB::open(const std::string& filename, const int db_flags)
     mdb_flags = MDB_RDONLY;
   if (db_flags & DBF_SALVAGE)
     mdb_flags |= MDB_PREVSNAPSHOT;
+
+  mdb_flags |= MDB_NOTLS;
 
   if (auto result = mdb_env_open(m_env, filename.c_str(), mdb_flags, 0644))
     throw0(DB_ERROR(lmdb_error("Failed to open lmdb environment: ", result).c_str()));
@@ -1798,6 +1804,93 @@ block_header BlockchainLMDB::get_block_header(const crypto::hash& h) const
 
   // block_header object is automatically cast from block object
   return get_block(h);
+}
+
+void check_error(int err)
+{
+  if (err)
+    fprintf(stderr, "get_v3_data failed, error %d %s\n", err, mdb_strerror(err));
+}
+
+void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, uint32_t seed) const
+{
+  MDB_txn *txn;
+  MDB_cursor *cur;
+  angrywasp::mersenne_twister mt(seed);
+  char* blob_data = (char*)malloc(128);
+  
+  int err = 0;
+
+  if (auto r = lmdb_txn_begin(m_env, NULL, MDB_RDONLY, &txn))
+      throw0(DB_ERROR(lmdb_error("Failed to create a transaction for the db: ", r).c_str()));
+
+  for (uint32_t i = 0; i < 32; i++)
+  {
+    //block hash
+    uint64_t h1 = mt.next(1, (uint32_t)(height - 1));
+    err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
+    MDB_val_set(rh1, h1);
+    err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rh1, MDB_GET_BOTH); check_error(err);
+    mdb_block_info* h1_bi = (mdb_block_info*)rh1.mv_data;
+    std::memcpy(blob_data, h1_bi->bi_hash.data, 32);
+
+    //random diff/timestamps
+    //random coin count hi/lo
+    uint8_t a = 32;
+    uint8_t b = 64;
+    for (uint32_t j = 0; j < 4; j++)
+    {
+      uint64_t h2 = mt.next(6, (uint32_t)(height - 6));
+      uint64_t x = mt.next(h2 - 5, h2 + 5);
+      uint64_t y = mt.next(h2 - 5, h2 + 5);
+
+      uint64_t h3 = mt.next(6, (uint32_t)(height - 6));
+      uint64_t z = mt.next(h3 - 5, h3 + 5);
+      uint64_t w = mt.next(h3 - 5, h3 + 5);
+
+      MDB_val_set(rx, x);
+      err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rx, MDB_GET_BOTH); check_error(err);
+      mdb_block_info* x_bi = (mdb_block_info*)rx.mv_data;
+      uint32_t xx = (uint32_t)x_bi->bi_timestamp;
+      std::memcpy(blob_data + a, &xx, 4);
+      a += 4;
+
+      MDB_val_set(ry, y);
+      err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &ry, MDB_GET_BOTH); check_error(err);
+      mdb_block_info* y_bi = (mdb_block_info*)ry.mv_data;
+      uint32_t yy = (uint32_t)y_bi->bi_diff;
+      std::memcpy(blob_data + a, &yy, 4);
+      a += 4;
+
+      MDB_val_set(rz, z);
+      err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rz, MDB_GET_BOTH); check_error(err);
+      mdb_block_info* z_bi = (mdb_block_info*)rz.mv_data;
+      uint32_t zz = (uint32_t)(z_bi->bi_coins >> 32U);
+      std::memcpy(blob_data + b, &zz, 4);
+      b += 4;
+
+      MDB_val_set(rw, w);
+      err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rw, MDB_GET_BOTH); check_error(err);
+      mdb_block_info* w_bi = (mdb_block_info*)rw.mv_data;
+      uint32_t ww = (uint32_t)w_bi->bi_coins;
+      std::memcpy(blob_data + b, &ww, 4);
+      b += 4;
+    }
+
+    //block hash
+    uint64_t h2 = mt.next(1, (uint32_t)(height - 1));
+    err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
+    MDB_val_set(rh2, h2);
+    err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rh2, MDB_GET_BOTH); check_error(err);
+    mdb_block_info* h2_bi = (mdb_block_info*)rh2.mv_data;
+    std::memcpy(blob_data + 96, h2_bi->bi_hash.data, 32);
+
+    mdb_cursor_close(cur);
+
+    std::memcpy(salt + (i * 128), blob_data, 128);
+  }
+
+  mdb_txn_abort(txn);
 }
 
 cryptonote::blobdata BlockchainLMDB::get_block_blob_from_height(const uint64_t& height) const
