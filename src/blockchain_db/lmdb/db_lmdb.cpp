@@ -1826,11 +1826,12 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, uint32_t seed) con
   if (auto r = lmdb_txn_begin(m_env, NULL, MDB_RDONLY, &txn))
       throw0(DB_ERROR(lmdb_error("Failed to create a transaction for the db: ", r).c_str()));
 
+  err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
+
   for (uint32_t i = 0; i < 32; i++)
   {
     //block hash
     r = mt.next(1, (uint32_t)(height - 1));
-    err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
     MDB_val_set(rh1, r);
     err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rh1, MDB_GET_BOTH); check_error(err);
     bi = (mdb_block_info*)rh1.mv_data;
@@ -1881,16 +1882,16 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, uint32_t seed) con
 
     //block hash
     r = mt.next(1, (uint32_t)(height - 1));
-    err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
     MDB_val_set(rh4, r);
     err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rh4, MDB_GET_BOTH); check_error(err);
     bi = (mdb_block_info*)rh4.mv_data;
     std::memcpy(blob_data + 96, bi->bi_hash.data, 32);
 
-    mdb_cursor_close(cur);
     std::memcpy(salt + (i * 128), blob_data, 128);
   }
+
   free(blob_data);
+  mdb_cursor_close(cur);
   mdb_txn_abort(txn); 
 }
 
