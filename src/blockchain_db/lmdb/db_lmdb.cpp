@@ -1151,9 +1151,6 @@ void BlockchainLMDB::open(const std::string& filename, const int db_flags)
     (result = mdb_env_set_maxreaders(m_env, threads+16)))
     throw0(DB_ERROR(lmdb_error("Failed to set max number of readers: ", result).c_str()));
 
-  //todo: how about a less ridiculous number of max readers?
-  mdb_env_set_maxreaders(m_env, 10000000);
-
   size_t mapsize = DEFAULT_MAPSIZE;
 
   if (db_flags & DBF_FAST)
