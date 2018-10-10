@@ -972,6 +972,7 @@ namespace cryptonote
         char* v3_salt = (char*)malloc(128 * 32);
         generate_v3_data(v3_salt, b.nonce, (uint32_t)ht, write_v3_data, bc);
         crypto::cn_slow_hash(bd.data(), bd.size(), res, 3, cn_iters, r, v3_salt);
+        free(v3_salt);
       }
       else
         crypto::cn_slow_hash(bd.data(), bd.size(), res, 2, cn_iters, r, NULL);
