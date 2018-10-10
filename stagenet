@@ -2,7 +2,7 @@
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-bindir=${dir}/build/release/bin
+bindir=${dir}/build/$1/bin
 
 nd=${bindir}/nervad
 nw=${bindir}/nerva-wallet-cli
@@ -45,7 +45,8 @@ function start3()
 function start4()
 {
 	${nd} --stagenet --no-igd --hide-my-port --data-dir "${datadir}/node4" --p2p-bind-port 58080 --rpc-bind-port 58081 --zmq-rpc-bind-port 58082 --rpc-restricted-bind-port 58083 \
-	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:38080 --add-exclusive-node 127.0.0.1:48080
+	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:38080 --add-exclusive-node 127.0.0.1:48080 \
+	--start-mining NV1tXu3czVbaBWYcKg28X4P2mHrJZMnS8R3TshtYgJVrfA9XLrKRKzVcjaPLgjNiwzH3DNTeywRTURDJUY59a5Lb2vWSG9s5q --mining-threads 2
 }
 
 function pop4()
@@ -83,4 +84,4 @@ function restart()
 	start
 }
 
-$1 $2
+$2 $3

@@ -88,7 +88,7 @@ function init()
 
 	mkdir -p ${dir}/build/$1
 	cd ${dir}/build/$1
-	cmake -D CMAKE_BUILD_TYPE=$1 -DUSE_LTO=OFF -D BUILD_SHARED_LIBS=OFF ../..
+	cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_SHARED_LIBS=OFF ../..
 }
 
 function build()
