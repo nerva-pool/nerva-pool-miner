@@ -930,12 +930,14 @@ namespace cryptonote
     return str;
   }
 
+  static const bool debug_write_override = false;
+
   void generate_v3_data(char* v3_salt, uint32_t nonce, uint32_t height, bool debug_write, const cryptonote::Blockchain* bc)
   {
     uint32_t seed = nonce ^ height;
     bc->get_db().get_v3_data(v3_salt, height, seed);
 
-    if (debug_write)
+    if (debug_write && debug_write_override)
     {
       std::cout << "==============================================" << std::endl;
       std::cout << nonce << std::endl;
