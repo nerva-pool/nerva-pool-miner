@@ -63,6 +63,7 @@ namespace blacklist
                 curl_easy_setopt(curl, CURLOPT_URL, url.c_str()); 
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callback);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, &m_read_buffer);
+                curl_easy_setopt(curl, CURLOPT_FAILONERROR, true);
                 CURLcode res = curl_easy_perform(curl); 
                 curl_easy_cleanup(curl); 
                 if (res != CURLE_OK)
