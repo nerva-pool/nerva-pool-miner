@@ -1878,12 +1878,12 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, uint32_t seed) con
     }
 
     //block hash
-    uint64_t h2 = mt.next(1, (uint32_t)(height - 1));
+    uint64_t h4 = mt.next(1, (uint32_t)(height - 1));
     err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
-    MDB_val_set(rh2, h2);
-    err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rh2, MDB_GET_BOTH); check_error(err);
-    mdb_block_info* h2_bi = (mdb_block_info*)rh2.mv_data;
-    std::memcpy(blob_data + 96, h2_bi->bi_hash.data, 32);
+    MDB_val_set(rh4, h4);
+    err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rh4, MDB_GET_BOTH); check_error(err);
+    mdb_block_info* h4_bi = (mdb_block_info*)rh4.mv_data;
+    std::memcpy(blob_data + 96, h4_bi->bi_hash.data, 32);
 
     mdb_cursor_close(cur);
 
