@@ -69,6 +69,58 @@ function clean()
 	find -name *.so | xargs rm
 }
 
+function docker_build_dynamic()
+{
+	#git pull
+	#git submodule update --remote --merge --recursive
+	checkdistro
+	mkdir -p ${dir}/build/release
+	cd ${dir}/build/release
+
+	cmake -D CMAKE_BUILD_TYPE=release -D BUILD_SHARED_LIBS=OFF -D BUILD_TESTS=OFF \
+	-D BUILD_TAG=${NERVA_BUILD_DISTRO}:${NERVA_BUILD_DISTRO_VERSION} ../..
+
+	make -j4
+	zip -rj ${dir}/nerva-$1_${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION}.zip ${dir}/build/release/bin/*
+
+	clean
+}
+
+function docker_build_static_linux()
+{
+	#git pull
+	#git submodule update --remote --merge --recursive
+	checkdistro
+	mkdir -p ${dir}/build/release
+	cd ${dir}/build/release
+
+	cmake -D BUILD_TESTS=OFF -D STATIC=ON -D BUILD_64=ON -D ARCH="x86-64" -D CMAKE_BUILD_TYPE=release \
+	-D BUILD_TAG=linux:x64 -D BUILD_SHARED_LIBS=OFF -D INSTALL_VENDORED_LIBUNBOUND=ON ../..
+
+	make -j4
+	zip -rj ${dir}/nerva-$1_linux-x64.zip ${dir}/build/release/bin/*
+
+	clean
+}
+
+function docker_build_static_android()
+{
+	#git pull
+	#git submodule update --remote --merge --recursive
+	checkdistro
+	mkdir -p ${dir}/build/release
+	cd ${dir}/build/release
+
+	cmake -D BUILD_TESTS=OFF -D STATIC=ON -D BUILD_64=ON -D ARCH=${CMAKE_ARCH} -D CMAKE_BUILD_TYPE=release \
+	-D BUILD_TAG=android:$1 -D BUILD_SHARED_LIBS=OFF -D INSTALL_VENDORED_LIBUNBOUND=ON \
+	-D ANDROID=true -D CMAKE_SYSTEM_NAME="Android" -D CMAKE_ANDROID_STANDALONE_TOOLCHAIN="${NDK}" -D CMAKE_ANDROID_ARCH_ABI=${CMAKE_ABI} ../..
+
+	make -j4
+	zip -rj ${dir}/nerva-$1_linux-x64.zip ${dir}/build/release/bin/*
+
+	clean
+}
+
 function init()
 {
 	checkdistro
