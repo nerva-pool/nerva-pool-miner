@@ -1654,6 +1654,36 @@ bool t_rpc_command_executor::print_generated_coins()
   return true;
 }
 
+bool t_rpc_command_executor::print_tx_pubkey(std::string extra)
+{
+  cryptonote::COMMAND_RPC_GET_TX_PUBKEY::request req;
+  cryptonote::COMMAND_RPC_GET_TX_PUBKEY::response res;
+  epee::json_rpc::error error_resp;
+
+  req.extra = extra;
+
+  std::string fail_message = "Unsuccessful";
+
+  if (m_is_rpc)
+  {
+    if (!m_rpc_client->json_rpc_request(req, res, "get_tx_pubkey", fail_message.c_str()))
+    {
+      return true;
+    }
+  }
+  else
+  {
+    if (!m_rpc_server->on_get_tx_pubkey(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << make_error(fail_message, res.status);
+      return true;
+    }
+  }
+
+  tools::msg_writer() << "TX Pubkey: " << res.pubkey;
+  return true;
+}
+
 bool t_rpc_command_executor::alt_chain_info()
 {
   cryptonote::COMMAND_RPC_GET_INFO::request ireq;

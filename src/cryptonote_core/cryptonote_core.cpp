@@ -957,6 +957,36 @@ namespace cryptonote
     return c;
   }
   //-----------------------------------------------------------------------------------------------
+  char const hex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
+  std::string core::get_tx_pubkey(std::string tx_extra)
+  {
+    const char* x = tx_extra.c_str();
+    std::vector<uint8_t> decoded_extra;
+    
+    size_t len = tx_extra.length() / 2;
+    char tmp[3] = { 0 };
+
+    while (len--)
+    {
+      tmp[0] = *x++;
+      tmp[1] = *x++;
+      decoded_extra.push_back((uint8_t)strtol(tmp, NULL, 16));
+    }
+
+    crypto::public_key pkey = get_tx_pub_key_from_extra(decoded_extra);
+
+    std::string encoded_pkey;
+    len = sizeof(pkey.data);
+    for (size_t i = 0; i < len; ++i)
+    {
+        char b = pkey.data[i];
+        encoded_pkey.append(&hex[(b & 0xF0) >> 4], 1);
+        encoded_pkey.append(&hex[b & 0xF], 1);
+    }
+    
+    return encoded_pkey;
+  }
+  //-----------------------------------------------------------------------------------------------
   bool core::check_tx_inputs_keyimages_diff(const transaction& tx) const
   {
     std::unordered_set<crypto::key_image> ki;

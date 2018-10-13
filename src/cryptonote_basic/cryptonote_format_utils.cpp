@@ -916,7 +916,7 @@ namespace cryptonote
     }
   }
 
-  char const hex[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A',   'B','C','D','E','F'};
+  char const hex[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B','C','D','E','F'};
 
   std::string byte_2_str(const char* bytes, int size)
   {
@@ -924,7 +924,7 @@ namespace cryptonote
     for (int i = 0; i < size; ++i)
     {
       const char ch = bytes[i];
-      str.append(&hex[(ch  & 0xF0) >> 4], 1);
+      str.append(&hex[(ch & 0xF0) >> 4], 1);
       str.append(&hex[ch & 0xF], 1);
     }
     return str;

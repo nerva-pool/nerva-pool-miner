@@ -615,6 +615,17 @@ bool t_command_parser_executor::print_generated_coins(const std::vector<std::str
   return m_executor.print_generated_coins();
 }
 
+bool t_command_parser_executor::print_tx_pubkey(const std::vector<std::string>& args)
+{
+  if(!args.size())
+  {
+    std::cout << "need tx extra" << std::endl;
+    return false;
+  }
+
+  return m_executor.print_tx_pubkey(args[0]);
+}
+
 bool t_command_parser_executor::alt_chain_info(const std::vector<std::string>& args)
 {
   if(args.size())

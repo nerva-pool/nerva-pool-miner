@@ -145,6 +145,8 @@ public:
 
   bool print_generated_coins();
 
+  bool print_tx_pubkey(std::string extra);
+
   bool alt_chain_info();
 
   bool print_blockchain_dynamic_stats(uint64_t nblocks);

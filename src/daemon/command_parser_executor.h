@@ -131,6 +131,8 @@ public:
 
   bool print_generated_coins(const std::vector<std::string>& args);
 
+  bool print_tx_pubkey(const std::vector<std::string>& args);
+
   bool alt_chain_info(const std::vector<std::string>& args);
 
   bool print_blockchain_dynamic_stats(const std::vector<std::string>& args);

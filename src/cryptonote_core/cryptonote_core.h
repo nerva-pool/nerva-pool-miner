@@ -749,6 +749,11 @@ namespace cryptonote
       * @brief get the sum of coinbase tx amounts for the entire chain
       */
      uint64_t get_generated_coins();
+
+      /**
+      * @brief get the tx pubkey from the transaction extra field
+      */
+     std::string get_tx_pubkey(std::string tx_extra);
      
      /**
       * @brief get the network type we're on

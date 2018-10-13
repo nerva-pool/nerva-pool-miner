@@ -1761,6 +1761,17 @@ namespace cryptonote
     res.status = CORE_RPC_STATUS_OK;
     return true;
   }
+
+  bool core_rpc_server::on_get_tx_pubkey(const COMMAND_RPC_GET_TX_PUBKEY::request& req, COMMAND_RPC_GET_TX_PUBKEY::response& res, epee::json_rpc::error& error_resp)
+  {
+    PERF_TIMER(on_get_tx_pubkey);
+
+    std::string pkey = m_core.get_tx_pubkey(req.extra);
+    
+    res.pubkey = pkey;
+    res.status = CORE_RPC_STATUS_OK;
+    return true;
+  }
   //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::on_get_per_kb_fee_estimate(const COMMAND_RPC_GET_PER_KB_FEE_ESTIMATE::request& req, COMMAND_RPC_GET_PER_KB_FEE_ESTIMATE::response& res, epee::json_rpc::error& error_resp)
   {

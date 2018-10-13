@@ -2272,7 +2272,31 @@ namespace cryptonote
       uint64_t coins;
 
       BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(status)
         KV_SERIALIZE(coins)
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+
+  struct COMMAND_RPC_GET_TX_PUBKEY
+  {
+    struct request
+    {
+      std::string extra;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(extra)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::string status;
+      std::string pubkey;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(status)
+        KV_SERIALIZE(pubkey)
       END_KV_SERIALIZE_MAP()
     };
   };
