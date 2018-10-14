@@ -1460,7 +1460,9 @@ namespace cryptonote
   {
     struct request
     {
+      bool include_blob;
       BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(include_blob)
       END_KV_SERIALIZE_MAP()
     };
 
