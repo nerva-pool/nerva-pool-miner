@@ -44,4 +44,4 @@ For more information about NERVA, how to compile the software for other operatin
 
 [Building the NERVA CLI tools](https://bitbucket.org/snippets/nerva-project/kejLB4/building-the-nerva-cli-tools): To build and run the CLI tools
 
-[Getting started with NERVA](https://bitbucket.org/snippets/nerva-project/qeM6g7/getting-started-with-nerva): To get the basics on how to create a wallet and mine NERVA, along with some useful information on common commands
+[NERVA CLI: Getting Started](https://bitbucket.org/snippets/nerva-project/KeLrBy/nerva-cli-getting-started): To get the basics on how to create a wallet and mine NERVA, along with some useful information on common commands
