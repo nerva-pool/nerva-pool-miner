@@ -2295,10 +2295,12 @@ namespace cryptonote
     {
       std::string status;
       std::string pubkey;
+      std::vector<std::string> additional;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
         KV_SERIALIZE(pubkey)
+        KV_SERIALIZE(additional)
       END_KV_SERIALIZE_MAP()
     };
   };

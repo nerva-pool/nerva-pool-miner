@@ -753,7 +753,7 @@ namespace cryptonote
       /**
       * @brief get the tx pubkey from the transaction extra field
       */
-     std::string get_tx_pubkey(std::string tx_extra);
+     std::vector<std::string> get_tx_pubkey(std::string tx_extra);
      
      /**
       * @brief get the network type we're on

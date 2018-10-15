@@ -1766,10 +1766,16 @@ namespace cryptonote
   {
     PERF_TIMER(on_get_tx_pubkey);
 
-    std::string pkey = m_core.get_tx_pubkey(req.extra);
+    std::vector<std::string> p_keys = m_core.get_tx_pubkey(req.extra);
     
-    res.pubkey = pkey;
+    res.pubkey = p_keys[0];
+    
+    if (p_keys.size() > 1)
+      for (size_t i = 0; i < p_keys.size(); i++)
+        res.additional.push_back(p_keys.at(i));
+
     res.status = CORE_RPC_STATUS_OK;
+
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------

@@ -958,7 +958,22 @@ namespace cryptonote
   }
   //-----------------------------------------------------------------------------------------------
   char const hex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
-  std::string core::get_tx_pubkey(std::string tx_extra)
+
+  std::string public_key_to_string(crypto::public_key pkey)
+  {
+    std::string encoded_pkey;
+    size_t len = sizeof(pkey.data);
+    for (size_t i = 0; i < len; ++i)
+    {
+        char b = pkey.data[i];
+        encoded_pkey.append(&hex[(b & 0xF0) >> 4], 1);
+        encoded_pkey.append(&hex[b & 0xF], 1);
+    }
+    
+    return encoded_pkey;
+  }
+
+  std::vector<std::string> core::get_tx_pubkey(std::string tx_extra)
   {
     const char* x = tx_extra.c_str();
     std::vector<uint8_t> decoded_extra;
@@ -974,17 +989,15 @@ namespace cryptonote
     }
 
     crypto::public_key pkey = get_tx_pub_key_from_extra(decoded_extra);
+    std::vector<crypto::public_key> a_keys = get_additional_tx_pub_keys_from_extra(decoded_extra);
 
-    std::string encoded_pkey;
-    len = sizeof(pkey.data);
-    for (size_t i = 0; i < len; ++i)
-    {
-        char b = pkey.data[i];
-        encoded_pkey.append(&hex[(b & 0xF0) >> 4], 1);
-        encoded_pkey.append(&hex[b & 0xF], 1);
-    }
+    std::vector<std::string> p_keys;
+    p_keys.push_back(public_key_to_string(pkey));
+
+    for (size_t i = 0; i < a_keys.size(); i++)
+      p_keys.push_back(public_key_to_string(a_keys.at(i)));
     
-    return encoded_pkey;
+    return p_keys;
   }
   //-----------------------------------------------------------------------------------------------
   bool core::check_tx_inputs_keyimages_diff(const transaction& tx) const
