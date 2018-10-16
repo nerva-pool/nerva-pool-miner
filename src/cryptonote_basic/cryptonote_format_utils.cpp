@@ -965,7 +965,10 @@ namespace cryptonote
       int cn_iters = 0x40000 + ((height + 1) % 64);
 
       if (height != cached_height || !v2_initialized)
+      {
+          cached_height - height;
           generate_v2_data(ht, bc);
+      }
 
       if (b.major_version >= 9)
       {
