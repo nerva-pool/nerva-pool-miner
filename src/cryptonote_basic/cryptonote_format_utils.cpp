@@ -966,7 +966,7 @@ namespace cryptonote
 
       if (height != cached_height || !v2_initialized)
       {
-          cached_height - height;
+          cached_height = height;
           generate_v2_data(ht, bc);
       }
 
