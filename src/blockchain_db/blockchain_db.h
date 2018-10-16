@@ -106,6 +106,7 @@ typedef std::pair<crypto::hash, uint64_t> tx_out_index;
 extern const command_line::arg_descriptor<std::string> arg_db_type;
 extern const command_line::arg_descriptor<std::string> arg_db_sync_mode;
 extern const command_line::arg_descriptor<bool, false> arg_db_salvage;
+extern const command_line::arg_descriptor<uint32_t> arg_db_readers;
 
 #pragma pack(push, 1)
 
@@ -588,7 +589,7 @@ public:
    * @param filename a string referring to the BlockchainDB to open
    * @param db_flags flags relevant to how to open/use the BlockchainDB
    */
-  virtual void open(const std::string& filename, const int db_flags = 0) = 0;
+  virtual void open(const std::string& filename, const int db_flags = 0, uint32_t db_readers = 0) = 0;
 
   /**
    * @brief Gets the current open/ready state of the BlockchainDB

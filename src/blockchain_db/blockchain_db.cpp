@@ -90,6 +90,11 @@ const command_line::arg_descriptor<bool> arg_db_salvage  = {
 , "Try to salvage a blockchain database if it seems corrupted"
 , false
 };
+const command_line::arg_descriptor<uint32_t> arg_db_readers  = {
+  "db-readers"
+, "Number of database readers to use"
+, 126U
+};
 
 BlockchainDB *new_db(const std::string& db_type)
 {
@@ -103,6 +108,7 @@ void BlockchainDB::init_options(boost::program_options::options_description& des
   command_line::add_arg(desc, arg_db_type);
   command_line::add_arg(desc, arg_db_sync_mode);
   command_line::add_arg(desc, arg_db_salvage);
+  command_line::add_arg(desc, arg_db_readers);
 }
 
 void BlockchainDB::pop_block()

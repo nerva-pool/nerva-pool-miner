@@ -1100,7 +1100,7 @@ BlockchainLMDB::BlockchainLMDB(bool batch_transactions): BlockchainDB()
   m_hardfork = nullptr;
 }
 
-void BlockchainLMDB::open(const std::string& filename, const int db_flags)
+void BlockchainLMDB::open(const std::string& filename, const int db_flags, uint32_t db_readers)
 {
   int result;
   int mdb_flags = MDB_NORDAHEAD;
@@ -1146,10 +1146,18 @@ void BlockchainLMDB::open(const std::string& filename, const int db_flags)
   if ((result = mdb_env_set_maxdbs(m_env, 20)))
     throw0(DB_ERROR(lmdb_error("Failed to set max number of dbs: ", result).c_str()));
 
-  int threads = tools::get_max_concurrency();
-  if (threads > 110 &&	/* maxreaders default is 126, leave some slots for other read processes */
-    (result = mdb_env_set_maxreaders(m_env, threads+16)))
-    throw0(DB_ERROR(lmdb_error("Failed to set max number of readers: ", result).c_str()));
+  if (db_readers == 0) //this should never happen, command line defaults to 126
+  {
+    int threads = tools::get_max_concurrency();
+    if (threads > 110 &&	/* maxreaders default is 126, leave some slots for other read processes */
+      (result = mdb_env_set_maxreaders(m_env, threads+16)))
+      throw0(DB_ERROR(lmdb_error("Failed to set max number of readers: ", result).c_str()));
+  }
+  else
+  {
+    if ((result = mdb_env_set_maxreaders(m_env, db_readers)))
+      throw0(DB_ERROR(lmdb_error("Failed to set max number of readers: ", result).c_str()));
+  }
 
   size_t mapsize = DEFAULT_MAPSIZE;
 
