@@ -1,0 +1,130 @@
+#!/bin/bash
+
+#Dependency installation script adapted from
+#https://github.com/xmranon/Nerva
+
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+
+function checkdistro()
+{
+	if [[ -z "${NERVA_BUILD_DISTRO}" ]]; then
+		if [ $(uname) == "Darwin" ]; then
+
+			local os_distro="osx"
+			local os_ver="sw_vers -productVersion"
+
+			export NERVA_BUILD_DISTRO=${os_distro}
+			export NERVA_BUILD_DISTRO_VERSION=${os_ver}
+
+			echo Distro detected as ${NERVA_BUILD_DISTRO} ${NERVA_BUILD_DISTRO_VERSION}
+		fi
+	else
+		echo Distro manually defined as ${NERVA_BUILD_DISTRO}
+	fi
+}
+
+function installdeps()
+{
+    if [ $NERVA_BUILD_DISTRO == "osx" ]; then
+
+		xcode-select --install
+
+		if ! [ -x "$(command -v brew)" ]; then
+			ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+		fi
+
+		brew update
+		brew upgrade -all
+		brew install git
+		brew install zeromq
+		brew install openSSL
+		brew install PkgConfig
+		brew install readline
+		brew install boost
+		brew install miniupnpc
+		brew  tap jmuncaster/homebrew-header-only
+		brew install jmuncaster/header-only/cppzmq
+		brew install cmake
+		
+	else 
+		echo "This distro is not officially supported"	
+		exit 1
+	fi
+}
+
+function uninstall()
+{
+	echo "Not implemented"
+}
+
+function install()
+{
+	checkdistro
+	installdeps
+
+	echo "Not implemented"
+}
+
+function extractversion()
+{
+    ver=$(awk '/#define\s+DEF_MONERO_VERSION\s+/{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
+    export NERVA_VERSION=$(echo ${ver} | tr -d '"')
+
+    echo NERVA version detected as ${NERVA_VERSION}
+}
+
+function clean()
+{
+	cd ${BUILDER_DIR}
+	rm -rf ${BUILDER_DIR}/build
+	find -name CMakeCache.txt | xargs rm
+	find -name CMakeFiles | xargs rm -rf
+	find -name *.a | xargs rm
+	find -name *.o | xargs rm
+	find -name *.so | xargs rm
+}
+
+function init()
+{
+	checkdistro
+	installdeps
+	
+	mkdir -p ${BUILDER_DIR}/build/$1
+
+	cd ${BUILDER_DIR}/build/$1
+	cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_SHARED_LIBS=OFF -D BUILD_TESTS=OFF ../../..
+}
+
+function package()
+{
+	echo "Not implemented"
+}
+
+function build()
+{
+	if [ ! -d ${BUILDER_DIR}/build/$1 ]; then
+		init $1
+	fi
+
+	cd ${dir}/build/$1
+	make -j $2
+
+	package 
+}
+
+function build-release
+{
+	build release 4
+}
+
+function build-debug
+{
+	build debug 4
+}
+
+extractversion
+checkdistro
+
+$1 $2 $3

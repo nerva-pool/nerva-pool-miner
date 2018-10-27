@@ -1,0 +1,169 @@
+#!/bin/bash
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+
+function checkdistro()
+{
+	if [[ -z "${NERVA_BUILD_DISTRO}" ]]; then
+		if [ $(uname) == "Linux" ]; then
+
+			local os_distro="unknown"
+			local os_ver="unknown"
+
+			if [ -f /etc/os-release ]; then
+				source /etc/os-release
+				os_distro=$ID
+				os_ver=$VERSION_ID
+			elif [ -f /etc/lsb-release ]; then
+				source /etc/lsb-release
+				os_distro=$DISTRIB_ID
+				os_ver=$DISTRIB_RELEASE
+			fi
+
+			export NERVA_BUILD_DISTRO=${os_distro}
+			export NERVA_BUILD_DISTRO_VERSION=${os_ver}
+
+			echo Distro detected as ${NERVA_BUILD_DISTRO} ${NERVA_BUILD_DISTRO_VERSION}
+		fi
+	else
+		echo Distro manually defined as ${NERVA_BUILD_DISTRO}
+	fi
+}
+
+checkdistro
+exit 0
+
+function installdeps()
+{
+    if [ $NERVA_BUILD_DISTRO == "ubuntu" ] || [ $NERVA_BUILD_DISTRO == "debian" ]; then
+		sudo apt install -y \
+		git build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev libunbound-dev libsodium-dev \
+		libminiupnpc-dev libunwind8-dev liblzma-dev libreadline6-dev libldns-dev libexpat1-dev libgtest-dev doxygen graphviz
+	elif [ $NERVA_BUILD_DISTRO == "fedora" ]; then
+		sudo dnf install -y \
+		git make automake cmake gcc-c++ boost-devel miniupnpc-devel graphviz \
+    	doxygen unbound-devel libunwind-devel pkgconfig cppzmq-devel openssl-devel libcurl-devel --setopt=install_weak_deps=False
+	else
+		echo "This distro is not officially supported"	
+		exit 1
+	fi
+}
+
+function uninstall()
+{
+	rm ~/.local/bin/nerva*
+}
+
+function install()
+{
+	checkdistro
+	installdeps
+
+	cp ./nerva* ~/.local/bin
+
+	dfile=~/.local/share/applications/nerva.desktop
+
+	#Construct installer script
+	echo "[Desktop Entry]" > $dfile
+	echo "Name=Nerva Daemon" >> $dfile
+	echo "Exec=nervad" >> $dfile
+	echo "Terminal=true" >> $dfile
+	echo "Type=Application" >> $dfile
+	echo "Icon=$(realpath ~/.local/bin)/nerva-logo.png" >> $dfile
+
+	chmod +x $dfile
+
+	ufile=~/.local/bin/nerva-uninstall
+
+	#Construct installer script
+	echo "#!/bin/bash" > $ufile
+	echo "" >> $ufile
+	echo "rm ~/.local/bin/nerva*" >> $ufile
+	echo "rm ~/.local/share/applications/nerva.desktop" >> $ufile
+
+	chmod +x $ufile
+}
+
+function extractversion()
+{
+    ver=$(awk '/#define\s+DEF_MONERO_VERSION\s+/{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
+    export NERVA_VERSION=$(echo ${ver} | tr -d '"')
+
+    echo NERVA version detected as ${NERVA_VERSION}
+}
+
+function clean()
+{
+	cd ${BUILDER_DIR}
+	rm -rf ${BUILDER_DIR}/build
+	find -name CMakeCache.txt | xargs rm
+	find -name CMakeFiles | xargs rm -rf
+	find -name *.a | xargs rm
+	find -name *.o | xargs rm
+	find -name *.so | xargs rm
+}
+
+function init()
+{
+	checkdistro
+	installdeps
+	
+	mkdir -p ${BUILDER_DIR}/build/$1
+
+	cd ${BUILDER_DIR}/build/$1
+	cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_SHARED_LIBS=OFF -D BUILD_TESTS=OFF ../../..
+}
+
+function package()
+{
+	lscript=${BUILDER_DIR}/build/release/bin/install
+
+	#Construct installer script
+	echo "#!/bin/bash" > $lscript
+
+	echo "" >> $lscript
+	echo "function $(declare -f checkdistro)" >> $lscript
+
+	echo "" >> $lscript
+	echo "function $(declare -f installdeps)" >> $lscript
+
+	echo "" >> $lscript
+	echo "function $(declare -f install)" >> $lscript
+
+	echo "" >> $lscript
+	echo "install" >> $lscript
+
+	chmod +x $lscript
+
+	cp ${BUILDER_DIR}/nerva-logo.png ${BUILDER_DIR}/build/release/bin/nerva-logo.png
+
+	zip -rj ${NERVA_DIR}/nerva-${NERVA_VERSION}_${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION}.zip ${BUILDER_DIR}/build/release/bin/*
+}
+
+function build()
+{
+	if [ ! -d ${BUILDER_DIR}/build/$1 ]; then
+		init $1
+	fi
+
+	cd ${dir}/build/$1
+	make -j $2
+
+	package 
+}
+
+function build-release
+{
+	build release 4
+}
+
+function build-debug
+{
+	build debug 4
+}
+
+extractversion
+checkdistro
+
+$1 $2 $3
