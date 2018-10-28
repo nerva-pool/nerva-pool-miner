@@ -7,7 +7,8 @@ source ${BUILDER_DIR}/linux-helpers
 
 function package()
 {
-	lscript=${BUILDER_DIR}/build/release/bin/install
+	detectversion
+	lscript=${BUILDER_DIR}/build/$1/bin/install
 
 	#Construct installer script
 	echo "#!/bin/bash" > $lscript
@@ -15,8 +16,9 @@ function package()
 	echo "install" >> $lscript
 	chmod +x $lscript
 
-	cp ${BUILDER_DIR}/nerva-logo.png ${BUILDER_DIR}/build/release/bin/nerva-logo.png
-	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_linux.zip ${BUILDER_DIR}/build/release/bin/*
+	cp ${BUILDER_DIR}/nerva-logo-white.png ${BUILDER_DIR}/build/$1/bin/nerva-logo-white.png
+	cp ${BUILDER_DIR}/nerva-logo-black.png ${BUILDER_DIR}/build/$1/bin/nerva-logo-black.png
+	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_linux.zip ${BUILDER_DIR}/build/$1/bin/*
 }
 
 function build()
@@ -32,12 +34,12 @@ function build()
 	mkdir -p ${BUILDER_DIR}/build/$1
 
 	cd ${BUILDER_DIR}/build/$1
-	cmake -D CMAKE_BUILD_TYPE=$1 -D STATIC=ON -D BUILD_TESTS=OFF -D BUILD_TAG=linux-x64 ../../..
+	cmake -D CMAKE_BUILD_TYPE=$1 -D STATIC=ON -D BUILD_TAG=linux-x64 ../../..
 
 	cd ${BUILDER_DIR}/build/$1
 	make -j $2
 
-	package 
+	package $1
 }
 
 function build-release()
@@ -51,5 +53,3 @@ function build-debug()
 }
 
 $1
-
-clean

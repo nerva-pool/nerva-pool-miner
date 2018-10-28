@@ -28,7 +28,7 @@ function install()
 	echo "Exec=nervad" >> $dfile
 	echo "Terminal=true" >> $dfile
 	echo "Type=Application" >> $dfile
-	echo "Icon=$(realpath ~/.local/bin)/nerva-logo.png" >> $dfile
+	echo "Icon=$(realpath ~/.local/bin)/nerva-logo-white.png" >> $dfile
 
 	chmod +x $dfile
 
@@ -40,7 +40,7 @@ function install()
 	echo "Exec=nerva-wallet-cli" >> $wfile
 	echo "Terminal=true" >> $wfile
 	echo "Type=Application" >> $wfile
-	echo "Icon=$(realpath ~/.local/bin)/nerva-logo.png" >> $wfile
+	echo "Icon=$(realpath ~/.local/bin)/nerva-logo-black.png" >> $wfile
 
 	chmod +x $wfile
 

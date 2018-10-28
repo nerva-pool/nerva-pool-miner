@@ -1,18 +1,12 @@
 #!/bin/bash
 
-#Script for dynamic linux builders from the builder repo
-#https://bitbucket.org/nerva-project/nerva
-
-#This script can also be used to build from linux directly
-#./docker-builder
-
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
 source ${BUILDER_DIR}/helpers
 source ${BUILDER_DIR}/linux-helpers
 
 #get nerva, os and distro version
-extractversion
+detectversion
 detectos
 
 #install dependencies for dynamic linked build
@@ -36,7 +30,8 @@ echo "install" >> $lscript
 chmod +x $lscript
 
 #Copy logo over for desktop launcher
-cp ${BUILDER_DIR}/nerva-logo.png ${BUILDER_DIR}/build/release/bin/nerva-logo.png
+cp ${BUILDER_DIR}/nerva-logo-white.png ${BUILDER_DIR}/build/release/bin/nerva-logo-white.png
+cp ${BUILDER_DIR}/nerva-logo-black.png ${BUILDER_DIR}/build/release/bin/nerva-logo-black.png
 
 #Zip it
 zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION}.zip ${BUILDER_DIR}/build/release/bin/*
