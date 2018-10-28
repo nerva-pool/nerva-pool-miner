@@ -1,0 +1,96 @@
+#!/bin/bash
+
+#Dependency installation script adapted from
+#https://github.com/xmranon/Nerva
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/helpers
+
+function installdeps()
+{
+    if [ $(uname) == "Darwin" ]; then
+
+		xcode-select --install
+
+		if ! [ -x "$(command -v brew)" ]; then
+			ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+		fi
+
+		if ! [ -f "/usr/local/lib/libcurl.a" ]; then
+			buildstaticlibcurl
+		fi
+
+		brew update
+		brew upgrade -all
+		brew install git
+		brew install zeromq
+		brew install openSSL
+		brew install PkgConfig
+		brew install readline
+		brew install boost
+		brew install miniupnpc
+		brew  tap jmuncaster/homebrew-header-only
+		brew install jmuncaster/header-only/cppzmq
+		brew install cmake
+		
+	else 
+		echo "This distro is not officially supported"	
+		exit 1
+	fi
+}
+
+function install()
+{
+	cp ./nerva* /usr/local/bin
+
+	ufile=/usr/local/bin/nerva-uninstall
+
+	#Construct installer script
+	echo "#!/bin/bash" > $ufile
+	echo "rm /usr/local/bin/nerva*" >> $ufile
+
+	chmod +x $ufile
+}
+
+function package()
+{
+	lscript=${BUILDER_DIR}/build/release/bin/install
+
+	#Construct installer script
+	echo "#!/bin/bash" > $lscript
+	echo "function $(declare -f install)" >> $lscript
+	echo "install" >> $lscript
+	chmod +x $lscript
+
+	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_osx.zip ${BUILDER_DIR}/build/release/bin/*
+}
+
+function build()
+{
+	installdeps
+	detectos
+	detectversion
+
+	mkdir -p ${BUILDER_DIR}/build/$1
+	cd ${BUILDER_DIR}/build/$1
+	cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_SHARED_LIBS=OFF -DSTATIC=ON -D BUILD_TESTS=OFF ../../..
+	cd ${BUILDER_DIR}/build/$1
+	make -j $2
+
+	package
+}
+
+function build-release()
+{
+	build release 4
+}
+
+function build-debug()
+{
+	build debug 4
+}
+
+$1
+
+clean

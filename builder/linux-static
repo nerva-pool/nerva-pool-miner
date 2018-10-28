@@ -1,0 +1,55 @@
+#!/bin/bash
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/helpers
+source ${BUILDER_DIR}/linux-helpers
+
+function package()
+{
+	lscript=${BUILDER_DIR}/build/release/bin/install
+
+	#Construct installer script
+	echo "#!/bin/bash" > $lscript
+	echo "function $(declare -f install)" >> $lscript
+	echo "install" >> $lscript
+	chmod +x $lscript
+
+	cp ${BUILDER_DIR}/nerva-logo.png ${BUILDER_DIR}/build/release/bin/nerva-logo.png
+	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_linux.zip ${BUILDER_DIR}/build/release/bin/*
+}
+
+function build()
+{
+	detectversion
+	detectos
+	installdeps
+
+	if [ ! -f "/usr/local/lib/libcurl.a" ]; then
+		buildstaticlibcurl
+	fi
+
+	mkdir -p ${BUILDER_DIR}/build/$1
+
+	cd ${BUILDER_DIR}/build/$1
+	cmake -D CMAKE_BUILD_TYPE=$1 -D STATIC=ON -D BUILD_TESTS=OFF -D BUILD_TAG=linux-x64 ../../..
+
+	cd ${BUILDER_DIR}/build/$1
+	make -j $2
+
+	package 
+}
+
+function build-release()
+{
+	build release 4
+}
+
+function build-debug()
+{
+	build debug 4
+}
+
+$1
+
+clean

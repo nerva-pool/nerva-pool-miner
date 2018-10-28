@@ -1,0 +1,55 @@
+#!/bin/bash
+
+function installdeps()
+{
+    if [ $NERVA_BUILD_DISTRO == "ubuntu" ] || [ $NERVA_BUILD_DISTRO == "debian" ]; then
+		sudo apt install -y \
+		build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev libunbound-dev libsodium-dev \
+		libminiupnpc-dev libunwind8-dev liblzma-dev libreadline6-dev libldns-dev libexpat1-dev libgtest-dev doxygen graphviz
+	elif [ $NERVA_BUILD_DISTRO == "fedora" ]; then
+		sudo dnf install -y \
+		make automake cmake gcc-c++ boost-devel miniupnpc-devel graphviz \
+    	doxygen unbound-devel libunwind-devel pkgconfig cppzmq-devel openssl-devel --setopt=install_weak_deps=False
+	else
+		echo "This distro is not officially supported"	
+		exit 1
+	fi
+}
+
+function install()
+{
+	cp ./nerva* ~/.local/bin
+
+	dfile=~/.local/share/applications/nervad.desktop
+
+	#Construct daemon .desktop file
+	echo "[Desktop Entry]" > $dfile
+	echo "Name=Nerva Daemon" >> $dfile
+	echo "Exec=nervad" >> $dfile
+	echo "Terminal=true" >> $dfile
+	echo "Type=Application" >> $dfile
+	echo "Icon=$(realpath ~/.local/bin)/nerva-logo.png" >> $dfile
+
+	chmod +x $dfile
+
+	wfile=~/.local/share/applications/nerva-wallet-cli.desktop
+
+	#Construct wallet .desktop file
+	echo "[Desktop Entry]" > $wfile
+	echo "Name=Nerva CLI Wallet" >> $wfile
+	echo "Exec=nerva-wallet-cli" >> $wfile
+	echo "Terminal=true" >> $wfile
+	echo "Type=Application" >> $wfile
+	echo "Icon=$(realpath ~/.local/bin)/nerva-logo.png" >> $wfile
+
+	chmod +x $wfile
+
+	ufile=~/.local/bin/nerva-uninstall
+
+	#Construct installer script
+	echo "#!/bin/bash" > $ufile
+	echo "rm ~/.local/bin/nerva*" >> $ufile
+	echo "rm ~/.local/share/applications/nerva*.desktop" >> $ufile
+
+	chmod +x $ufile
+}

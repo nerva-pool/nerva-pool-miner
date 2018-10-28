@@ -1,0 +1,45 @@
+#!/bin/bash
+
+#Script for dynamic linux builders from the builder repo
+#https://bitbucket.org/nerva-project/nerva
+
+#This script can also be used to build from linux directly
+#./docker-builder
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/helpers
+source ${BUILDER_DIR}/linux-helpers
+
+#get nerva, os and distro version
+extractversion
+detectos
+
+#install dependencies for dynamic linked build
+installdeps
+
+#build nerva
+mkdir -p ${BUILDER_DIR}/build/release
+cd ${BUILDER_DIR}/build/release
+cmake -D CMAKE_BUILD_TYPE=release -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../..
+make -j4
+
+#Construct installer script
+lscript=${BUILDER_DIR}/build/release/bin/install
+echo "#!/bin/bash" > $lscript
+echo "function $(declare -f detectos)" >> $lscript
+echo "function $(declare -f installdeps)" >> $lscript
+echo "function $(declare -f install)" >> $lscript
+echo "detectos" >> $lscript
+echo "installdeps" >> $lscript
+echo "install" >> $lscript
+chmod +x $lscript
+
+#Copy logo over for desktop launcher
+cp ${BUILDER_DIR}/nerva-logo.png ${BUILDER_DIR}/build/release/bin/nerva-logo.png
+
+#Zip it
+zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION}.zip ${BUILDER_DIR}/build/release/bin/*
+
+#Cleanup
+clean

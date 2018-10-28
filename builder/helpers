@@ -1,0 +1,103 @@
+#!/bin/bash
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+
+function detectos()
+{
+	if [[ -z "${NERVA_BUILD_DISTRO}" ]]; then
+		if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+
+			local os_distro="unknown"
+			local os_ver="unknown"
+
+			if [ -f /etc/os-release ]; then
+				source /etc/os-release
+				os_distro=$ID
+				os_ver=$VERSION_ID
+			elif [ -f /etc/lsb-release ]; then
+				source /etc/lsb-release
+				os_distro=$DISTRIB_ID
+				os_ver=$DISTRIB_RELEASE
+			fi
+
+			export NERVA_BUILD_DISTRO=${os_distro}
+			export NERVA_BUILD_DISTRO_VERSION=${os_ver}
+
+			echo Distro detected as ${NERVA_BUILD_DISTRO} ${NERVA_BUILD_DISTRO_VERSION}
+		elif [ "$(uname)" == "Darwin" ]; then
+
+			local os_distro="osx"
+			local os_ver=$(sw_vers -productVersion)
+
+			export NERVA_BUILD_DISTRO=${os_distro}
+			export NERVA_BUILD_DISTRO_VERSION=${os_ver}
+
+			echo Distro detected as ${NERVA_BUILD_DISTRO} ${NERVA_BUILD_DISTRO_VERSION}
+		elif [ "$(expr substr $(uname -s) 1 7)" == "MINGW64" ]; then
+
+			local os_distro="windows"
+			local os_ver="x64"
+
+			export NERVA_BUILD_DISTRO=${os_distro}
+			export NERVA_BUILD_DISTRO_VERSION=${os_ver}
+
+			echo Distro detected as ${NERVA_BUILD_DISTRO} ${NERVA_BUILD_DISTRO_VERSION}
+		fi
+	else
+		echo Distro manually defined as ${NERVA_BUILD_DISTRO}
+	fi
+
+	if [[ -z "${NERVA_BUILD_DISTRO}" ]]; then
+		echo "Could not detect OS version"
+		exit 1
+	fi
+}
+
+function detectversion()
+{
+    ver=$(awk '/#define DEF_MONERO_VERSION /{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
+	name=$(awk '/#define DEF_MONERO_RELEASE_NAME /{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
+    export NERVA_VERSION=$(echo ${ver} | tr -d '"')
+	export NERVA_CODENAME=$(echo ${name} | tr -d '"')
+    echo NERVA version detected as ${NERVA_VERSION}: ${NERVA_CODENAME}
+}
+
+function clean()
+{
+	cd ${BUILDER_DIR}
+	rm -rf ${BUILDER_DIR}/build
+}
+
+function buildstaticlibcurl()
+{
+	if ! [ -f ${BUILDER_DIR}/curl-7.61.1.tar.gz ]; then
+		curl --output ${BUILDER_DIR}/curl-7.61.1.tar.gz https://curl.haxx.se/download/curl-7.61.1.tar.gz
+	fi
+
+	if ! [ -d ${BUILDER_DIR}/curl-7.61.1 ]; then
+		tar -xf ${BUILDER_DIR}/curl-7.61.1.tar.gz
+	fi
+	
+	if ! [ -d ${BUILDER_DIR}/curl ]; then
+		cd ${BUILDER_DIR}/curl-7.61.1
+		./configure --prefix="${BUILDER_DIR}/curl" --without-ssl --without-zlib \
+		--disable-ftp --disable-gopher --disable-file --disable-imap --disable-ldap --disable-ldaps \
+		--disable-pop3 --disable-proxy --disable-rtsp --disable-smtp --disable-telnet --disable-tftp \
+		--without-gnutls --without-libidn --without-librtmp --disable-dict
+		make -j4
+		make install
+
+		# It appears (on mac) if we simply set the make prefix to /usr/local when calling curl from the terminal
+		# our custom executable is found first. This is undesirable as it does not support all protocols
+		# so we build curl in a seperate location and just copy over what we need
+
+		if [ $(uname) == "Darwin" ]; then
+			cp ${BUILDER_DIR}/curl/lib/libcurl.a /usr/local/lib/libcurl.a
+			cp -r ${BUILDER_DIR}/curl/include/curl /usr/local/include
+		elif [ $(uname) == "Linux" ]; then
+			sudo cp ${BUILDER_DIR}/curl/lib/libcurl.a /usr/local/lib/libcurl.a
+			sudo cp -r ${BUILDER_DIR}/curl/include/curl /usr/local/include
+		fi
+	fi
+}

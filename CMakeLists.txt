@@ -173,6 +173,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG ${OPT_FLAGS_RELEASE}")
 
 # set this to 0 if per-block checkpoint needs to be disabled
 set(PER_BLOCK_CHECKPOINT 0)
+set(BUILD_SHARED_LIBS OFF)
 
 if(PER_BLOCK_CHECKPOINT)
   add_definitions("-DPER_BLOCK_CHECKPOINT")
@@ -267,17 +268,6 @@ else()
 endif()
 option(STATIC "Link libraries statically" ${DEFAULT_STATIC})
 
-# This is a CMake built-in switch that concerns internal libraries
-if (NOT DEFINED BUILD_SHARED_LIBS AND NOT STATIC AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
-    set(BUILD_SHARED_LIBS ON)
-endif()
-
-if (BUILD_SHARED_LIBS)
-  message(STATUS "Building internal libraries with position independent code")
-  add_definitions("-DBUILD_SHARED_LIBS")
-else()
-  message(STATUS "Building internal libraries as static")
-endif()
 set(PIC_FLAG "-fPIC")
 
 if(MINGW)
