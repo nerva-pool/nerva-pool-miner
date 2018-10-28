@@ -87,7 +87,7 @@ function install()
 
 function extractversion()
 {
-    ver=$(awk '/#define\s+DEF_MONERO_VERSION\s+/{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
+    ver=$(awk '/#define DEF_MONERO_VERSION /{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
     export NERVA_VERSION=$(echo ${ver} | tr -d '"')
 
     echo NERVA version detected as ${NERVA_VERSION}
@@ -97,11 +97,6 @@ function clean()
 {
 	cd ${BUILDER_DIR}
 	rm -rf ${BUILDER_DIR}/build
-	find -name CMakeCache.txt | xargs rm
-	find -name CMakeFiles | xargs rm -rf
-	find -name *.a | xargs rm
-	find -name *.o | xargs rm
-	find -name *.so | xargs rm
 }
 
 function init()
@@ -147,7 +142,7 @@ function build()
 		init $1
 	fi
 
-	cd ${dir}/build/$1
+	cd ${BUILDER_DIR}/build/$1
 	make -j $2
 
 	package 

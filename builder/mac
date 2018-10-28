@@ -13,7 +13,7 @@ function checkdistro()
 		if [ $(uname) == "Darwin" ]; then
 
 			local os_distro="osx"
-			local os_ver="sw_vers -productVersion"
+			local os_ver=$(sw_vers -productVersion)
 
 			export NERVA_BUILD_DISTRO=${os_distro}
 			export NERVA_BUILD_DISTRO_VERSION=${os_ver}
@@ -25,6 +25,33 @@ function checkdistro()
 	fi
 }
 
+function buildstaticlibcurl()
+{
+	if ! [ -f ${BUILDER_DIR}/curl-7.61.1.tar.gz ]; then
+		curl --output ${BUILDER_DIR}/curl-7.61.1.tar.gz https://curl.haxx.se/download/curl-7.61.1.tar.gz
+	fi
+
+	if ! [ -d ${BUILDER_DIR}/curl-7.61.1 ]; then
+		tar -xf ${BUILDER_DIR}/curl-7.61.1.tar.gz
+	fi
+	
+	if ! [ -d ${BUILDER_DIR}/curl ]; then
+		cd ${BUILDER_DIR}/curl-7.61.1
+		./configure --prefix="${BUILDER_DIR}/curl" --without-ssl --without-zlib \
+		--disable-ftp --disable-gopher --disable-file --disable-imap --disable-ldap --disable-ldaps \
+		--disable-pop3 --disable-proxy --disable-rtsp --disable-smtp --disable-telnet --disable-tftp \
+		--without-gnutls --without-libidn --without-librtmp --disable-dict
+		make -j4
+		make install
+
+		# It appears if we simply set the make prefix to /usr/local when calling curl from the terminal
+		# our custom executable is found first. This is undesirable as it does not support all protocols
+		# so we build curl in a seperate location and just copy over what we need
+		cp ${BUILDER_DIR}/curl/lib/libcurl.a /usr/local/lib/libcurl.a
+		cp -r ${BUILDER_DIR}/curl/include/curl /usr/local/include
+	fi
+}
+
 function installdeps()
 {
     if [ $NERVA_BUILD_DISTRO == "osx" ]; then
@@ -33,6 +60,12 @@ function installdeps()
 
 		if ! [ -x "$(command -v brew)" ]; then
 			ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+		fi
+
+		#Need libcurl as a static library, but it may not be installed
+		#So check for it and build if necessary
+		if ! [ -f "/usr/local/lib/libcurl.a" ]; then
+			buildstaticlibcurl
 		fi
 
 		brew update
@@ -56,20 +89,26 @@ function installdeps()
 
 function uninstall()
 {
-	echo "Not implemented"
+	rm /usr/local/bin/nerva*
 }
 
 function install()
 {
-	checkdistro
-	installdeps
+	cp ./nerva* /usr/local/bin
 
-	echo "Not implemented"
+	ufile=/usr/local/bin/nerva-uninstall
+
+	#Construct installer script
+	echo "#!/bin/bash" > $ufile
+	echo "" >> $ufile
+	echo "rm /usr/local/bin/nerva*" >> $ufile
+
+	chmod +x $ufile
 }
 
 function extractversion()
 {
-    ver=$(awk '/#define\s+DEF_MONERO_VERSION\s+/{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
+    ver=$(awk '/#define DEF_MONERO_VERSION /{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
     export NERVA_VERSION=$(echo ${ver} | tr -d '"')
 
     echo NERVA version detected as ${NERVA_VERSION}
@@ -79,11 +118,10 @@ function clean()
 {
 	cd ${BUILDER_DIR}
 	rm -rf ${BUILDER_DIR}/build
-	find -name CMakeCache.txt | xargs rm
-	find -name CMakeFiles | xargs rm -rf
-	find -name *.a | xargs rm
-	find -name *.o | xargs rm
-	find -name *.so | xargs rm
+	rm -rf ${BUILDER_DIR}/curl
+	rm -rf ${BUILDER_DIR}/curl-7.61.1
+	rm -rf /usr/local/include/curl
+	rm -rf /usr/local/lib/libcurl.a
 }
 
 function init()
@@ -94,12 +132,54 @@ function init()
 	mkdir -p ${BUILDER_DIR}/build/$1
 
 	cd ${BUILDER_DIR}/build/$1
-	cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_SHARED_LIBS=OFF -D BUILD_TESTS=OFF ../../..
+	cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_SHARED_LIBS=OFF -DSTATIC=ON -D BUILD_TESTS=OFF ../../..
 }
 
-function package()
+function getlibs()
 {
-	echo "Not implemented"
+	otool -L ${BUILDER_DIR}/build/release/bin/nervad | awk -F" " {'print $1'}
+}
+
+function packagebundle()
+{
+	#Currently not working
+	bindir=${BUILDER_DIR}/build/release/bin
+	contentdir=${bindir}/Nerva.app/Contents
+
+	mkdir -p ${contentdir}
+	mkdir -p ${contentdir}/MacOS
+	mkdir -p ${contentdir}/Resources
+
+	plist=$(sed -e "s/{NERVA_VERSION}/${NERVA_VERSION}/" -e "s/{DISPLAY_NAME}/Nerva Daemon/" -e "s/{EXECUTABLE}/nervad/" ${BUILDER_DIR}/info.plist.template)
+
+	echo $plist > ${contentdir}/info.plist
+
+	echo "#!/bin/bash" > ${contentdir}/MacOS/nervad-wrapper
+	echo "./nervad" >> ${contentdir}/MacOS/nervad-wrapper
+	chmod +x ${contentdir}/MacOS/nervad-wrapper
+
+	cp ${BUILDER_DIR}/nerva-logo.icns ${contentdir}/Resources/nerva-logo.icns
+	cp ${BUILDER_DIR}/build/release/bin/nervad ${contentdir}/MacOS/nervad
+}
+
+function packagezip()
+{
+	lscript=${BUILDER_DIR}/build/release/bin/install
+
+	#Construct installer script
+	echo "#!/bin/bash" > $lscript
+
+	echo "" >> $lscript
+	echo "function $(declare -f install)" >> $lscript
+
+	echo "" >> $lscript
+	echo "install" >> $lscript
+
+	chmod +x $lscript
+
+	cp ${BUILDER_DIR}/nerva-logo.png ${BUILDER_DIR}/build/release/bin/nerva-logo.png
+
+	zip -rj ${NERVA_DIR}/nerva-${NERVA_VERSION}_${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION}.zip ${BUILDER_DIR}/build/release/bin/*
 }
 
 function build()
@@ -108,10 +188,10 @@ function build()
 		init $1
 	fi
 
-	cd ${dir}/build/$1
+	cd ${BUILDER_DIR}/build/$1
 	make -j $2
 
-	package 
+	packagezip
 }
 
 function build-release

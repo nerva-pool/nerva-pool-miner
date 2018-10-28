@@ -2,6 +2,7 @@
 /doc
 /build
 /builder/build
+/builder/curl*
 /tags
 log/
 
@@ -58,6 +59,7 @@ version/
 *.exe
 *.out
 *.app
+*.zip
 
 
 ### CMake ###

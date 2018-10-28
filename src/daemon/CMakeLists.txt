@@ -37,6 +37,10 @@ if(PER_BLOCK_CHECKPOINT)
   set(blocksdat "blocksdat.o")
 endif()
 
+if (WIN32 OR STATIC)
+  add_definitions(-DCURL_STATICLIB)
+endif ()
+
 set(daemon_sources
   command_parser_executor.cpp
   command_server.cpp
@@ -95,7 +99,6 @@ target_link_libraries(daemon
     serialization
     daemon_rpc_server
     epee
-    curl
     ${EPEE_READLINE}
     version
     ${Boost_CHRONO_LIBRARY}
@@ -105,6 +108,7 @@ target_link_libraries(daemon
     ${Boost_SYSTEM_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
     ${ZMQ_LIB}
+    ${CURL_LIBRARIES}
     ${GNU_READLINE_LIBRARY}
     ${EXTRA_LIBRARIES})
 set_property(TARGET daemon

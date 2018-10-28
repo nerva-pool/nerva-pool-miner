@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+	    <key>CFBundleDisplayName</key>
+		<string>{DISPLAY_NAME}</string>
+		<key>CFBundleExecutable</key>
+		<string>{EXECUTABLE}</string>
+		<key>CFBundleIdentifier</key>
+		<string>org.getnerva.cli</string>
+		<key>NSHumanReadableCopyright</key>
+		<string>Copyright © 2018 AngryWasp</string>
+		<key>CFBundleShortVersionString</key>
+		<string>{NERVA_VERSION}</string>
+		<key>CFBundleVersion</key>
+		<string>{NERVA_VERSION}</string>
+		<key>CFBundleDevelopmentRegion</key>
+		<string>en</string>
+		<key>CFBundleIconFile</key>
+		<string>nerva-logo.icns</string>
+	</dict>
+</plist>
