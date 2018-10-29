@@ -63,7 +63,7 @@ function package()
 	echo "install" >> $lscript
 	chmod +x $lscript
 
-	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_osx.zip ${BUILDER_DIR}/build/release/bin/*
+	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_osx-x64.zip ${BUILDER_DIR}/build/release/bin/*
 }
 
 function build()

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#For use with the nerva build system
+#https://bitbucket.org/nerva-project/nerva
+
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
 source ${BUILDER_DIR}/helpers
@@ -18,7 +21,7 @@ function package()
 
 	cp ${BUILDER_DIR}/nerva-logo-white.png ${BUILDER_DIR}/build/$1/bin/nerva-logo-white.png
 	cp ${BUILDER_DIR}/nerva-logo-black.png ${BUILDER_DIR}/build/$1/bin/nerva-logo-black.png
-	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_linux.zip ${BUILDER_DIR}/build/$1/bin/*
+	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_linux-x64.zip ${BUILDER_DIR}/build/$1/bin/*
 }
 
 function build()
@@ -53,3 +56,5 @@ function build-debug()
 }
 
 $1
+
+clean
