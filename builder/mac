@@ -42,13 +42,18 @@ function installdeps()
 
 function install()
 {
-	cp ./nerva* /usr/local/bin/nerva-cli
+	cp ./nerva* /usr/local/bin
 
 	ufile=/usr/local/bin/nerva-uninstall
 
 	#Construct installer script
 	echo "#!/bin/bash" > $ufile
-	echo "rm -rf /usr/local/bin/nerva-cli" >> $ufile
+	echo "rm /usr/local/bin/nervad" >> $ufile
+	echo "rm /usr/local/bin/nerva-wallet-cli" >> $ufile
+	echo "rm /usr/local/bin/nerva-wallet-rpc" >> $ufile
+	echo "rm /usr/local/bin/nerva-blockchain-*" >> $ufile
+	echo "rm /usr/local/bin/nerva-gen-trusted-multisig" >> $ufile
+	echo "rm /usr/local/bin/nerva-logo-*" >> $ufile
 	echo "rm /usr/local/bin/nerva-uninstall" >> $ufile
 
 	chmod +x $ufile
