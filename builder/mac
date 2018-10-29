@@ -42,13 +42,14 @@ function installdeps()
 
 function install()
 {
-	cp ./nerva* /usr/local/bin
+	cp ./nerva* /usr/local/bin/nerva-cli
 
 	ufile=/usr/local/bin/nerva-uninstall
 
 	#Construct installer script
 	echo "#!/bin/bash" > $ufile
-	echo "rm /usr/local/bin/nerva*" >> $ufile
+	echo "rm -rf /usr/local/bin/nerva-cli" >> $ufile
+	echo "rm /usr/local/bin/nerva-uninstall" >> $ufile
 
 	chmod +x $ufile
 }

@@ -18,7 +18,8 @@ function installdeps()
 
 function install()
 {
-	cp ./nerva* ~/.local/bin
+	mkdir -p ~/.local/bin/nerva-cli
+	cp ./nerva* ~/.local/bin/nerva-cli
 
 	dfile=~/.local/share/applications/nervad.desktop
 
@@ -28,7 +29,7 @@ function install()
 	echo "Exec=nervad" >> $dfile
 	echo "Terminal=true" >> $dfile
 	echo "Type=Application" >> $dfile
-	echo "Icon=$(realpath ~/.local/bin)/nerva-logo-white.png" >> $dfile
+	echo "Icon=$(realpath ~/.local/bin/nerva-cli)/nerva-logo-white.png" >> $dfile
 
 	chmod +x $dfile
 
@@ -40,7 +41,7 @@ function install()
 	echo "Exec=nerva-wallet-cli" >> $wfile
 	echo "Terminal=true" >> $wfile
 	echo "Type=Application" >> $wfile
-	echo "Icon=$(realpath ~/.local/bin)/nerva-logo-black.png" >> $wfile
+	echo "Icon=$(realpath ~/.local/bin/nerva-cli)/nerva-logo-black.png" >> $wfile
 
 	chmod +x $wfile
 
@@ -48,8 +49,10 @@ function install()
 
 	#Construct installer script
 	echo "#!/bin/bash" > $ufile
-	echo "rm ~/.local/bin/nerva*" >> $ufile
-	echo "rm ~/.local/share/applications/nerva*.desktop" >> $ufile
+	echo "rm -rf ~/.local/bin/nerva-cli" >> $ufile
+	echo "rm ~/.local/share/applications/nervad.desktop" >> $ufile
+	echo "rm ~/.local/share/applications/nerva-wallet-cli.desktop" >> $ufile
+	echo "rm ~/.local/bin/nerva-uninstall" >> $ufile
 
 	chmod +x $ufile
 }
