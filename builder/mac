@@ -53,7 +53,6 @@ function install()
 	echo "rm /usr/local/bin/nerva-wallet-rpc" >> $ufile
 	echo "rm /usr/local/bin/nerva-blockchain-*" >> $ufile
 	echo "rm /usr/local/bin/nerva-gen-trusted-multisig" >> $ufile
-	echo "rm /usr/local/bin/nerva-logo-*" >> $ufile
 	echo "rm /usr/local/bin/nerva-uninstall" >> $ufile
 
 	chmod +x $ufile
