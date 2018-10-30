@@ -1,0 +1,36 @@
+#!/bin/bash
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/helpers
+
+function package()
+{
+	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_windows-x64.zip ${BUILDER_DIR}/build/release/bin/*
+}
+
+function build()
+{
+	detectos
+	detectversion
+
+	mkdir -p ${BUILDER_DIR}/build/$1
+	cd ${BUILDER_DIR}/build/$1
+	cmake -D CMAKE_BUILD_TYPE=$1 -D STATIC=ON -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} -D ARCH="x86-64" -G "MSYS Makefiles" ../../..
+	cd ${BUILDER_DIR}/build/$1
+	make -j $2
+
+	package
+}
+
+function build-release()
+{
+	build release 4
+}
+
+function build-debug()
+{
+	build debug 4
+}
+
+$1
