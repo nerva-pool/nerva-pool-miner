@@ -42,7 +42,7 @@ function installdeps()
 
 function install()
 {
-	cp ./nerva* /usr/local/bin
+	cp ${dir}/nerva* /usr/local/bin
 
 	ufile=/usr/local/bin/nerva-uninstall
 
@@ -64,6 +64,7 @@ function package()
 
 	#Construct installer script
 	echo "#!/bin/bash" > $lscript
+	echo "dir=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"" >> $lscript
 	echo "function $(declare -f install)" >> $lscript
 	echo "install" >> $lscript
 	chmod +x $lscript

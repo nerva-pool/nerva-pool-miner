@@ -18,9 +18,11 @@ function installdeps()
 
 function install()
 {
-	cp ./nerva* ~/.local/bin
+	cp ${dir}/nerva* ~/.local/bin
+	bdir=$(realpath ~/.local/bin)
+	sdir=$(realpath ~/.local/share)
 
-	dfile=~/.local/share/applications/nervad.desktop
+	dfile=${sdir}/applications/nervad.desktop
 
 	#Construct daemon .desktop file
 	echo "[Desktop Entry]" > $dfile
@@ -28,11 +30,11 @@ function install()
 	echo "Exec=nervad" >> $dfile
 	echo "Terminal=true" >> $dfile
 	echo "Type=Application" >> $dfile
-	echo "Icon=$(realpath ~/.local/bin)/nerva-logo-white.png" >> $dfile
+	echo "Icon=${bdir}/nerva-logo-white.png" >> $dfile
 
 	chmod +x $dfile
 
-	wfile=~/.local/share/applications/nerva-wallet-cli.desktop
+	wfile=${sdir}/applications/nerva-wallet-cli.desktop
 
 	#Construct wallet .desktop file
 	echo "[Desktop Entry]" > $wfile
@@ -40,23 +42,23 @@ function install()
 	echo "Exec=nerva-wallet-cli" >> $wfile
 	echo "Terminal=true" >> $wfile
 	echo "Type=Application" >> $wfile
-	echo "Icon=$(realpath ~/.local/bin)/nerva-logo-black.png" >> $wfile
+	echo "Icon=${bdir}/nerva-logo-black.png" >> $wfile
 
 	chmod +x $wfile
 
-	ufile=~/.local/bin/nerva-uninstall
+	ufile=${bdir}/nerva-uninstall
 
 	#Construct installer script
 	echo "#!/bin/bash" > $ufile
-	echo "rm ~/.local/bin/nervad" >> $ufile
-	echo "rm ~/.local/bin/nerva-wallet-cli" >> $ufile
-	echo "rm ~/.local/bin/nerva-wallet-rpc" >> $ufile
-	echo "rm ~/.local/bin/nerva-blockchain-*" >> $ufile
-	echo "rm ~/.local/bin/nerva-gen-trusted-multisig" >> $ufile
-	echo "rm ~/.local/bin/nerva-logo-*" >> $ufile
-	echo "rm ~/.local/share/applications/nervad.desktop" >> $ufile
-	echo "rm ~/.local/share/applications/nerva-wallet-cli.desktop" >> $ufile
-	echo "rm ~/.local/bin/nerva-uninstall" >> $ufile
+	echo "rm ${bdir}/nervad" >> $ufile
+	echo "rm ${bdir}/nerva-wallet-cli" >> $ufile
+	echo "rm ${bdir}/nerva-wallet-rpc" >> $ufile
+	echo "rm ${bdir}/nerva-blockchain-*" >> $ufile
+	echo "rm ${bdir}/nerva-gen-trusted-multisig" >> $ufile
+	echo "rm ${bdir}/nerva-logo-*" >> $ufile
+	echo "rm ${sdir}/applications/nervad.desktop" >> $ufile
+	echo "rm ${sdir}/applications/nerva-wallet-cli.desktop" >> $ufile
+	echo "rm ${bdir}/nerva-uninstall" >> $ufile
 
 	chmod +x $ufile
 }
