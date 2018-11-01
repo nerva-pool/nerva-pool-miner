@@ -21,7 +21,7 @@ make -j4
 #Construct installer script
 lscript=${BUILDER_DIR}/build/release/bin/install
 echo "#!/bin/bash" > $lscript
-echo "dir=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"" >> $lscript
+echo "dir=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"" >> $lscript
 echo "function $(declare -f detectos)" >> $lscript
 echo "function $(declare -f installdeps)" >> $lscript
 echo "function $(declare -f install)" >> $lscript

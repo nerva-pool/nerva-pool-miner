@@ -64,7 +64,7 @@ function package()
 
 	#Construct installer script
 	echo "#!/bin/bash" > $lscript
-	echo "dir=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"" >> $lscript
+	echo "dir=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"" >> $lscript
 	echo "function $(declare -f install)" >> $lscript
 	echo "install" >> $lscript
 	chmod +x $lscript
