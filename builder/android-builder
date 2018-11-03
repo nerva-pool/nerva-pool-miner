@@ -5,40 +5,16 @@
 
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/env
 source ${BUILDER_DIR}/helpers
 
-function package()
-{
-	detectversion
-	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION}.zip ${BUILDER_DIR}/build/release/bin/*
-}
+detectversion
 
-function build()
-{
-	detectversion
+mkdir -p ${BUILDER_DIR}/build/release
 
-	mkdir -p ${BUILDER_DIR}/build/$1
-
-	cd ${BUILDER_DIR}/build/$1
-	cmake -D ARCH=${CMAKE_ARCH} -D STATIC=ON -D BUILD_64=ON -D CMAKE_BUILD_TYPE=release \
-	-D ANDROID=true -D BUILD_TAG=${ARCH} -D CMAKE_SYSTEM_NAME="Android" -D CMAKE_ANDROID_STANDALONE_TOOLCHAIN="${NDK}" \
-	-D INSTALL_VENDORED_LIBUNBOUND=ON -D CMAKE_ANDROID_ARCH_ABI=${CMAKE_ABI} ../../..
-
-	cd ${BUILDER_DIR}/build/$1
-	make -j $2
-	package $1
-}
-
-function build-release()
-{
-	build release 4
-}
-
-function build-debug()
-{
-	build debug 4
-}
-
-$1
-
-clean
+cd ${BUILDER_DIR}/build/release
+cmake -D ARCH=${CMAKE_ARCH} -D STATIC=ON -D BUILD_64=ON -D CMAKE_BUILD_TYPE=release \
+-D ANDROID=true -D BUILD_TAG=${ARCH} -D CMAKE_SYSTEM_NAME="Android" -D CMAKE_ANDROID_STANDALONE_TOOLCHAIN="${NDK}" \
+-D INSTALL_VENDORED_LIBUNBOUND=ON -D CMAKE_ANDROID_ARCH_ABI=${CMAKE_ABI} ../../..
+make -j4
+zip -rj ${NERVA_DIR}/${REPO_NAME}-v${NERVA_VERSION}_${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION}.zip ${BUILDER_DIR}/build/release/bin/*

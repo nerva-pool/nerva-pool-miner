@@ -4,58 +4,31 @@
 #https://bitbucket.org/nerva-project/nerva
 
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NERVA_DIR=$(dirname $BUILDER_DIR)
+NERVA_DIR=$(dirname ${BUILDER_DIR})
+source ${BUILDER_DIR}/env
 source ${BUILDER_DIR}/helpers
 source ${BUILDER_DIR}/linux-helpers
 
-function package()
-{
-	detectversion
-	lscript=${BUILDER_DIR}/build/$1/bin/install
+detectversion
+detectos
 
-	#Construct installer script
-	echo "#!/bin/bash" > $lscript
-	echo "dir=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"" >> $lscript
-	echo "function $(declare -f install)" >> $lscript
-	echo "install" >> $lscript
-	chmod +x $lscript
+mkdir -p ${BUILDER_DIR}/build/release
 
-	cp ${BUILDER_DIR}/nerva-logo-white.png ${BUILDER_DIR}/build/$1/bin/nerva-logo-white.png
-	cp ${BUILDER_DIR}/nerva-logo-black.png ${BUILDER_DIR}/build/$1/bin/nerva-logo-black.png
-	zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_linux-x64.zip ${BUILDER_DIR}/build/$1/bin/*
-}
+cd ${BUILDER_DIR}/build/release
+cmake -D CMAKE_BUILD_TYPE=release -D STATIC=ON -D BUILD_TAG=linux-x64 ../../..
+make -j4
 
-function build()
-{
-	detectversion
-	detectos
-	installdeps
+lscript=${BUILDER_DIR}/build/release/bin/install
 
-	if [ ! -f "/usr/local/lib/libcurl.a" ]; then
-		buildstaticlibcurl
-	fi
+#Construct installer script
+echo "#!/bin/bash" > $lscript
+echo "dir=\"\$(cd \"\$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"" >> $lscript
+echo "REPO_NAME="${REPO_NAME} >> $lscript
+echo "REPO_NAME_FULL="${REPO_NAME_FULL} >> $lscript
+echo "function $(declare -f install)" >> $lscript
+echo "install" >> $lscript
+chmod +x $lscript
 
-	mkdir -p ${BUILDER_DIR}/build/$1
-
-	cd ${BUILDER_DIR}/build/$1
-	cmake -D CMAKE_BUILD_TYPE=$1 -D STATIC=ON -D BUILD_TAG=linux-x64 ../../..
-
-	cd ${BUILDER_DIR}/build/$1
-	make -j $2
-
-	package $1
-}
-
-function build-release()
-{
-	build release 4
-}
-
-function build-debug()
-{
-	build debug 4
-}
-
-$1
-
-clean
+cp ${BUILDER_DIR}/${REPO_NAME}-logo-white.png ${BUILDER_DIR}/build/release/bin/${REPO_NAME}-logo-white.png
+cp ${BUILDER_DIR}/${REPO_NAME}-logo-black.png ${BUILDER_DIR}/build/release/bin/${REPO_NAME}-logo-black.png
+zip -rj ${NERVA_DIR}/${REPO_NAME}-v${NERVA_VERSION}_linux-x64.zip ${BUILDER_DIR}/build/release/bin/*

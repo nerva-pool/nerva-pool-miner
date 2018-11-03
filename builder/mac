@@ -5,6 +5,7 @@
 
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/env
 source ${BUILDER_DIR}/helpers
 
 function installdeps()
@@ -42,18 +43,18 @@ function installdeps()
 
 function install()
 {
-	cp ${dir}/nerva* /usr/local/bin
+	cp ${dir}/${REPO_NAME}* /usr/local/bin
 
-	ufile=/usr/local/bin/nerva-uninstall
+	ufile=/usr/local/bin/${REPO_NAME}-uninstall
 
 	#Construct installer script
 	echo "#!/bin/bash" > $ufile
-	echo "rm /usr/local/bin/nervad" >> $ufile
-	echo "rm /usr/local/bin/nerva-wallet-cli" >> $ufile
-	echo "rm /usr/local/bin/nerva-wallet-rpc" >> $ufile
-	echo "rm /usr/local/bin/nerva-blockchain-*" >> $ufile
-	echo "rm /usr/local/bin/nerva-gen-trusted-multisig" >> $ufile
-	echo "rm /usr/local/bin/nerva-uninstall" >> $ufile
+	echo "rm /usr/local/bin/${REPO_NAME}d" >> $ufile
+	echo "rm /usr/local/bin/${REPO_NAME}-wallet-cli" >> $ufile
+	echo "rm /usr/local/bin/${REPO_NAME}-wallet-rpc" >> $ufile
+	echo "rm /usr/local/bin/${REPO_NAME}-blockchain-*" >> $ufile
+	echo "rm /usr/local/bin/${REPO_NAME}-gen-trusted-multisig" >> $ufile
+	echo "rm /usr/local/bin/${REPO_NAME}-uninstall" >> $ufile
 
 	chmod +x $ufile
 }
@@ -72,11 +73,13 @@ lscript=${BUILDER_DIR}/build/release/bin/install
 
 #Construct installer script
 echo "#!/bin/bash" > $lscript
-echo "dir=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"" >> $lscript
+echo "dir=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"" >> $lscript
+echo "REPO_NAME="${REPO_NAME} >> $lscript
+echo "REPO_NAME_FULL="${REPO_NAME_FULL} >> $lscript
 echo "function $(declare -f install)" >> $lscript
 echo "install" >> $lscript
 chmod +x $lscript
 
-zip -rj ${Slutoshi_DIR}/slutoshi-v${Slutoshi_VERSION}_osx-x64.zip ${BUILDER_DIR}/build/release/bin/*
+zip -rj ${NERVA_DIR}/${REPO_NAME}-v${NERVA_VERSION}_osx-x64.zip ${BUILDER_DIR}/build/release/bin/*
 
 clean
