@@ -858,6 +858,7 @@ namespace cryptonote
   uint64_t cached_height = 0;
   uint8_t* cn_bytes = NULL;
   random_values *r = NULL;
+  critical_section m_v2_lock;
 
   bool v2_initialized = false;
   
@@ -966,8 +967,10 @@ namespace cryptonote
 
       if (height != cached_height || !v2_initialized)
       {
+        CRITICAL_REGION_BEGIN(m_v2_lock);
           cached_height = height;
           generate_v2_data(ht, bc);
+        CRITICAL_REGION_END();
       }
 
       if (b.major_version >= 9)
