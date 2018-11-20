@@ -1629,6 +1629,10 @@ namespace cryptonote
     boost::filesystem::space_info si = boost::filesystem::space(path);
     return si.available;
   }
+  uint32_t core::get_minimum_supported_version() const
+  {
+    return get_blockchain_storage().get_minimum_version_for_fork();
+  }
   //-----------------------------------------------------------------------------------------------
   std::time_t core::get_start_time() const
   {

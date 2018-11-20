@@ -45,6 +45,20 @@ namespace angrywasp
             uint32_t mt[N] = { 0 };
             uint16_t mti = 0;
 
+        public:
+
+            mersenne_twister(uint32_t seed)
+            {
+                set_seed(seed);
+            }
+
+            void set_seed(uint32_t seed)
+            {
+                mt[0] = seed & 0xffffffff;
+                for (mti = 1; mti < N; mti++)
+                    mt[mti] = (69069 * mt[mti - 1]) & 0xffffffff;
+            }
+
             uint32_t generate_uint()
             {
                 uint32_t y;
@@ -78,20 +92,6 @@ namespace angrywasp
                 y ^= TEMPERING_SHIFT_L(y);
 
                 return y;
-            }
-
-        public:
-
-            mersenne_twister(uint32_t seed)
-            {
-                set_seed(seed);
-            }
-
-            void set_seed(uint32_t seed)
-            {
-                mt[0] = seed & 0xffffffff;
-                for (mti = 1; mti < N; mti++)
-                    mt[mti] = (69069 * mt[mti - 1]) & 0xffffffff;
             }
 
             uint32_t next(uint32_t min, uint32_t max)

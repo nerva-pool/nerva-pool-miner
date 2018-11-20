@@ -2,10 +2,11 @@
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-bindir=${dir}/build/$1/bin
+bindir=${dir}/builder/build/debug/bin
 
 nd=${bindir}/nervad
 nw=${bindir}/nerva-wallet-cli
+nr=${bindir}/nerva-wallet-rpc
 datadir=$(realpath ~/.nerva/stagenet)
 
 addressA="NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW"
@@ -23,6 +24,21 @@ function createwallets()
 	--password "" --log-file ${datadir}/wallet2.log
 }
 
+function startcliwallet()
+{
+	${nw} --stagenet --wallet-file "${datadir}/wallet1.bin" --password "" --daemon-address 127.0.0.1:38081
+}
+
+function startcliwallet2()
+{
+	${nw} --stagenet --wallet-file "${datadir}/wallet2.bin" --password "" --daemon-address 127.0.0.1:38081
+}
+
+function startrpcwallet()
+{
+	${nr} --stagenet --wallet-file "${datadir}/wallet2.bin" --password "" --disable-rpc-login --rpc-bind-port 33333 --daemon-address 127.0.0.1:48081
+}
+
 # Starts 3 seed nodes for the stagenet
 function start1()
 {
@@ -33,20 +49,19 @@ function start1()
 function start2()
 {
 	${nd} --stagenet --no-igd --hide-my-port --data-dir "${datadir}/node2" --p2p-bind-port 38080 --rpc-bind-port 38081 --zmq-rpc-bind-port 38082 --rpc-restricted-bind-port 38083 \
-	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:48080 --add-exclusive-node 127.0.0.1:58080 $1
+	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:48080 --add-exclusive-node 127.0.0.1:58080 --block-sync-size 1 $1
 }
 
 function start3()
 {
 	${nd} --stagenet --no-igd --hide-my-port --data-dir "${datadir}/node3" --p2p-bind-port 48080 --rpc-bind-port 48081 --zmq-rpc-bind-port 48082 --rpc-restricted-bind-port 48083 \
-	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:38080 --add-exclusive-node 127.0.0.1:58080 $1
+	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:38080 --add-exclusive-node 127.0.0.1:58080 --block-sync-size 1 $1
 }
 
 function start4()
 {
 	${nd} --stagenet --no-igd --hide-my-port --data-dir "${datadir}/node4" --p2p-bind-port 58080 --rpc-bind-port 58081 --zmq-rpc-bind-port 58082 --rpc-restricted-bind-port 58083 \
-	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:38080 --add-exclusive-node 127.0.0.1:48080 \
-	--start-mining NV1tXu3czVbaBWYcKg28X4P2mHrJZMnS8R3TshtYgJVrfA9XLrKRKzVcjaPLgjNiwzH3DNTeywRTURDJUY59a5Lb2vWSG9s5q --mining-threads 2
+	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:38080 --add-exclusive-node 127.0.0.1:48080 --block-sync-size 1 --start-mining NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW --mining-threads 1
 }
 
 function pop4()
@@ -84,4 +99,4 @@ function restart()
 	start
 }
 
-$2 $3
+$1 $2

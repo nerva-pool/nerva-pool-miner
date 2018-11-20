@@ -88,6 +88,7 @@ namespace nodetool
     m_offline(false),
     m_save_graph(false),
     is_closing(false),
+    m_minimum_version(SUPPORTED_MIN_VERSION),
     m_net_server( epee::net_utils::e_connection_type_P2P ) // this is a P2P connection of the main p2p node server, because this is class node_server<>
     {}
     virtual ~node_server()
@@ -293,6 +294,7 @@ namespace nodetool
     bool m_hide_my_port;
     bool m_no_igd;
     bool m_offline;
+    uint32_t m_minimum_version;
     std::atomic<bool> m_save_graph;
     std::atomic<bool> is_closing;
     std::unique_ptr<boost::thread> mPeersLoggerThread;
@@ -356,6 +358,8 @@ namespace nodetool
     extern const command_line::arg_descriptor<int64_t> arg_limit_rate;
 
     extern const command_line::arg_descriptor<bool> arg_save_graph;
+
+    extern const command_line::arg_descriptor<std::string> arg_min_ver;
 }
 
 POP_WARNINGS

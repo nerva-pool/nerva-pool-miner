@@ -77,7 +77,7 @@ using namespace epee;
 #include "miner.h"
 
 
-extern "C" void slow_hash_allocate_state();
+extern "C" void slow_hash_allocate_state(uint32_t memory);
 extern "C" void slow_hash_free_state();
 namespace cryptonote
 {
@@ -382,7 +382,7 @@ namespace cryptonote
     for(; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++)
     {
       crypto::hash h;
-      get_block_longhash(bl, h, height, false, NULL);
+      get_block_longhash(bl, h, height, NULL);
 
       if(check_hash(h, diffic))
       {
@@ -438,7 +438,7 @@ namespace cryptonote
     difficulty_type local_diff = 0;
     uint32_t local_template_ver = 0;
     block b;
-    slow_hash_allocate_state();
+    //slow_hash_allocate_state();
     while(!m_stop)
     {
       if(m_pausers_count)//anti split workaround
@@ -480,7 +480,7 @@ namespace cryptonote
 
       b.nonce = nonce;
       crypto::hash h;
-      get_block_longhash(b, h, height, false, m_blockchain);
+      get_block_longhash(b, h, height, m_blockchain);
 
       if(check_hash(h, local_diff))
       {

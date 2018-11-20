@@ -790,6 +790,8 @@ namespace cryptonote
       */
      bool offline() const { return m_offline; }
 
+     uint32_t get_minimum_supported_version() const;
+
    private:
 
      /**

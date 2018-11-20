@@ -863,7 +863,7 @@ public:
    */
   virtual cryptonote::blobdata get_block_blob_from_height(const uint64_t& height) const = 0;
 
-  virtual void get_v3_data(char* salt, uint64_t height, uint32_t seed) const = 0;
+  virtual void get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const = 0;
 
   /**
    * @brief fetch a block by height

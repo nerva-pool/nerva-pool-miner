@@ -66,4 +66,6 @@ namespace nodetool
     const command_line::arg_descriptor<int64_t> arg_limit_rate = {"limit-rate", "set limit-rate [kB/s]", -1};
 
     const command_line::arg_descriptor<bool> arg_save_graph = {"save-graph", "Save data for dr monero", false};
+
+    const command_line::arg_descriptor<std::string> arg_min_ver = {"min-version", "Minimum software version to allow connections with" };
 }

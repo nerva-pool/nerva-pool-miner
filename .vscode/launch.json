@@ -16,7 +16,7 @@
             "name": "Stagenet Miner",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/bin/nervad",
+            "program": "${workspaceFolder}/builder/build/debug/bin/nervad",
             "args": [
                 "--stagenet",
                 "--data-dir", "~/.nerva/stagenet/node4",
@@ -50,7 +50,7 @@
             "name": "Stagenet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/bin/nervad",
+            "program": "${workspaceFolder}/builder/build/debug/bin/nervad",
             "preLaunchTask": "build-debug",
             "args": [
                 "--stagenet",
@@ -106,12 +106,11 @@
             "name": "Mainnet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/bin/nervad",
+            "program": "${workspaceFolder}/builder/build/debug/bin/nervad",
             "args": [
                 "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
                 "--mining-threads", "8",
-                "--block-sync-size", "1",
-                "--db-readers", "5000"
+                "--block-sync-size", "1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

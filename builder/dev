@@ -1,0 +1,29 @@
+#!/bin/bash
+
+reset
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/env
+source ${BUILDER_DIR}/helpers
+source ${BUILDER_DIR}/linux-helpers
+
+detectversion
+detectos
+
+mkdir -p ${BUILDER_DIR}/build/$2
+cd ${BUILDER_DIR}/build/$2
+
+function aes()
+{
+    cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../..
+}
+
+function noaes()
+{
+    cmake -D CMAKE_BUILD_TYPE=$1 -D NO_AES=ON -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../..
+}
+
+$1 $2
+
+make -j6

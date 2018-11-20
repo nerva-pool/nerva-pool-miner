@@ -117,7 +117,8 @@
 #define P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT       70
 #define P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT            2
 
-#define SUPPORTED_MIN_VERSION                           version_string_to_integer("0.1.4.0")
+#define HF_SUPPORTED_MIN_VERSION                        version_string_to_integer("1.0.5.0")
+#define SUPPORTED_MIN_VERSION                           version_string_to_integer("1.0.4.1")
 
 #define P2P_FAILED_ADDR_FORGET_SECONDS                  (60*60)     //1 hour
 #define P2P_IP_BLOCKTIME_MAINNET                        (60*60*24)  //24 hour
@@ -134,7 +135,7 @@
 #define CRYPTONOTE_POOLDATA_FILENAME            "poolstate.bin"
 #define CRYPTONOTE_BLOCKCHAINDATA_FILENAME      "data.mdb"
 #define CRYPTONOTE_BLOCKCHAINDATA_LOCK_FILENAME "lock.mdb"
-#define P2P_NET_DATA_FILENAME                   "p2pstate.9.bin"
+#define P2P_NET_DATA_FILENAME                   "p2pstate.nerva.bin"
 #define MINER_CONFIG_FILE_NAME                  "miner_conf.json"
 
 #define THREAD_STACK_SIZE                       5 * 1024 * 1024

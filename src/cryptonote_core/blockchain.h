@@ -109,6 +109,8 @@ namespace cryptonote
 
     HardFork* get_hardfork() const;
 
+    uint32_t get_minimum_version_for_fork() const;
+
     /**
      * @brief Initialize the Blockchain state
      *

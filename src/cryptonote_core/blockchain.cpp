@@ -74,7 +74,7 @@ using namespace crypto;
 
 using namespace cryptonote;
 using epee::string_tools::pod_to_hex;
-extern "C" void slow_hash_allocate_state();
+extern "C" void slow_hash_allocate_state(uint32_t memory);
 extern "C" void slow_hash_free_state();
 
 DISABLE_VS_WARNINGS(4267)
@@ -107,16 +107,19 @@ static const struct {
   uint8_t threshold;
   time_t time;
 } testnet_hard_forks[] = {
+  // version 1 from the start of the blockchain
   { 1, 1, 0, 1504374656 },
-  { 2, 2, 0, 1507182919 },
-  { 3, 3, 0, 1511981038 },
-  { 4, 4, 0, 1512627130 },
-  { 5, 500, 0, 1524112219 },
-  { 6, 1000, 0, 1533221184 },
-  { 7, 89600, 0, 1534963934 },
-  { 8, 108350, 0, 1535963934 },
-  { 9, 140875, 0, 1538821785 },
-}; //HF in rapid succession to get to same version as Masari
+  // versions 2-4 in rapid succession from March 13th, 2018
+  { 2, 2, 0, 1521000000 },
+  { 3, 3, 0, 1521120000 },
+  { 4, 4, 0, 1521240000 },
+  { 5, 5, 0, 1521350000 },
+  { 6, 6, 0, 1521460000 },
+  { 7, 550, 0, 1521570000 },
+  { 8, 560, 0, 1521670000 },
+  { 9, 570, 0, 1521770000 },
+  { 10, 580, 0, 1521870000 },
+}; 
 
 static const struct {
   uint8_t version;
@@ -135,6 +138,7 @@ static const struct {
   { 7, 550, 0, 1521570000 },
   { 8, 560, 0, 1521670000 },
   { 9, 570, 0, 1521770000 },
+  { 10, 580, 0, 1521870000 },
 };
 
 //------------------------------------------------------------------
@@ -298,6 +302,21 @@ bool Blockchain::scan_outputkeys_for_indexes(size_t tx_version, const txin_to_ke
   }
 
   return true;
+}
+
+uint32_t Blockchain::get_minimum_version_for_fork() const
+{
+  const uint64_t top_height = m_db->height() - 1;
+  const block top_block = m_db->get_top_block();
+  const uint8_t ideal_hf_version = get_ideal_hard_fork_version(top_height);
+  if (ideal_hf_version <= 1 || ideal_hf_version == top_block.major_version)
+  {
+    //we are at the top block. So if the HF_SUPPORTED_MIN_VERSION > SUPPORTED_MIN_VERSION, that becomes our new minimum version
+    if (HF_SUPPORTED_MIN_VERSION > SUPPORTED_MIN_VERSION)
+      return HF_SUPPORTED_MIN_VERSION;
+  }
+
+  return SUPPORTED_MIN_VERSION;
 }
 
 HardFork* Blockchain::get_hardfork() const
@@ -1460,7 +1479,7 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     difficulty_type current_diff = get_next_difficulty_for_alternative_chain(alt_chain, bei);
     CHECK_AND_ASSERT_MES(current_diff, false, "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!");
     crypto::hash proof_of_work = null_hash;
-    get_block_longhash(bei.bl, proof_of_work, bei.height, true, this);
+    get_block_longhash(bei.bl, proof_of_work, bei.height, this);
     if(!check_hash(proof_of_work, current_diff))
     {
       MERROR_VER("Block with id: " << id << std::endl << " for alternative chain, does not have enough proof of work: " << proof_of_work << std::endl << " expected difficulty: " << current_diff);
@@ -3269,7 +3288,7 @@ leave:
       proof_of_work = it->second;
     }
     else
-      proof_of_work = get_block_longhash(bl, m_db->height(), true, this);
+      proof_of_work = get_block_longhash(bl, m_db->height(), this);
 
     // validate proof_of_work versus difficulty target
     if(!check_hash(proof_of_work, current_diffic))
@@ -3642,14 +3661,14 @@ void Blockchain::set_enforce_dns_checkpoints(bool enforce_checkpoints)
 void Blockchain::block_longhash_worker(uint64_t height, const std::vector<block> &blocks, std::unordered_map<crypto::hash, crypto::hash> &map) const
 {
   TIME_MEASURE_START(t);
-  slow_hash_allocate_state();
+  //slow_hash_allocate_state();
 
   for (const auto & block : blocks)
   {
     if (m_cancel)
        break;
     crypto::hash id = get_block_hash(block);
-    crypto::hash pow = get_block_longhash(block, height++, true, this);
+    crypto::hash pow = get_block_longhash(block, height++, this);
     map.emplace(id, pow);
   }
 

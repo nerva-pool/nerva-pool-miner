@@ -1817,17 +1817,20 @@ void check_error(int err)
     fprintf(stderr, "get_v3_data failed, error %d %s\n", err, mdb_strerror(err));
 }
 
-void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, uint32_t seed) const
+void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const
 {
   MDB_txn *txn;
   MDB_cursor *cur;
   angrywasp::mersenne_twister mt(seed);
-  char* blob_data = (char*)malloc(128);
+  char* bd = (char*)malloc(128);
+  char* blob_data = bd;
   
   int err = 0;
   uint32_t t = 0;
   uint64_t r = 0, x = 0, y = 0, z = 0, w = 0;
   uint8_t a = 32, b = 64;
+
+  uint32_t count = (variant == 3) ? 32 : 2048;
 
   mdb_block_info* bi;
 
@@ -1836,7 +1839,7 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, uint32_t seed) con
 
   err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
 
-  for (uint32_t i = 0; i < 32; i++)
+  for (uint32_t i = 0; i < count; i++)
   {
     //block hash
     r = mt.next(1, (uint32_t)(height - 1));
@@ -1896,9 +1899,12 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, uint32_t seed) con
     std::memcpy(blob_data + 96, bi->bi_hash.data, 32);
 
     std::memcpy(salt + (i * 128), blob_data, 128);
+
+    if (variant >= 4)
+      mt.set_seed(seed ^ mt.generate_uint());
   }
 
-  free(blob_data);
+  free(bd);
   mdb_cursor_close(cur);
   mdb_txn_abort(txn); 
 }
