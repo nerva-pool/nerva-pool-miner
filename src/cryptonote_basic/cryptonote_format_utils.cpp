@@ -965,11 +965,12 @@ namespace cryptonote
     for (int i = 0; i < 3; i++)
       temp_lookup_1[i] = lookup[mt.generate_uint() % 3];
 
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, 4
-      , 0x10000, ((height + 1) % 64), r, salt, temp_lookup_1[m], 
-      (seed % mt.next(10, 50)) + mt.next(10, 25), 
-      (seed % mt.next(10, 50)) + mt.next(10, 25), 
-      (seed % mt.next(10, 50)) + mt.next(10, 25), seed % mt.next(1, 10000), 1024 * 256);
+    uint16_t xx = (uint16_t)((seed % mt.next(10, 50)) + mt.next(10, 25));
+    uint16_t yy = (uint16_t)((seed % mt.next(10, 50)) + mt.next(10, 25));
+    uint16_t zz = (uint16_t)((seed % mt.next(10, 50)) + mt.next(10, 25));
+    uint16_t ww = (uint16_t)(seed % mt.next(1, 10000));
+
+    crypto::cn_slow_hash(bd.data(), bd.size(), res, 4, 0x40000, ((height + 1) % 64), r, salt, temp_lookup_1[m], xx, yy, zz, ww, 1024 * 256);
 
     free(salt_data);
 

@@ -560,16 +560,10 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
 
     // quick hack to make sure the pad is the right size when transitioning to the new fork
     if (memory != allocated_memory && hp_state != NULL)
-    {
-        printf("Deallocating memory %d kb\n", allocated_memory / 1024);
         slow_hash_free_state(allocated_memory);
-    }
 
     if(hp_state == NULL)
-    {
-        printf("Allocating memory %d kb\n", memory / 1024);
         slow_hash_allocate_state(memory);
-    }
         
     /* CryptoNight Step 1:  Use Keccak1600 to initialize the 'state' (and 'text') buffers from the data. */
     if (prehashed) {
