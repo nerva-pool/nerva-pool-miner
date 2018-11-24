@@ -831,9 +831,7 @@ union cn_slow_hash_state
  */
 #include <arm_neon.h>
 
-#define TOTALBLOCKS (MEMORY / AES_BLOCK_SIZE)
-
-#define state_index(x) (((*((uint64_t *)x) >> 4) & (TOTALBLOCKS - 1)) << 4)
+#define state_index(x) (((*((uint64_t *)x) >> 4) & (memory / AES_BLOCK_SIZE - 1)) << 4)
 #define __mul() __asm__("mul %0, %1, %2\n\t" : "=r"(lo) : "r"(c[0]), "r"(b[0]) ); \
   __asm__("umulh %0, %1, %2\n\t" : "=r"(hi) : "r"(c[0]), "r"(b[0]) );
 
@@ -1014,16 +1012,11 @@ STATIC INLINE void aligned_free(void *ptr)
 #endif /* FORCE_USE_HEAP */
 
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t base_iters, size_t rand_iters, random_values *r, const char* sp_bytes, 
-    uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww)
+    uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww, uint32_t memory)
 {
     uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);
     RDATA_ALIGN16 uint8_t expandedKey[240];
-    
-#ifndef FORCE_USE_HEAP
-    RDATA_ALIGN16 uint8_t hp_state[MEMORY];
-#else
-    uint8_t *hp_state = (uint8_t *)aligned_malloc(MEMORY,16);
-#endif
+    uint8_t *hp_state = (uint8_t *)aligned_malloc(memory,16);   
 
     uint8_t* text = (uint8_t*)malloc(init_size_byte);
     RDATA_ALIGN16 uint64_t a[2];
@@ -1058,7 +1051,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
      */
 
     aes_expand_key(state.hs.b, expandedKey);
-    for(i = 0; i < MEMORY / init_size_byte; i++)
+    for(i = 0; i < memory / init_size_byte; i++)
     {
         aes_pseudo_round(text, text, expandedKey, init_size_blk);
         memcpy(&hp_state[i * init_size_byte], text, init_size_byte);
@@ -1154,7 +1147,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     memcpy(text, state.init, init_size_byte);
 
     aes_expand_key(&state.hs.b[32], expandedKey);
-    for(i = 0; i < MEMORY / init_size_byte; i++)
+    for(i = 0; i < memory / init_size_byte; i++)
     {
         // add the xor to the pseudo round
         aes_pseudo_round_xor(text, text, expandedKey, &hp_state[i * init_size_byte], init_size_blk);
@@ -1171,9 +1164,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     hash_permutation(&state.hs);
     extra_hashes[state.hs.b[0] & 3](&state, 200, hash);
     free(text);
-#ifdef FORCE_USE_HEAP
     aligned_free(hp_state);
-#endif
 }
 #else /* aarch64 && crypto */
 
@@ -1315,12 +1306,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
     };
 
-#ifndef FORCE_USE_HEAP
-    uint8_t long_state[MEMORY];
-#else
-    uint8_t *long_state = NULL;
-    long_state = (uint8_t *)malloc(MEMORY);
-#endif
+    uint8_t *long_state = (uint8_t *)malloc(memory);
 
     if (prehashed) {
         memcpy(&state.hs, data, length);
@@ -1337,7 +1323,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
 
     // use aligned data
     memcpy(expandedKey, aes_ctx->key->exp_data, aes_ctx->key->exp_data_len);
-    for(i = 0; i < MEMORY / init_size_byte; i++)
+    for(i = 0; i < MemoryStruct / init_size_byte; i++)
     {
         for(j = 0; j < init_size_blk; j++)
             aesb_pseudo_round(&text[AES_BLOCK_SIZE * j], &text[AES_BLOCK_SIZE * j], expandedKey);
@@ -1351,7 +1337,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     U64(b)[0] = U64(&state.k[16])[0] ^ U64(&state.k[48])[0];
     U64(b)[1] = U64(&state.k[16])[1] ^ U64(&state.k[48])[1];
 
-    #define MASK ((uint32_t)(((MEMORY / AES_BLOCK_SIZE) - 1) << 4))
+    #define MASK ((uint32_t)(((memory / AES_BLOCK_SIZE) - 1) << 4))
     #define state_index(x) ((*(uint32_t *) x) & MASK)
 
     uint16_t k = 1, l = 1, m = 1;
@@ -1503,7 +1489,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     memcpy(text, state.init, init_size_byte);
     oaes_key_import_data(aes_ctx, &state.hs.b[32], AES_KEY_SIZE);
     memcpy(expandedKey, aes_ctx->key->exp_data, aes_ctx->key->exp_data_len);
-    for(i = 0; i < MEMORY / init_size_byte; i++)
+    for(i = 0; i < memory / init_size_byte; i++)
     {
         for(j = 0; j < init_size_blk; j++)
         {
@@ -1517,9 +1503,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     hash_permutation(&state.hs);
     extra_hashes[state.hs.b[0] & 3](&state, 200, hash);
     free(text);
-#ifdef FORCE_USE_HEAP
     free(long_state);
-#endif
 }
 #endif /* !aarch64 || !crypto */
 
