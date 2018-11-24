@@ -83,6 +83,7 @@ DISABLE_VS_WARNINGS(4267)
 
 // used to overestimate the block reward when estimating a per kB to use
 #define BLOCK_REWARD_OVERESTIMATE (10 * 1000000000000)
+
 //hf: todo: add hardfork block for mainnet
 static const struct {
   uint8_t version;
@@ -107,9 +108,7 @@ static const struct {
   uint8_t threshold;
   time_t time;
 } testnet_hard_forks[] = {
-  // version 1 from the start of the blockchain
   { 1, 1, 0, 1504374656 },
-  // versions 2-4 in rapid succession from March 13th, 2018
   { 2, 2, 0, 1521000000 },
   { 3, 3, 0, 1521120000 },
   { 4, 4, 0, 1521240000 },
@@ -127,9 +126,7 @@ static const struct {
   uint8_t threshold;
   time_t time;
 } stagenet_hard_forks[] = {
-  // version 1 from the start of the blockchain
   { 1, 1, 0, 1504374656 },
-  // versions 2-4 in rapid succession from March 13th, 2018
   { 2, 2, 0, 1521000000 },
   { 3, 3, 0, 1521120000 },
   { 4, 4, 0, 1521240000 },
