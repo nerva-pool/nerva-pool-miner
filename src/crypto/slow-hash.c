@@ -1283,7 +1283,7 @@ STATIC INLINE void xor_blocks(uint8_t* a, const uint8_t* b)
 }
 
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t base_iters, size_t rand_iters, random_values *r, const char* sp_bytes,
-    uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww)
+    uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww, uint32_t memory)
 {
     uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);
 
@@ -1323,7 +1323,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
 
     // use aligned data
     memcpy(expandedKey, aes_ctx->key->exp_data, aes_ctx->key->exp_data_len);
-    for(i = 0; i < MemoryStruct / init_size_byte; i++)
+    for(i = 0; i < memory / init_size_byte; i++)
     {
         for(j = 0; j < init_size_blk; j++)
             aesb_pseudo_round(&text[AES_BLOCK_SIZE * j], &text[AES_BLOCK_SIZE * j], expandedKey);
@@ -1337,8 +1337,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     U64(b)[0] = U64(&state.k[16])[0] ^ U64(&state.k[48])[0];
     U64(b)[1] = U64(&state.k[16])[1] ^ U64(&state.k[48])[1];
 
-    #define MASK ((uint32_t)(((memory / AES_BLOCK_SIZE) - 1) << 4))
-    #define state_index(x) ((*(uint32_t *) x) & MASK)
+    #define state_index(x) ((*(uint32_t *) x) & ((uint32_t)(((memory / AES_BLOCK_SIZE) - 1) << 4)))
 
     uint16_t k = 1, l = 1, m = 1;
     uint16_t r2[6] = { xx ^ yy, xx ^ zz, xx ^ ww, yy ^ zz, yy ^ ww, zz ^ ww };
