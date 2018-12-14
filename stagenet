@@ -2,12 +2,12 @@
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-bindir=${dir}/builder/build/release/bin
+bindir=${dir}/builder/build/$1/bin
 
 nd=${bindir}/nervad
 nw=${bindir}/nerva-wallet-cli
 nr=${bindir}/nerva-wallet-rpc
-datadir=${bindir}/stagenet
+datadir=~/.nerva/stagenet/
 
 addressA="NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW"
 addressB="NV3QRL7PwFZWs6Xw9ERf4E5GgjCZgRf3JNmCvyXAV2GAKpKHMmDK8cPTwBqwQjVLMA2G9M5iwh3AJM1e4LzWjuXH2UngCq4hV"
@@ -37,8 +37,8 @@ function startcliwallet2()
 function start1()
 {
 	${nd} --stagenet --no-igd --hide-my-port --data-dir ${datadir}/node1 --p2p-bind-port 28080 --rpc-bind-port 28081 --zmq-rpc-bind-port 28082 --rpc-restricted-bind-port 28083 \
-	--add-exclusive-node 192.168.0.10:38080 --add-exclusive-node 192.168.0.121:48080 --add-exclusive-node 192.168.0.150:58080 \
-	--start-mining NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW --mining-threads 1
+	--add-exclusive-node 192.168.0.10:38080 --add-exclusive-node 192.168.0.121:48080 --add-exclusive-node 192.168.0.150:58080 
+	#--start-mining NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW --mining-threads 1
 }
 
 function start2()
@@ -66,7 +66,9 @@ function pop()
 {
 	killall nervad
 	rm -rf ${datadir}/node2
+	rm -rf ${datadir}/node3
+	rm -rf ${datadir}/node4
 	${bindir}/nerva-blockchain-import --stagenet --data-dir ${datadir}/node1 --pop-blocks $1
 }
 
-$1 $2
+$2 $3

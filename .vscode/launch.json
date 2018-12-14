@@ -19,7 +19,7 @@
             "program": "${workspaceFolder}/builder/build/debug/bin/nervad",
             "args": [
                 "--stagenet",
-                "--data-dir", "~/.nerva/stagenet/node4",
+                "--data-dir", "~/.nerva/stagenet/node2",
                 "--no-igd",
                 "--hide-my-port",
                 "--p2p-bind-port", "58080",
@@ -30,7 +30,7 @@
                 "--add-exclusive-node", "127.0.0.1:38080",
                 "--add-exclusive-node", "127.0.0.1:48080",
                 "--start-mining", "NV1tXu3czVbaBWYcKg28X4P2mHrJZMnS8R3TshtYgJVrfA9XLrKRKzVcjaPLgjNiwzH3DNTeywRTURDJUY59a5Lb2vWSG9s5q",
-                "--mining-threads", "2",
+                "--mining-threads", "1",
                 "--block-sync-size", "1"
             ],
             "stopAtEntry": false,

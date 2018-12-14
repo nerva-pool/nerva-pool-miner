@@ -71,14 +71,14 @@ namespace crypto {
     return h;
   }
 
-  inline void cn_slow_hash(const void *data, std::size_t length, hash &hash, int variant = 0, size_t base_iters = 0x40000, size_t rand_iters = 0, random_values *r = NULL, const char* sp_bytes = NULL, 
-    uint8_t init_size_blk = 8, uint16_t xx = 1, uint16_t yy = 1, uint16_t zz = 1, uint16_t ww = 1, uint32_t memory = (1 << 20)) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), variant, 0/*prehashed*/, base_iters, rand_iters, r, sp_bytes, init_size_blk, xx, yy, zz, ww, memory);
+  inline void cn_slow_hash(const void *data, std::size_t length, hash &hash, int variant = 0, size_t base_iters = 0x40000, size_t rand_iters = 0, random_values *r = NULL, char* sp_bytes = NULL,
+    uint8_t init_size_blk = 8, uint16_t xx = 1, uint16_t yy = 1, uint16_t zz = 1, uint16_t ww = 1) {
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), variant, 0/*prehashed*/, base_iters, rand_iters, r, sp_bytes, init_size_blk, xx, yy, zz, ww);
   }
 
-  inline void cn_slow_hash_prehashed(const void *data, std::size_t length, hash &hash, int variant = 0, size_t base_iters = 0x40000, size_t rand_iters = 0, random_values *r = NULL, const char* sp_bytes = NULL, 
-    uint8_t init_size_blk = 8, uint16_t xx = 1, uint16_t yy = 1, uint16_t zz = 1, uint16_t ww = 1, uint32_t memory = (1 << 20)) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), variant, 1/*prehashed*/, base_iters, rand_iters, r, sp_bytes, init_size_blk, xx, yy, zz, ww, memory);
+  inline void cn_slow_hash_prehashed(const void *data, std::size_t length, hash &hash, int variant = 0, size_t base_iters = 0x40000, size_t rand_iters = 0, random_values *r = NULL, char* sp_bytes = NULL,
+    uint8_t init_size_blk = 8, uint16_t xx = 1, uint16_t yy = 1, uint16_t zz = 1, uint16_t ww = 1) {
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), variant, 1/*prehashed*/, base_iters, rand_iters, r, sp_bytes, init_size_blk, xx, yy, zz, ww);
   }
 
   inline void tree_hash(const hash *hashes, std::size_t count, hash &root_hash) {

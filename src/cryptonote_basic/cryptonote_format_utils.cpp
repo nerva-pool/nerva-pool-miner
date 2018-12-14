@@ -940,12 +940,11 @@ namespace cryptonote
     {
       CRITICAL_REGION_BEGIN(m_v2_lock);
         cached_height = height;
-        generate_v2_data(ht, 1024 * 256, bc);
+        generate_v2_data(ht, 3145728, bc);
       CRITICAL_REGION_END();
     }
 
-    char* salt_data = (char*)malloc(1024 * 256);
-    char* salt = salt_data;
+    char* salt = (char*)malloc(262144);
 
     uint32_t seed = b.nonce ^ height;
 
@@ -965,15 +964,14 @@ namespace cryptonote
     for (int i = 0; i < 3; i++)
       temp_lookup_1[i] = lookup[mt.generate_uint() % 3];
 
-    uint16_t xx = (uint16_t)((seed % mt.next(10, 50)) + mt.next(10, 25));
-    uint16_t yy = (uint16_t)((seed % mt.next(10, 50)) + mt.next(10, 25));
-    uint16_t zz = (uint16_t)((seed % mt.next(10, 50)) + mt.next(10, 25));
+    uint16_t xx = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
+    uint16_t yy = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
+    uint16_t zz = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
     uint16_t ww = (uint16_t)(seed % mt.next(1, 10000));
 
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, 4, 0x40000, ((height + 1) % 64), r, salt, temp_lookup_1[m], xx, yy, zz, ww, 1024 * 256);
+    crypto::cn_slow_hash(bd.data(), bd.size(), res, 4, 0x40000, ((height + 1) % 64), r, salt, temp_lookup_1[m], xx, yy, zz, ww);
 
-    free(salt_data);
-
+    free(salt);
     return true;
   }
 
