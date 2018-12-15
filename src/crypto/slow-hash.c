@@ -993,13 +993,26 @@ STATIC INLINE void aligned_free(void *ptr)
 }
 #endif /* FORCE_USE_HEAP */
 
+#define salt_pad(a, b, c, d) \
+extra_hashes[a % 3](sp_bytes, 200, salt_hash); \
+temp_1 = (uint16_t)(rand_iters ^ (b ^ c)); \
+offset_1 = temp_1 * ((d % 3) + 1); \
+for (j = 0; j < 32; j++) \
+    sp_bytes[offset_1 + j] ^= salt_hash[j]; \
+x = 0; \
+offset_1 = (d % 64) + 1; \
+offset_2 = (offset_2 % 117) + 12; \
+for (j = offset_1; j < MEMORY_V4; j += offset_2) \
+    hp_state[j] ^= sp_bytes[x++]; \
+
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t base_iters, size_t rand_iters, random_values *r, char* sp_bytes, 
     uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww)
 {
+    uint32_t memory = variant >= 4 ? MEMORY_V4 : MEMORY_V3;
     uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);
     RDATA_ALIGN16 uint8_t expandedKey[240];
-    uint8_t *hp_state = (uint8_t *)aligned_malloc(memory,16);  
-    uint8_t *salt_hash = (char*)malloc(32); 
+    uint8_t *hp_state = (uint8_t *)malloc(memory);  
+    char* salt_hash = (char*)malloc(32); 
 
     uint8_t* text = (uint8_t*)malloc(init_size_byte);
     RDATA_ALIGN16 uint64_t a[2];
@@ -1048,6 +1061,10 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
 
     uint16_t k = 1, l = 1, m = 1;
     uint16_t r2[6] = { xx ^ yy, xx ^ zz, xx ^ ww, yy ^ zz, yy ^ ww, zz ^ ww };
+    uint16_t temp_1 = 0;
+    uint32_t offset_1 = 0;
+    uint32_t offset_2 = 0;
+    uint32_t x = 0;
 
     if (variant <= 3)
     {
@@ -1077,16 +1094,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
             _c = veorq_u8(_c, _a);
             post_aes(r2[0] % 2, r2[1] % 2);
 
-            extra_hashes[r2[2] % 3](sp_bytes, 200, salt_hash);
-            temp_1 = (uint16_t)(rand_iters ^ (r2[4] ^ r2[2]));
-            offset_1 = temp_1 * ((r2[0] % 3) + 1);
-            offset_2 = temp_1 * ((r2[0] % 15) + 1);
-            for (j = 0; j < 32; j++)
-            {
-                sp_bytes[offset_1 + j] ^= salt_hash[j];
-                hp_state[offset_2 + j] ^= salt_hash[j];
-            }
-
+            salt_pad(r2[0], r2[3], r2[1], r2[4]);
             r2[0] ^= (r2[1] ^ r2[3]);
             r2[1] ^= (r2[0] ^ r2[2]);
 
@@ -1098,16 +1106,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
                 _c = veorq_u8(_c, _a);
                 post_aes(r2[2] % 2, r2[3] % 2);
 
-                extra_hashes[r2[4] % 3](sp_bytes, 200, salt_hash);
-                temp_1 = (uint16_t)(rand_iters ^ (r2[3] ^ r2[0]));
-                offset_1 = temp_1 * ((r2[5] % 3) + 1);
-                offset_2 = temp_1 * ((r2[5] % 15) + 1);
-                for (j = 0; j < 32; j++)
-                {
-                    sp_bytes[offset_1 + j] ^= salt_hash[j];
-                    hp_state[offset_2 + j] ^= salt_hash[j];
-                }
-
+                salt_pad(r2[1], r2[4], r2[2], r2[5]);
                 r2[2] ^= (r2[3] ^ r2[5]);
                 r2[3] ^= (r2[2] ^ r2[4]);
 
@@ -1119,16 +1118,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
                     _c = veorq_u8(_c, _a);
                     post_aes(r2[4] % 2, r2[5] % 2);
 
-                    extra_hashes[r2[0] % 3](sp_bytes, 200, salt_hash);
-                    temp_1 = (uint16_t)(rand_iters ^ (r2[5] ^ r2[2]));
-                    offset_1 = temp_1 * ((r2[3] % 3) + 1);
-                    offset_2 = temp_1 * ((r2[3] % 15) + 1);
-                    for (j = 0; j < 32; j++)
-                    {
-                        sp_bytes[offset_1 + j] ^= salt_hash[j];
-                        hp_state[offset_2 + j] ^= salt_hash[j];
-                    }
-
+                    salt_pad(r2[2], r2[5], r2[3], r2[0]);
                     r2[4] ^= (r2[5] ^ r2[1]);
                     r2[5] ^= (r2[4] ^ r2[0]);
                 }
@@ -1158,7 +1148,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     hash_permutation(&state.hs);
     extra_hashes[state.hs.b[0] & 3](&state, 200, hash);
     free(text);
-    aligned_free(hp_state);
+    free(hp_state);
     free(salt_hash);
 }
 #else /* aarch64 && crypto */
@@ -1277,6 +1267,18 @@ STATIC INLINE void xor_blocks(uint8_t* a, const uint8_t* b)
   U64(a)[1] ^= U64(b)[1];
 }
 
+#define salt_pad(a, b, c, d) \
+extra_hashes[a % 3](sp_bytes, 200, salt_hash); \
+temp_1 = (uint16_t)(rand_iters ^ (b ^ c)); \
+offset_1 = temp_1 * ((d % 3) + 1); \
+for (j = 0; j < 32; j++) \
+    sp_bytes[offset_1 + j] ^= salt_hash[j]; \
+x = 0; \
+offset_1 = (d % 64) + 1; \
+offset_2 = (offset_2 % 117) + 12; \
+for (j = offset_1; j < MEMORY_V4; j += offset_2) \
+    long_state[j] ^= sp_bytes[x++]; \
+
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t base_iters, size_t rand_iters, random_values *r, char* sp_bytes,
     uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww)
 {
@@ -1301,7 +1303,9 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
     };
 
+    uint32_t memory = variant >= 4 ? MEMORY_V4 : MEMORY_V3;
     uint8_t *long_state = (uint8_t *)malloc(memory);
+    char* salt_hash = (char*)malloc(32);
 
     if (prehashed) {
         memcpy(&state.hs, data, length);
@@ -1339,6 +1343,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     uint16_t temp_1 = 0;
     uint32_t offset_1 = 0;
     uint32_t offset_2 = 0;
+    uint32_t x = 0;
 
     if (variant <= 4)
     {
@@ -1398,15 +1403,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
             copy_block(b + AES_BLOCK_SIZE, b);
             copy_block(b, c1);
 
-            extra_hashes[r2[2] % 3](sp_bytes, 200, salt_hash);
-            temp_1 = (uint16_t)(rand_iters ^ (r2[4] ^ r2[2]));
-            offset_1 = temp_1 * ((r2[0] % 3) + 1);
-            offset_2 = temp_1 * ((r2[0] % 15) + 1);
-            for (j = 0; j < 32; j++)
-            {
-                sp_bytes[offset_1 + j] ^= salt_hash[j];
-                long_state[offset_2 + j] ^= salt_hash[j];
-            }
+            salt_pad(r2[0], r2[3], r2[1], r2[4]);
 
             r2[0] ^= (r2[1] ^ r2[3]);
             r2[1] ^= (r2[0] ^ r2[2]);
@@ -1436,15 +1433,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
                 copy_block(b + AES_BLOCK_SIZE, b);
                 copy_block(b, c1);
 
-                extra_hashes[r2[4] % 3](sp_bytes, 200, salt_hash);
-                temp_1 = (uint16_t)(rand_iters ^ (r2[3] ^ r2[0]));
-                offset_1 = temp_1 * ((r2[5] % 3) + 1);
-                offset_2 = temp_1 * ((r2[5] % 15) + 1);
-                for (j = 0; j < 32; j++)
-                {
-                    sp_bytes[offset_1 + j] ^= salt_hash[j];
-                    long_state[offset_2 + j] ^= salt_hash[j];
-                }
+                salt_pad(r2[1], r2[4], r2[2], r2[5]);
 
                 r2[2] ^= (r2[3] ^ r2[5]);
                 r2[3] ^= (r2[2] ^ r2[4]);
@@ -1474,15 +1463,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
                     copy_block(b + AES_BLOCK_SIZE, b);
                     copy_block(b, c1);
 
-                    extra_hashes[r2[0] % 3](sp_bytes, 200, salt_hash);
-                    temp_1 = (uint16_t)(rand_iters ^ (r2[5] ^ r2[2]));
-                    offset_1 = temp_1 * ((r2[3] % 3) + 1);
-                    offset_2 = temp_1 * ((r2[3] % 15) + 1);
-                    for (j = 0; j < 32; j++)
-                    {
-                        sp_bytes[offset_1 + j] ^= salt_hash[j];
-                        long_state[offset_2 + j] ^= salt_hash[j];
-                    }
+                    salt_pad(r2[2], r2[5], r2[3], r2[0]);
 
                     r2[4] ^= (r2[5] ^ r2[1]);
                     r2[5] ^= (r2[4] ^ r2[0]);
@@ -1620,9 +1601,22 @@ union cn_slow_hash_state {
 };
 #pragma pack(pop)
 
+#define salt_pad(a, b, c, d) \
+extra_hashes[a % 3](sp_bytes, 200, salt_hash); \
+temp_1 = (uint16_t)(rand_iters ^ (b ^ c)); \
+offset_1 = temp_1 * ((d % 3) + 1); \
+for (j = 0; j < 32; j++) \
+    sp_bytes[offset_1 + j] ^= salt_hash[j]; \
+x = 0; \
+offset_1 = (d % 64) + 1; \
+offset_2 = (offset_2 % 117) + 12; \
+for (j = offset_1; j < MEMORY_V4; j += offset_2) \
+    long_state[j] ^= sp_bytes[x++]; \
+
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t base_iters, size_t rand_iters, random_values *r, char* sp_bytes, 
     uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww) {
 
+  uint32_t memory = variant >= 4 ? MEMORY_V4 : MEMORY_V3;
   uint8_t *long_state = (uint8_t *)malloc(memory);
   char* salt_hash = (char*)malloc(32);
 
@@ -1670,6 +1664,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
   uint16_t temp_1 = 0;
   uint32_t offset_1 = 0;
   uint32_t offset_2 = 0;
+  uint32_t x = 0;
 
   if (variant <= 3)
   {
@@ -1735,16 +1730,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         copy_block(b, a);
         copy_block(a, c1);
 
-        extra_hashes[r2[2] % 3](sp_bytes, 200, salt_hash);
-        temp_1 = (uint16_t)(rand_iters ^ (r2[4] ^ r2[2]));
-        offset_1 = temp_1 * ((r2[0] % 3) + 1);
-        offset_2 = temp_1 * ((r2[0] % 15) + 1);
-        for (j = 0; j < 32; j++)
-        {
-            sp_bytes[offset_1 + j] ^= salt_hash[j];
-            long_state[offset_2 + j] ^= salt_hash[j];
-        }
-
+        salt_pad(r2[0], r2[3], r2[1], r2[4]);
         r2[0] ^= (r2[1] ^ r2[3]);
         r2[1] ^= (r2[0] ^ r2[2]);
 
@@ -1776,16 +1762,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
             copy_block(b, a);
             copy_block(a, c1);
 
-            extra_hashes[r2[4] % 3](sp_bytes, 200, salt_hash);
-            temp_1 = (uint16_t)(rand_iters ^ (r2[3] ^ r2[0]));
-            offset_1 = temp_1 * ((r2[5] % 3) + 1);
-            offset_2 = temp_1 * ((r2[5] % 15) + 1);
-            for (j = 0; j < 32; j++)
-            {
-                sp_bytes[offset_1 + j] ^= salt_hash[j];
-                long_state[offset_2 + j] ^= salt_hash[j];
-            }
-
+            salt_pad(r2[1], r2[4], r2[2], r2[5]);
             r2[2] ^= (r2[3] ^ r2[5]);
             r2[3] ^= (r2[2] ^ r2[4]);
 
@@ -1817,16 +1794,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
                 copy_block(b, a);
                 copy_block(a, c1);
 
-                extra_hashes[r2[0] % 3](sp_bytes, 200, salt_hash);
-                temp_1 = (uint16_t)(rand_iters ^ (r2[5] ^ r2[2]));
-                offset_1 = temp_1 * ((r2[3] % 3) + 1);
-                offset_2 = temp_1 * ((r2[3] % 15) + 1);
-                for (j = 0; j < 32; j++)
-                {
-                    sp_bytes[offset_1 + j] ^= salt_hash[j];
-                    long_state[offset_2 + j] ^= salt_hash[j];
-                }
-
+                salt_pad(r2[2], r2[5], r2[3], r2[0]);
                 r2[4] ^= (r2[5] ^ r2[1]);
                 r2[5] ^= (r2[4] ^ r2[0]);
             }
