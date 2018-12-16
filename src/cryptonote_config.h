@@ -117,7 +117,8 @@
 #define P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT       70
 #define P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT            2
 
-#define HF_SUPPORTED_MIN_VERSION                        version_string_to_integer("0.1.5.0")
+#define HF_SUPPORTED_MIN_VERSION_TESTNET                version_string_to_integer("0.1.5.0")
+#define HF_SUPPORTED_MIN_VERSION_MAINNET                version_string_to_integer("0.1.4.1")
 #define SUPPORTED_MIN_VERSION_STR                       "0.1.4.1"
 #define SUPPORTED_MIN_VERSION                           version_string_to_integer(SUPPORTED_MIN_VERSION_STR)
 

@@ -99,7 +99,8 @@ static const struct {
   { 6, 44500, 0, 1527818400 },
   { 7, 173500, 0, 1535348069 },
   { 8, 180000, 0, 1535963934 },
-  { 9, 240500, 0, 1539597600}
+  { 9, 240500, 0, 1539597600},
+  { 10, 1000000, 0, 1549597600}
 };
 
 static const struct {
@@ -301,19 +302,20 @@ bool Blockchain::scan_outputkeys_for_indexes(size_t tx_version, const txin_to_ke
   return true;
 }
 
-uint32_t Blockchain::get_minimum_version_for_fork() const
+uint32_t Blockchain::get_minimum_version_for_fork(uint32_t min_ver) const
 {
   const uint64_t top_height = m_db->height() - 1;
   const block top_block = m_db->get_top_block();
-  const uint8_t ideal_hf_version = get_ideal_hard_fork_version(top_height);
-  if (ideal_hf_version <= 1 || ideal_hf_version == top_block.major_version)
+  const uint8_t hf_version = get_hardfork()->get_next_version();
+  if (hf_version <= 1 || hf_version == top_block.major_version)
   {
+    uint32_t hf_supported_min_version = m_nettype == MAINNET ? HF_SUPPORTED_MIN_VERSION_MAINNET : HF_SUPPORTED_MIN_VERSION_TESTNET;
     //we are at the top block. So if the HF_SUPPORTED_MIN_VERSION > SUPPORTED_MIN_VERSION, that becomes our new minimum version
-    if (HF_SUPPORTED_MIN_VERSION > SUPPORTED_MIN_VERSION)
-      return HF_SUPPORTED_MIN_VERSION;
+    if (hf_supported_min_version > min_ver)
+      return hf_supported_min_version;
   }
 
-  return SUPPORTED_MIN_VERSION;
+  return min_ver;
 }
 
 HardFork* Blockchain::get_hardfork() const

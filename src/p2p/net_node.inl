@@ -335,7 +335,11 @@ namespace nodetool
     {
       std::string v = command_line::get_arg(vm, arg_min_ver);
       MGINFO_CYAN("Blocking all hosts with versions < " << v);
+
       m_minimum_version = version_string_to_integer(v);
+
+      if (m_minimum_version < SUPPORTED_MIN_VERSION)
+        m_minimum_version = SUPPORTED_MIN_VERSION;
     }
 
     return true;
@@ -729,6 +733,7 @@ namespace nodetool
       if (hsh_result)
       {
         uint32_t rsp_ver = version_string_to_integer(rsp.version);
+        m_minimum_version = m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
         if (rsp_ver < m_minimum_version)
         {
           MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.version);
@@ -785,8 +790,8 @@ namespace nodetool
       }
 
       uint32_t rsp_ver = version_string_to_integer(rsp.node_data.version);
-      uint32_t mv = m_payload_handler.m_core.get_minimum_supported_version();
-      if (rsp_ver < mv)//m_minimum_version)
+      m_minimum_version = m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
+      if (rsp_ver < m_minimum_version)
       {
         MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
         block_host(context.m_remote_address);
@@ -1404,6 +1409,15 @@ namespace nodetool
     local_connects_type cncts;
     m_net_server.get_config_object().foreach_connection([&](p2p_connection_context& cntxt)
     {
+      peerid_type pi = AUTO_VAL_INIT(pi);
+
+      bool res = do_request_peer_id(pi, cntxt, true);
+      if (!res)
+      {
+        block_host(cntxt.m_remote_address);
+        return false;
+      }
+
       if(cntxt.peer_id && !cntxt.m_in_timedsync)
       {
         cntxt.m_in_timedsync = true;
@@ -1750,6 +1764,7 @@ namespace nodetool
     }
 
     uint32_t rsp_ver = version_string_to_integer(arg.node_data.version);
+    m_minimum_version = m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
     if (rsp_ver < m_minimum_version)
     {
       MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << arg.node_data.version);
