@@ -785,7 +785,8 @@ namespace nodetool
       }
 
       uint32_t rsp_ver = version_string_to_integer(rsp.node_data.version);
-      if (rsp_ver < m_minimum_version)
+      uint32_t mv = m_payload_handler.m_core.get_minimum_supported_version();
+      if (rsp_ver < mv)//m_minimum_version)
       {
         MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
         block_host(context.m_remote_address);

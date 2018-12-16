@@ -117,8 +117,9 @@
 #define P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT       70
 #define P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT            2
 
-#define HF_SUPPORTED_MIN_VERSION                        version_string_to_integer("1.0.5.0")
-#define SUPPORTED_MIN_VERSION                           version_string_to_integer("1.0.4.1")
+#define HF_SUPPORTED_MIN_VERSION                        version_string_to_integer("0.1.5.0")
+#define SUPPORTED_MIN_VERSION_STR                       "0.1.4.1"
+#define SUPPORTED_MIN_VERSION                           version_string_to_integer(SUPPORTED_MIN_VERSION_STR)
 
 #define P2P_FAILED_ADDR_FORGET_SECONDS                  (60*60)     //1 hour
 #define P2P_IP_BLOCKTIME_MAINNET                        (60*60*24)  //24 hour

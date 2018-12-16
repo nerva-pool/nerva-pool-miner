@@ -132,11 +132,13 @@ class DaemonHandler : public RpcHandler
 
     std::string handle(const std::string& request);
 
+    cryptonote::core& m_core;
+
   private:
 
     bool getBlockHeaderByHash(const crypto::hash& hash_in, cryptonote::rpc::BlockHeaderResponse& response);
 
-    cryptonote::core& m_core;
+    
     t_p2p& m_p2p;
 };
 

@@ -109,6 +109,8 @@ namespace cryptonote
     const block_queue &get_block_queue() const { return m_block_queue; }
     void stop();
     void on_connection_close(cryptonote_connection_context &context);
+
+    t_core& m_core;
   private:
     //----------------- commands handlers ----------------------------------------------
     int handle_notify_new_block(int command, NOTIFY_NEW_BLOCK::request& arg, cryptonote_connection_context& context);
@@ -133,8 +135,6 @@ namespace cryptonote
     bool kick_idle_peers();
     bool restart_wedged_sync();
     int try_add_next_blocks(cryptonote_connection_context &context);
-
-    t_core& m_core;
 
     nodetool::p2p_endpoint_stub<connection_context> m_p2p_stub;
     nodetool::i_p2p_endpoint<connection_context>* m_p2p;
