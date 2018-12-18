@@ -1000,13 +1000,12 @@ for (j = 0; j < 32; j++) \
 x = 0; \
 offset_1 = (d % 64) + 1; \
 offset_2 = (offset_2 % 117) + 12; \
-for (j = offset_1; j < MEMORY_V4; j += offset_2) \
+for (j = offset_1; j < MEMORY; j += offset_2) \
     hp_state[j] ^= sp_bytes[x++]; \
 
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t base_iters, size_t rand_iters, random_values *r, char* sp_bytes, 
     uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww)
 {
-    uint32_t MEMORY = variant >= 4 ? MEMORY_V4 : MEMORY_V3;
     uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);
     RDATA_ALIGN16 uint8_t expandedKey[240];
     uint8_t *hp_state = (uint8_t *)malloc(MEMORY);  
@@ -1274,7 +1273,7 @@ for (j = 0; j < 32; j++) \
 x = 0; \
 offset_1 = (d % 64) + 1; \
 offset_2 = (offset_2 % 117) + 12; \
-for (j = offset_1; j < MEMORY_V4; j += offset_2) \
+for (j = offset_1; j < MEMORY; j += offset_2) \
     long_state[j] ^= sp_bytes[x++]; \
 
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t base_iters, size_t rand_iters, random_values *r, char* sp_bytes,
@@ -1607,7 +1606,7 @@ for (j = 0; j < 32; j++) \
 x = 0; \
 offset_1 = (d % 64) + 1; \
 offset_2 = (offset_2 % 117) + 12; \
-for (j = offset_1; j < MEMORY_V4; j += offset_2) \
+for (j = offset_1; j < MEMORY; j += offset_2) \
     long_state[j] ^= sp_bytes[x++]; \
 
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t base_iters, size_t rand_iters, random_values *r, char* sp_bytes, 
