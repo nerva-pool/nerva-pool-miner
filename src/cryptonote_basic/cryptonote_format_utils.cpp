@@ -940,7 +940,7 @@ namespace cryptonote
     {
       CRITICAL_REGION_BEGIN(m_v2_lock);
         cached_height = height;
-        generate_v2_data(ht, 3145728, bc);
+        generate_v2_data(ht, 1048576, bc);
       CRITICAL_REGION_END();
     }
 

@@ -45,7 +45,7 @@ function start2()
 {
 	${nd} --stagenet --no-igd --hide-my-port --data-dir ${datadir}/node2 --p2p-bind-port 38080 --rpc-bind-port 38081 --zmq-rpc-bind-port 38082 --rpc-restricted-bind-port 38083 \
 	--add-exclusive-node 192.168.0.10:28080 --add-exclusive-node 192.168.0.121:48080 --add-exclusive-node 192.168.0.150:58080 --block-sync-size 1 \
-	--start-mining NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW --mining-threads 1
+	--start-mining NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW --mining-threads 6
 }
 
 function startwin()
