@@ -49,6 +49,7 @@ using namespace epee;
 #include "core_rpc_server_error_codes.h"
 #include "p2p/net_node.h"
 #include "version.h"
+#include "cryptonote_config.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "daemon.rpc"
@@ -1762,7 +1763,23 @@ namespace cryptonote
     res.status = CORE_RPC_STATUS_OK;
     return true;
   }
+  //------------------------------------------------------------------------------------------------------------------------------
+  bool core_rpc_server::on_get_min_version(const COMMAND_RPC_MIN_VERSION::request& req, COMMAND_RPC_MIN_VERSION::response& res, epee::json_rpc::error& error_resp)
+  {
+    PERF_TIMER(on_get_min_version);
+    CHECK_CORE_READY();
+    res.version_int = m_core.get_blockchain_storage().get_minimum_version_for_fork(SUPPORTED_MIN_VERSION);
+    uint8_t a, b, c, d;
+    a = (uint8_t)(res.version_int >> 24);
+    b = (uint8_t)(res.version_int >> 16);
+    c = (uint8_t)(res.version_int >> 8);
+    d = (uint8_t)(res.version_int);
 
+    res.version_string = std::to_string(a) + "." + std::to_string(b) + "." + std::to_string(c) + "." + std::to_string(d);
+    res.status = CORE_RPC_STATUS_OK;
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::on_get_tx_pubkey(const COMMAND_RPC_GET_TX_PUBKEY::request& req, COMMAND_RPC_GET_TX_PUBKEY::response& res, epee::json_rpc::error& error_resp)
   {
     PERF_TIMER(on_get_tx_pubkey);

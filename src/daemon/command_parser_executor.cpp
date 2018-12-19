@@ -615,6 +615,11 @@ bool t_command_parser_executor::print_generated_coins(const std::vector<std::str
   return m_executor.print_generated_coins();
 }
 
+bool t_command_parser_executor::min_version(const std::vector<std::string>& args)
+{
+  return m_executor.min_version();
+}
+
 bool t_command_parser_executor::print_tx_pubkey(const std::vector<std::string>& args)
 {
   if(!args.size())

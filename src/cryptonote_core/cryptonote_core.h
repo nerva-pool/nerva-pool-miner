@@ -750,6 +750,8 @@ namespace cryptonote
       */
      uint64_t get_generated_coins();
 
+     uint32_t get_min_version();
+
       /**
       * @brief get the tx pubkey from the transaction extra field
       */

@@ -187,6 +187,7 @@ namespace cryptonote
      * This is the version which will we fork to next
      */
     uint8_t get_next_version() const;
+    uint8_t get_last_version() const;
 
     /**
      * @brief returns the current version

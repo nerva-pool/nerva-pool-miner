@@ -145,6 +145,8 @@ public:
 
   bool print_generated_coins();
 
+  bool min_version();
+
   bool print_tx_pubkey(std::string extra);
 
   bool alt_chain_info();

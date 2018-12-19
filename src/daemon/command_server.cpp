@@ -259,6 +259,12 @@ t_command_server::t_command_server(
     , "Print the sum of coinbase transactions."
     );
     m_command_lookup.set_handler(
+      "min_version"
+    , std::bind(&t_command_parser_executor::min_version, &m_parser, p::_1)
+    , "min_version"
+    , "Show the minimum software version supported by this node."
+    );
+    m_command_lookup.set_handler(
       "print_tx_pubkey"
     , std::bind(&t_command_parser_executor::print_tx_pubkey, &m_parser, p::_1)
     , "print_tx_pubkey"
