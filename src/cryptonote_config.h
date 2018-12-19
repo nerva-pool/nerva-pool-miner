@@ -117,9 +117,11 @@
 #define P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT       70
 #define P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT            2
 
-#define HF_SUPPORTED_MIN_VERSION_TESTNET                version_string_to_integer("0.1.5.0")
-#define HF_SUPPORTED_MIN_VERSION_MAINNET                version_string_to_integer("0.1.4.1")
-#define SUPPORTED_MIN_VERSION_STR                       "0.1.4.1"
+#define SUPPORTED_MIN_VERSION_STR                       "0.1.4.0"
+#define SUPPORTED_MIN_VERSION_HF_STR                    "0.1.5.0"
+
+#define HF_SUPPORTED_MIN_VERSION_TESTNET                version_string_to_integer(SUPPORTED_MIN_VERSION_HF_STR)
+#define HF_SUPPORTED_MIN_VERSION_MAINNET                version_string_to_integer(SUPPORTED_MIN_VERSION_STR)
 #define SUPPORTED_MIN_VERSION                           version_string_to_integer(SUPPORTED_MIN_VERSION_STR)
 
 #define P2P_FAILED_ADDR_FORGET_SECONDS                  (60*60)     //1 hour
@@ -219,8 +221,7 @@ inline uint32_t version_string_to_integer(std::string data)
 
   if (sscanf (v, "%u.%u.%u.%u%1s", &byte3, &byte2, &byte1, &byte0, dummyString) == 4)
   {
-    if ((byte3 < 256) && (byte2 < 256) && (byte1 < 256) && (byte0 < 256))
-      return (byte3 << 24) + (byte2 << 16) + (byte1 << 8) +  byte0;
+    return (byte3 << 24) + (byte2 << 16) + (byte1 << 8) + byte0;
   }
 
   return 0;
