@@ -1411,12 +1411,6 @@ namespace nodetool
     {
       peerid_type pi = AUTO_VAL_INIT(pi);
 
-      bool res = do_request_peer_id(pi, cntxt, true);
-      if (!res)
-      {
-        block_host(cntxt.m_remote_address);
-        return false;
-      }
 
       if(cntxt.peer_id && !cntxt.m_in_timedsync)
       {
