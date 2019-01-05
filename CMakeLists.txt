@@ -874,10 +874,6 @@ endif()
 add_subdirectory(contrib)
 add_subdirectory(src)
 
-if(BUILD_TESTS)
-  add_subdirectory(tests)
-endif()
-
 if(BUILD_DOCUMENTATION)
   set(DOC_GRAPHS "YES" CACHE STRING "Create dependency graphs (needs graphviz)")
   set(DOC_FULLGRAPHS "NO" CACHE STRING "Create call/callee graphs (large)")

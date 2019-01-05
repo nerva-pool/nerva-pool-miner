@@ -66,6 +66,7 @@
         "string_view": "cpp",
         "valarray": "cpp",
         "intrin.h": "c",
-        "forward_list": "cpp"
+        "forward_list": "cpp",
+        "*.cuh": "cpp"
     }
 }
