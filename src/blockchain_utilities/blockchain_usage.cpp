@@ -1,4 +1,3 @@
-// Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2018, The Monero Project
 //
 // All rights reserved.
@@ -244,10 +243,17 @@ int main(int argc, char* argv[])
     counts[out.second.size()]++;
     total++;
   }
+  if (total > 0)
+  {
   for (const auto &c: counts)
   {
     float percent = 100.f * c.second / total;
     MINFO(std::to_string(c.second) << " outputs used " << c.first << " times (" << percent << "%)");
+    }
+  }
+  else
+  {
+    MINFO("No outputs to process");
   }
 
   LOG_PRINT_L0("Blockchain usage exported OK");
