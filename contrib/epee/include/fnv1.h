@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2018, The Monero Project
+// Copyright (c) 2018, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -25,46 +25,21 @@
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
 
 #pragma once
 
-#include <cstddef>
-#include <string>
+namespace epee
+{
 
-#include "ringct/rctOps.h"
-#include "crypto/crypto.h"
-#include "cryptonote_basic/account.h"
+namespace fnv
+{
+  inline uint64_t FNV1a(const char *ptr, size_t sz)
+  {
+    uint64_t h = 0xcbf29ce484222325;
+    for (size_t i = 0; i < sz; ++i)
+      h = (h ^ *(const uint8_t*)ptr++) * 0x100000001b3;
+    return h;
+  }
+}
 
-#include "device.hpp"
-
-namespace hw {
-
-    void buffer_to_str(char *to_buff,  size_t to_len, const char *buff, size_t len) ;
-    void log_hexbuffer(const std::string &msg,  const char* buff, size_t len);
-    void log_message(const std::string &msg, const std::string &info );
-
-    #ifdef WITH_DEVICE_LEDGER    
-    namespace ledger {
-
-        #ifdef DEBUG_HWDEVICE
-        #define TRACK printf("file %s:%d\n",__FILE__, __LINE__)
-        //#define TRACK MCDEBUG("ledger"," At file " << __FILE__ << ":" << __LINE__)
-        //#define TRACK while(0);
-
-        void decrypt(char* buf, size_t len) ;
-        crypto::key_derivation decrypt(const crypto::key_derivation &derivation) ;
-        cryptonote::account_keys decrypt(const cryptonote::account_keys& keys) ;
-        crypto::secret_key decrypt(const crypto::secret_key &sec) ;
-        rct::key  decrypt(const rct::key &sec);
-        crypto::ec_scalar decrypt(const crypto::ec_scalar &res);
-        rct::keyV decrypt(const rct::keyV &keys);
-
-        void check32(const std::string &msg, const std::string &info, const char *h, const char *d, bool crypted=false);
-        void check8(const std::string &msg, const std::string &info, const char *h, const char *d,  bool crypted=false);
-
-        void set_check_verbose(bool verbose);
-        #endif
-    }
-    #endif
 }

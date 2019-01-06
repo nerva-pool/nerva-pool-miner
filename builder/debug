@@ -1,8 +1,0 @@
-#!/bin/bash
-
-BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-mkdir -p ${BUILDER_DIR}/build/debug
-cd ${BUILDER_DIR}/build/debug
-cmake -D CMAKE_BUILD_TYPE=debug -D BUILD_TAG=nerva-debug ../../..
-make -j6
