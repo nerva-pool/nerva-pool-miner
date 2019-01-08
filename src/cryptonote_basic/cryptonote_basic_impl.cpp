@@ -197,6 +197,11 @@ namespace cryptonote {
     return true;
   }
   //-----------------------------------------------------------------------
+  bool is_uncle_block_included(const block& bl)
+  {
+    return bl.uncle != crypto::null_hash;
+  }
+  //-----------------------------------------------------------------------
   bool get_account_address_from_str(
       address_parse_info& info
     , network_type nettype

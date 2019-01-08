@@ -1118,15 +1118,15 @@ namespace cryptonote
   {
     return m_blockchain_storage.create_block_template(b, adr, diffic, height, expected_reward, ex_nonce);
   }
-  //-----------------------------------------------------------------------------------------------
-  bool core::find_blockchain_supplement(const std::list<crypto::hash>& qblock_ids, NOTIFY_RESPONSE_CHAIN_ENTRY::request& resp) const
+ //-----------------------------------------------------------------------------------------------
+  bool core::find_blockchain_supplement(const std::vector<crypto::hash>& qblock_ids, NOTIFY_RESPONSE_CHAIN_ENTRY::request& resp) const
   {
     return m_blockchain_storage.find_blockchain_supplement(qblock_ids, resp);
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > >& blocks, uint64_t& total_height, uint64_t& start_height, bool get_miner_tx_hash, size_t max_count) const
+  bool core::find_blockchain_supplement(const uint64_t req_start_block, const std::vector<crypto::hash>& qblock_ids, std::vector<std::pair<cryptonote::blobdata, std::vector<cryptonote::blobdata> > >& blocks, uint64_t& total_height, uint64_t& start_height, size_t max_count) const
   {
-    return m_blockchain_storage.find_blockchain_supplement(req_start_block, qblock_ids, blocks, total_height, start_height, get_miner_tx_hash, max_count);
+    return m_blockchain_storage.find_blockchain_supplement(req_start_block, qblock_ids, blocks, total_height, start_height, max_count);
   }
   //-----------------------------------------------------------------------------------------------
   bool core::get_random_outs_for_amounts(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::request& req, COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::response& res) const
@@ -1315,6 +1315,20 @@ namespace cryptonote
     return m_blockchain_storage.get_db().get_block_cumulative_difficulty(height);
   }
   //-----------------------------------------------------------------------------------------------
+  difficulty_type core::get_block_weight(uint64_t height) const
+  {
+    difficulty_type diff, weight, cum_diff, cum_weight;
+    m_blockchain_storage.get_db().get_height_info(height, diff, weight, cum_diff, cum_weight);
+    return weight;
+  }
+  //-----------------------------------------------------------------------------------------------
+  difficulty_type core::get_uncle_weight(uint64_t height) const
+  {
+    difficulty_type diff, weight, cum_diff, cum_weight;
+    m_blockchain_storage.get_db().get_uncle_height_info(height, diff, weight, cum_diff, cum_weight);
+    return weight;
+  }
+  //-----------------------------------------------------------------------------------------------
   size_t core::get_pool_transactions_count() const
   {
     return m_mempool.get_transactions_count();
@@ -1363,9 +1377,9 @@ namespace cryptonote
     return m_mempool.have_tx(id);
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::get_pool_transactions_and_spent_keys_info(std::vector<tx_info>& tx_infos, std::vector<spent_key_image_info>& key_image_infos, bool include_sensitive_data, bool include_blob) const
+  bool core::get_pool_transactions_and_spent_keys_info(std::vector<tx_info>& tx_infos, std::vector<spent_key_image_info>& key_image_infos, bool include_sensitive_data) const
   {
-    return m_mempool.get_transactions_and_spent_keys_info(tx_infos, key_image_infos, include_sensitive_data, include_blob);
+    return m_mempool.get_transactions_and_spent_keys_info(tx_infos, key_image_infos, include_sensitive_data);
   }
   //-----------------------------------------------------------------------------------------------
   bool core::get_pool_for_rpc(std::vector<cryptonote::rpc::tx_in_pool>& tx_infos, cryptonote::rpc::key_images_with_tx_hashes& key_image_infos) const
@@ -1373,7 +1387,7 @@ namespace cryptonote
     return m_mempool.get_pool_for_rpc(tx_infos, key_image_infos);
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::get_short_chain_history(std::list<crypto::hash>& ids) const
+  bool core::get_short_chain_history(std::vector<crypto::hash>& ids) const
   {
     return m_blockchain_storage.get_short_chain_history(ids);
   }
@@ -1391,6 +1405,20 @@ namespace cryptonote
   bool core::get_block_by_hash(const crypto::hash &h, block &blk, bool *orphan) const
   {
     return m_blockchain_storage.get_block_by_hash(h, blk, orphan);
+  }
+  //-----------------------------------------------------------------------------------------------
+  bool core::get_uncle_by_hash(const crypto::hash &h, block &uncle) const
+  {
+    try 
+    {
+      uncle = m_blockchain_storage.get_db().get_uncle(h);
+      return true;
+    }
+    catch (const BLOCK_DNE& e)
+    {
+      MDEBUG("No uncle block with hash " << h << " exists in the database");
+      return false;
+    }
   }
   //-----------------------------------------------------------------------------------------------
   std::string core::print_pool(bool short_format) const
@@ -1443,11 +1471,6 @@ namespace cryptonote
         MCLOG_RED(level, "global", "**********************************************************************");
         MCLOG_RED(level, "global", "Last scheduled hard fork is too far in the past.");
         MCLOG_RED(level, "global", "We are most likely forked from the network. Daemon update needed now.");
-        MCLOG_RED(level, "global", "**********************************************************************");
-        break;
-      case HardFork::UpdateNeeded:
-        MCLOG_RED(level, "global", "**********************************************************************");
-        MCLOG_RED(level, "global", "Last scheduled hard fork time shows a daemon update is needed soon.");
         MCLOG_RED(level, "global", "**********************************************************************");
         break;
       default:

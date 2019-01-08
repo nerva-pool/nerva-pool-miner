@@ -83,6 +83,8 @@ namespace rct {
 
     //Various key generation functions        
 
+    bool toPointCheckOrder(ge_p3 *P, const unsigned char *data);
+
     //generates a random scalar which can be used as a secret key or mask
     key skGen();
     void skGen(key &);
@@ -118,6 +120,8 @@ namespace rct {
     key scalarmultKey(const key &P, const key &a);
     //Computes aH where H= toPoint(cn_fast_hash(G)), G the basepoint
     key scalarmultH(const key & a);
+    // checks a is in the main subgroup (ie, not a small one)
+    bool isInMainSubgroup(const key & a);
 
     //Curve addition / subtractions
 

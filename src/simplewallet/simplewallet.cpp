@@ -2422,12 +2422,12 @@ bool simple_wallet::ask_wallet_create_if_needed()
   bool wallet_file_exists;
 
   do{
-      LOG_PRINT_L3("User asked to specify wallet file name.");
+      LOG_PRINT_L3("User asked to specify wallet name.");
       wallet_path = input_line(
-        tr(m_restoring ? "Specify a new wallet file name for your restored wallet (e.g., MyWallet).\n"
-        "Wallet file name (or Ctrl-C to quit): " :
-        "Specify wallet file name (e.g., MyWallet). If the wallet doesn't exist, it will be created.\n"
-        "Wallet file name (or Ctrl-C to quit): ")
+        tr(m_restoring ? "Specify a new wallet name for your restored wallet (e.g., MyWallet).\n"
+        "Wallet name (or Ctrl-C to quit): " :
+        "Specify wallet name (e.g., MyWallet). If the wallet doesn't exist, it will be created.\n"
+        "Wallet name (or Ctrl-C to quit): ")
       );
       if(std::cin.eof())
       {
@@ -3880,10 +3880,31 @@ bool simple_wallet::show_balance_unlocked(bool detailed)
   if (m_wallet->has_multisig_partial_key_images())
     extra = tr(" (Some owned outputs have partial key images - import_multisig_info needed)");
   success_msg_writer() << tr("Currently selected account: [") << m_current_subaddress_account << tr("] ") << m_wallet->get_subaddress_label({m_current_subaddress_account, 0});
-  const std::string tag = m_wallet->get_account_tags().second[m_current_subaddress_account];
+  const std::pair<std::map<std::string, std::string>, std::vector<std::string>>& account_tags = m_wallet->get_account_tags();
+  const std::string tag = account_tags.second[m_current_subaddress_account];
   success_msg_writer() << tr("Tag: ") << (tag.empty() ? std::string{tr("(No tag assigned)")} : tag);
+  
+  uint64_t total_balance = 0, total_unlocked_balance = 0;
+  for (uint32_t account_index = 0; account_index < m_wallet->get_num_subaddress_accounts(); ++account_index)
+  {
+    if (account_tags.second[account_index] != tag)
+      continue;
+    total_balance += m_wallet->balance(account_index);
+    total_unlocked_balance += m_wallet->unlocked_balance(account_index);
+  }
+  
+  if(total_balance != m_wallet->balance(m_current_subaddress_account))
+  {
+    success_msg_writer() << tr("Account #") << m_current_subaddress_account << tr(" balance: ") << print_money(m_wallet->balance(m_current_subaddress_account)) << ", "
+    << tr("Account #") << m_current_subaddress_account << tr(" unlocked balance: ") << print_money(m_wallet->unlocked_balance(m_current_subaddress_account)) << std::endl
+    << tr("Total balance: ") << print_money(total_balance) << ", " << tr("Total unlocked balance: ") << print_money(total_unlocked_balance) << extra;
+  }
+  else
+  {
   success_msg_writer() << tr("Balance: ") << print_money(m_wallet->balance(m_current_subaddress_account)) << ", "
     << tr("unlocked balance: ") << print_money(m_wallet->unlocked_balance(m_current_subaddress_account)) << extra;
+  }
+  
   std::map<uint32_t, uint64_t> balance_per_subaddress = m_wallet->balance_per_subaddress(m_current_subaddress_account);
   std::map<uint32_t, uint64_t> unlocked_balance_per_subaddress = m_wallet->unlocked_balance_per_subaddress(m_current_subaddress_account);
   if (!detailed || balance_per_subaddress.empty())
@@ -4508,8 +4529,10 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
         }
 
         std::stringstream prompt;
+        uint64_t tx_size = 0;
         for (size_t n = 0; n < ptx_vector.size(); ++n)
         {
+          tx_size += cryptonote::tx_to_blob(ptx_vector[n].tx).size();
           prompt << tr("\nTransaction ") << (n + 1) << "/" << ptx_vector.size() << ":\n";
           subaddr_indices.clear();
           for (uint32_t i : ptx_vector[n].construction_data.subaddr_indices)
@@ -4523,13 +4546,13 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
         if (ptx_vector.size() > 1)
         {
           prompt << boost::format(tr("Your transaction needs to be split into %llu transactions.  "
-            "This will result in a transaction fee being applied to each transaction, for a total fee of %s")) %
-            ((unsigned long long)ptx_vector.size()) % print_money(total_fee);
+            "This will result in a transaction fee being applied to each transaction, for a total fee of %s (total transaction size %d bytes)")) %
+            ((unsigned long long)ptx_vector.size()) % print_money(total_fee) % tx_size;
         }
         else
         {
-          prompt << boost::format(tr("The transaction fee is %s")) %
-            print_money(total_fee);
+          prompt << boost::format(tr("The transaction fee is %s (transaction size %d bytes)")) %
+            print_money(total_fee) % tx_size;
         }
         if (transfer_type == TransferLocked)
         {
@@ -6765,7 +6788,9 @@ bool simple_wallet::wallet_info(const std::vector<std::string> &args)
   {
     description = "<Not set>"; 
   }
-  message_writer() << tr("Filename: ") << m_wallet->get_wallet_file();
+  std::string wallet_file_name = m_wallet->get_wallet_file();
+  message_writer() << tr("Wallet name: ") << string_tools::cut_off_extension(wallet_file_name);
+  message_writer() << tr("File name: ") << wallet_file_name;
   message_writer() << tr("Description: ") << description;
   message_writer() << tr("Address: ") << m_wallet->get_account().get_public_address_str(m_wallet->nettype());
   std::string type;

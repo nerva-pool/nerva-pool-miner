@@ -63,7 +63,7 @@ namespace cryptonote
 		public:
 			cryptonote_protocol_handler_base();
 			virtual ~cryptonote_protocol_handler_base();
-			void handler_request_blocks_history(std::list<crypto::hash>& ids); // before asking for list of objects, we can change the list still
+			void handler_request_blocks_history(std::vector<crypto::hash>& ids); // before asking for list of objects, we can change the list still
 			void handler_response_blocks_now(size_t packet_size);
 			
 			virtual double get_avg_block_size() = 0;
@@ -105,7 +105,7 @@ namespace cryptonote
     t_core& get_core(){return m_core;}
     bool is_synchronized(){return m_synchronized;}
     void log_connections();
-    std::list<connection_info> get_connections();
+    std::vector<connection_info> get_connections();
     const block_queue &get_block_queue() const { return m_block_queue; }
     void stop();
     void on_connection_close(cryptonote_connection_context &context);

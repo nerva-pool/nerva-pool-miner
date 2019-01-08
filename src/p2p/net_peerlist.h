@@ -68,9 +68,9 @@ namespace nodetool
     bool deinit();
     size_t get_white_peers_count(){CRITICAL_REGION_LOCAL(m_peerlist_lock); return m_peers_white.size();}
     size_t get_gray_peers_count(){CRITICAL_REGION_LOCAL(m_peerlist_lock); return m_peers_gray.size();}
-    bool merge_peerlist(const std::list<peerlist_entry>& outer_bs);
-    bool get_peerlist_head(std::list<peerlist_entry>& bs_head, uint32_t depth = P2P_DEFAULT_PEERS_IN_HANDSHAKE);
-    bool get_peerlist_full(std::list<peerlist_entry>& pl_gray, std::list<peerlist_entry>& pl_white);
+    bool merge_peerlist(const std::vector<peerlist_entry>& outer_bs);
+    bool get_peerlist_head(std::vector<peerlist_entry>& bs_head, uint32_t depth = P2P_DEFAULT_PEERS_IN_HANDSHAKE);
+    bool get_peerlist_full(std::vector<peerlist_entry>& pl_gray, std::vector<peerlist_entry>& pl_white);
     bool get_white_peer_by_index(peerlist_entry& p, size_t i);
     bool get_gray_peer_by_index(peerlist_entry& p, size_t i);
     bool append_with_peer_white(const peerlist_entry& pr);
@@ -265,7 +265,7 @@ namespace nodetool
   }
   //--------------------------------------------------------------------------------------------------
   inline 
-  bool peerlist_manager::merge_peerlist(const std::list<peerlist_entry>& outer_bs)
+  bool peerlist_manager::merge_peerlist(const std::vector<peerlist_entry>& outer_bs)
   {
     CRITICAL_REGION_LOCAL(m_peerlist_lock);
     for(const peerlist_entry& be:  outer_bs)
@@ -315,7 +315,7 @@ namespace nodetool
   }
   //--------------------------------------------------------------------------------------------------
   inline 
-  bool peerlist_manager::get_peerlist_head(std::list<peerlist_entry>& bs_head, uint32_t depth)
+  bool peerlist_manager::get_peerlist_head(std::vector<peerlist_entry>& bs_head, uint32_t depth)
   {
     
     CRITICAL_REGION_LOCAL(m_peerlist_lock);
@@ -335,7 +335,7 @@ namespace nodetool
   }
   //--------------------------------------------------------------------------------------------------
   inline
-  bool peerlist_manager::get_peerlist_full(std::list<peerlist_entry>& pl_gray, std::list<peerlist_entry>& pl_white)
+  bool peerlist_manager::get_peerlist_full(std::vector<peerlist_entry>& pl_gray, std::vector<peerlist_entry>& pl_white)
   {    
     CRITICAL_REGION_LOCAL(m_peerlist_lock);
     peers_indexed::index<by_time>::type& by_time_index_gr=m_peers_gray.get<by_time>();

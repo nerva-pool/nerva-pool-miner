@@ -83,6 +83,8 @@ public:
 
   bool print_block(const std::vector<std::string>& args);
 
+  bool print_uncle_block(const std::vector<std::string>& args);
+
   bool print_transaction(const std::vector<std::string>& args);
 
   bool is_key_image_spent(const std::vector<std::string>& args);

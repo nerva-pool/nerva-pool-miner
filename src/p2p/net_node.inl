@@ -387,7 +387,6 @@ namespace nodetool
   std::set<std::string> node_server<t_payload_net_handler>::get_seed_nodes(cryptonote::network_type nettype) const
   {
     std::set<std::string> full_addrs;
-
     if (nettype == cryptonote::TESTNET)
       full_addrs = ::config::testnet::seed_nodes;
     else if (nettype == cryptonote::STAGENET)
@@ -1409,9 +1408,6 @@ namespace nodetool
     local_connects_type cncts;
     m_net_server.get_config_object().foreach_connection([&](p2p_connection_context& cntxt)
     {
-      peerid_type pi = AUTO_VAL_INIT(pi);
-
-
       if(cntxt.peer_id && !cntxt.m_in_timedsync)
       {
         cntxt.m_in_timedsync = true;
@@ -1427,7 +1423,7 @@ namespace nodetool
   }
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
-  bool node_server<t_payload_net_handler>::fix_time_delta(std::list<peerlist_entry>& local_peerlist, time_t local_time, int64_t& delta)
+  bool node_server<t_payload_net_handler>::fix_time_delta(std::vector<peerlist_entry>& local_peerlist, time_t local_time, int64_t& delta)
   {
     //fix time delta
     time_t now = 0;
@@ -1447,10 +1443,10 @@ namespace nodetool
   }
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
-  bool node_server<t_payload_net_handler>::handle_remote_peerlist(const std::list<peerlist_entry>& peerlist, time_t local_time, const epee::net_utils::connection_context_base& context)
+  bool node_server<t_payload_net_handler>::handle_remote_peerlist(const std::vector<peerlist_entry>& peerlist, time_t local_time, const epee::net_utils::connection_context_base& context)
   {
     int64_t delta = 0;
-    std::list<peerlist_entry> peerlist_ = peerlist;
+    std::vector<peerlist_entry> peerlist_ = peerlist;
     if(!fix_time_delta(peerlist_, local_time, delta))
       return false;
     LOG_DEBUG_CC(context, "REMOTE PEERLIST: TIME_DELTA: " << delta << ", remote peerlist size=" << peerlist_.size());
@@ -1862,8 +1858,8 @@ namespace nodetool
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::log_peerlist()
   {
-    std::list<peerlist_entry> pl_white;
-    std::list<peerlist_entry> pl_gray;
+    std::vector<peerlist_entry> pl_white;
+    std::vector<peerlist_entry> pl_gray;
     m_peerlist.get_peerlist_full(pl_gray, pl_white);
     MINFO(ENDL << "Peerlist white:" << ENDL << print_peerlist_to_string(pl_white) << ENDL << "Peerlist gray:" << ENDL << print_peerlist_to_string(pl_gray) );
     return true;

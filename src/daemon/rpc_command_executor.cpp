@@ -71,10 +71,23 @@ namespace {
       << "previous hash: " << header.prev_hash << std::endl
       << "nonce: " << boost::lexical_cast<std::string>(header.nonce) << std::endl
       << "is orphan: " << header.orphan_status << std::endl
+      << "is uncle: " << header.uncle_status << std::endl
       << "height: " << boost::lexical_cast<std::string>(header.height) << std::endl
       << "depth: " << boost::lexical_cast<std::string>(header.depth) << std::endl
       << "hash: " << header.hash << std::endl
       << "difficulty: " << boost::lexical_cast<std::string>(header.difficulty) << std::endl
+      << "weight: " << boost::lexical_cast<std::string>(header.weight) << std::endl
+      << "reward: " << boost::lexical_cast<std::string>(header.reward);
+  }
+  
+  void print_uncle_header(cryptonote::uncle_header_response const & header)
+  {
+    tools::success_msg_writer()
+      << "height: " << boost::lexical_cast<std::string>(header.height) << std::endl
+      << "depth: " << boost::lexical_cast<std::string>(header.depth) << std::endl
+      << "hash: " << header.hash << std::endl
+      << "difficulty: " << boost::lexical_cast<std::string>(header.difficulty) << std::endl
+      << "weight: " << boost::lexical_cast<std::string>(header.weight) << std::endl
       << "reward: " << boost::lexical_cast<std::string>(header.reward);
   }
 
@@ -669,7 +682,7 @@ bool t_rpc_command_executor::print_block_by_hash(crypto::hash block_hash) {
   {
     if (!m_rpc_server->on_get_block(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
     {
-      tools::fail_msg_writer() << make_error(fail_message, res.status);
+      tools::fail_msg_writer() << make_error(fail_message, error_resp.message);
       return true;
     }
   }
@@ -700,7 +713,7 @@ bool t_rpc_command_executor::print_block_by_height(uint64_t height) {
   {
     if (!m_rpc_server->on_get_block(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
     {
-      tools::fail_msg_writer() << make_error(fail_message, res.status);
+      tools::fail_msg_writer() << make_error(fail_message, error_resp.message);
       return true;
     }
   }
@@ -711,9 +724,40 @@ bool t_rpc_command_executor::print_block_by_height(uint64_t height) {
   return true;
 }
 
+bool t_rpc_command_executor::print_uncle_block(crypto::hash uncle_hash) {
+  cryptonote::COMMAND_RPC_GET_UNCLE_BLOCK::request req;
+  cryptonote::COMMAND_RPC_GET_UNCLE_BLOCK::response res;
+  epee::json_rpc::error error_resp;
+
+  req.hash = epee::string_tools::pod_to_hex(uncle_hash);
+
+  std::string fail_message = "Unsuccessful";
+
+  if (m_is_rpc)
+  {
+    if (!m_rpc_client->json_rpc_request(req, res, "get_uncle_block", fail_message.c_str()))
+    {
+      return true;
+    }
+  }
+  else
+  {
+    if (!m_rpc_server->on_get_uncle_block(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << make_error(fail_message, res.status);
+      return true;
+    }
+  }
+
+  print_uncle_header(res.header_response);
+  tools::success_msg_writer() << res.json << ENDL;
+
+  return true;
+}
+
 bool t_rpc_command_executor::print_transaction(crypto::hash transaction_hash,
   bool include_hex,
-  bool include_json) {
+  bool include_json, bool prune) {
   cryptonote::COMMAND_RPC_GET_TRANSACTIONS::request req;
   cryptonote::COMMAND_RPC_GET_TRANSACTIONS::response res;
 
@@ -721,6 +765,7 @@ bool t_rpc_command_executor::print_transaction(crypto::hash transaction_hash,
 
   req.txs_hashes.push_back(epee::string_tools::pod_to_hex(transaction_hash));
   req.decode_as_json = false;
+  req.prune = include_hex && prune ? true : false;
   if (m_is_rpc)
   {
     if (!m_rpc_client->rpc_request(req, res, "/gettransactions", fail_message.c_str()))
@@ -769,6 +814,14 @@ bool t_rpc_command_executor::print_transaction(crypto::hash transaction_hash,
       }
       else
       {
+        if(prune)
+        {
+          std::stringstream ss;
+          json_archive<true> ar(ss);
+          tx.serialize_base(ar);
+          tools::success_msg_writer() << ss.str() << std::endl;
+        }
+        else
         tools::success_msg_writer() << cryptonote::obj_to_json_str(tx) << std::endl;
       }
     }
@@ -973,7 +1026,7 @@ bool t_rpc_command_executor::print_transaction_pool_stats() {
   }
   else
   {
-    res.pool_stats = {};
+    memset(&res.pool_stats, 0, sizeof(res.pool_stats));
     if (!m_rpc_server->on_get_transaction_pool_stats(req, res, false) || res.status != CORE_RPC_STATUS_OK)
     {
       tools::fail_msg_writer() << make_error(fail_message, res.status);
@@ -1751,7 +1804,7 @@ bool t_rpc_command_executor::alt_chain_info()
   {
     uint64_t start_height = (chain.height - chain.length + 1);
     tools::msg_writer() << chain.length << " blocks long, from height " << start_height << " (" << (ires.height - start_height - 1)
-        << " deep), diff " << chain.difficulty << ": " << chain.block_hash;
+        << " deep), diff " << chain.difficulty << ", weight " << chain.weight << ": " << chain.block_hash;
   }
   return true;
 }

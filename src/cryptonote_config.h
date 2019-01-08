@@ -81,6 +81,10 @@
 #define DIFFICULTY_CUT                                  60  // timestamps to cut after sorting
 #define DIFFICULTY_BLOCKS_COUNT                         DIFFICULTY_WINDOW + DIFFICULTY_LAG
 
+#define UNCLE_DIFFICULTY_TARGET                         DIFFICULTY_TARGET/4
+#define UNCLE_REWARD_RATIO                              2
+#define NEPHEW_REWARD_RATIO                             20
+
 #define DIFFICULTY_BLOCKS_ESTIMATE_TIMESPAN             DIFFICULTY_TARGET //just alias; used by tests
 #define DIFFICULTY_WINDOW_V2                            17
 #define DIFFICULTY_CUT_V2                               6

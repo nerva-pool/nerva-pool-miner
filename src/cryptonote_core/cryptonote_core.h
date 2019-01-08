@@ -369,6 +369,13 @@ namespace cryptonote
      bool get_block_by_hash(const crypto::hash &h, block &blk, bool *orphan = NULL) const;
 
      /**
+      * @copydoc fetch an uncle block from the DB
+      *
+      * @note returns false if block DNE
+      */
+      bool get_uncle_by_hash(const crypto::hash &h, block &uncle) const;
+
+     /**
       * @copydoc Blockchain::get_alternative_blocks
       *
       * @note see Blockchain::get_alternative_blocks(std::vector<block>&) const
@@ -468,7 +475,7 @@ namespace cryptonote
       *
       * @note see tx_memory_pool::get_pool_transactions_and_spent_keys_info
       */
-     bool get_pool_transactions_and_spent_keys_info(std::vector<tx_info>& tx_infos, std::vector<spent_key_image_info>& key_image_infos, bool include_unrelayed_txes, bool include_blob) const;
+     bool get_pool_transactions_and_spent_keys_info(std::vector<tx_info>& tx_infos, std::vector<spent_key_image_info>& key_image_infos, bool include_unrelayed_txes = true) const;
 
      /**
       * @copydoc tx_memory_pool::get_pool_for_rpc
@@ -503,21 +510,21 @@ namespace cryptonote
       *
       * @note see Blockchain::get_short_chain_history
       */
-     bool get_short_chain_history(std::list<crypto::hash>& ids) const;
+     bool get_short_chain_history(std::vector<crypto::hash>& ids) const;
 
      /**
       * @copydoc Blockchain::find_blockchain_supplement(const std::list<crypto::hash>&, NOTIFY_RESPONSE_CHAIN_ENTRY::request&) const
       *
       * @note see Blockchain::find_blockchain_supplement(const std::list<crypto::hash>&, NOTIFY_RESPONSE_CHAIN_ENTRY::request&) const
       */
-     bool find_blockchain_supplement(const std::list<crypto::hash>& qblock_ids, NOTIFY_RESPONSE_CHAIN_ENTRY::request& resp) const;
+     bool find_blockchain_supplement(const std::vector<crypto::hash>& qblock_ids, NOTIFY_RESPONSE_CHAIN_ENTRY::request& resp) const;
 
      /**
-      * @copydoc Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::vector<std::pair<cryptonote::blobdata, std::vector<cryptonote::blobdata> > >&, uint64_t&, uint64_t&, size_t) const
+      * @copydoc Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::list<std::pair<cryptonote::blobdata, std::list<cryptonote::blobdata> > >&, uint64_t&, uint64_t&, size_t) const
       *
-      * @note see Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::vector<std::pair<cryptonote::blobdata, std::vector<transaction> > >&, uint64_t&, uint64_t&, size_t) const
+      * @note see Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::list<std::pair<cryptonote::blobdata, std::list<transaction> > >&, uint64_t&, uint64_t&, size_t) const
       */
-     bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > >& blocks, uint64_t& total_height, uint64_t& start_height, bool get_miner_tx_hash, size_t max_count) const;
+     bool find_blockchain_supplement(const uint64_t req_start_block, const std::vector<crypto::hash>& qblock_ids, std::vector<std::pair<cryptonote::blobdata, std::vector<cryptonote::blobdata> > >& blocks, uint64_t& total_height, uint64_t& start_height, size_t max_count) const;
 
      /**
       * @brief gets some stats about the daemon
@@ -548,6 +555,16 @@ namespace cryptonote
       * @note see Blockchain::get_block_cumulative_difficulty
       */
      difficulty_type get_block_cumulative_difficulty(uint64_t height) const;
+
+     /**
+      * @brief get a single block's weight
+      */
+     difficulty_type get_block_weight(uint64_t height) const;
+     
+     /**
+      * @brief get an uncle block's individual weight
+      */
+     difficulty_type get_uncle_weight(uint64_t height) const;
 
      /**
       * @copydoc Blockchain::get_random_outs_for_amounts

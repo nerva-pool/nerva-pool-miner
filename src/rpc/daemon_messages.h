@@ -87,7 +87,7 @@ END_RPC_MESSAGE_CLASS;
 
 BEGIN_RPC_MESSAGE_CLASS(GetBlocksFast);
   BEGIN_RPC_MESSAGE_REQUEST;
-    RPC_MESSAGE_MEMBER(std::list<crypto::hash>, block_ids);
+    RPC_MESSAGE_MEMBER(std::vector<crypto::hash>, block_ids);
     RPC_MESSAGE_MEMBER(uint64_t, start_height);
     RPC_MESSAGE_MEMBER(bool, prune);
   END_RPC_MESSAGE_REQUEST;
@@ -102,7 +102,7 @@ END_RPC_MESSAGE_CLASS;
 
 BEGIN_RPC_MESSAGE_CLASS(GetHashesFast);
   BEGIN_RPC_MESSAGE_REQUEST;
-    RPC_MESSAGE_MEMBER(std::list<crypto::hash>, known_hashes);
+    RPC_MESSAGE_MEMBER(std::vector<crypto::hash>, known_hashes);
     RPC_MESSAGE_MEMBER(uint64_t, start_height);
   END_RPC_MESSAGE_REQUEST;
   BEGIN_RPC_MESSAGE_RESPONSE;

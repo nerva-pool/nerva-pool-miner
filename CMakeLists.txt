@@ -140,6 +140,7 @@ if(ARCH_ID STREQUAL "ppc64le")
   set(PPC64LE 1)
   set(PPC64   0)
   set(PPC     0)
+
 endif()
 
 if(ARCH_ID STREQUAL "powerpc64" OR ARCH_ID STREQUAL "ppc64")
@@ -152,10 +153,6 @@ if(ARCH_ID STREQUAL "powerpc")
   set(PPC64LE 0)
   set(PPC64   0)
   set(PPC     1)
-endif()
-
-if(ARCH_ID STREQUAL "s390x")
-  set(S390X 1)
 endif()
 
 if(WIN32 OR ARM OR PPC64LE OR PPC64 OR PPC)
@@ -364,8 +361,6 @@ if (UNIX AND NOT APPLE)
   # Note that at the time of this writing the -Wstrict-prototypes flag added below will make this fail
   set(THREADS_PREFER_PTHREAD_FLAG ON)
   find_package(Threads)
-  add_c_flag_if_supported(-pthread CMAKE_C_FLAGS)
-  add_cxx_flag_if_supported(-pthread CMAKE_CXX_FLAGS)
 endif()
 
 # Handle OpenSSL, used for sha256sum on binary updates and light wallet ssl http
@@ -406,9 +401,16 @@ add_definition_if_function_found(strptime HAVE_STRPTIME)
 add_definitions(-DAUTO_INITIALIZE_EASYLOGGINGPP)
 
 # Generate header for embedded translations
-add_subdirectory(translations)
+# Generate header for embedded translations, use target toolchain if depends, otherwise use the
+# lrelease and lupdate binaries from the host
+include(ExternalProject)
+ExternalProject_Add(generate_translations_header
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/translations"
+  BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/translations"
+  STAMP_DIR ${LRELEASE_PATH}
+  CMAKE_ARGS -DLRELEASE_PATH=${LRELEASE_PATH}
+  INSTALL_COMMAND cmake -E echo "")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/translations")
-
 add_subdirectory(external)
 
 # Final setup for libunbound
@@ -720,12 +722,7 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=default -DGTEST_HAS_TR1_TUPLE=0")
   endif()
 
-  set(DEBUG_FLAGS "-g3")
-  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT (CMAKE_C_COMPILER_VERSION VERSION_LESS 4.8))
-    set(DEBUG_FLAGS "${DEBUG_FLAGS} -Og ")
-  else()
-    set(DEBUG_FLAGS "${DEBUG_FLAGS} -O0 ")
-  endif()
+  set(DEBUG_FLAGS "-g3 -O0")
 
   if(NOT DEFINED USE_LTO_DEFAULT)
     set(USE_LTO_DEFAULT false)
@@ -861,9 +858,7 @@ if(ANDROID)
 endif()
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND ARCH_WIDTH EQUAL "32" AND NOT IOS AND NOT FREEBSD)
   find_library(ATOMIC atomic)
-  if (ATOMIC_FOUND)
-    list(APPEND EXTRA_LIBRARIES ${ATOMIC})
-  endif()
+  list(APPEND EXTRA_LIBRARIES ${ATOMIC})
 endif()
 
 find_path(ZMQ_INCLUDE_PATH zmq.hpp)

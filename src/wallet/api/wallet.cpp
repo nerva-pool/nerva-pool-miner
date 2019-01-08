@@ -552,7 +552,6 @@ bool WalletImpl::recoverFromKeysWithPassword(const std::string &path,
     }
     
 
-    // check the spend and view keys match the given address
     crypto::public_key pkey;
     if(has_spendkey) {
         if (!crypto::secret_key_to_public_key(spendkey, pkey)) {
@@ -1676,7 +1675,7 @@ void WalletImpl::refreshThreadFunc()
         // if auto refresh enabled, we wait for the "m_refreshIntervalSeconds" interval.
         // if not - we wait forever
         if (m_refreshIntervalMillis > 0) {
-            boost::posix_time::milliseconds wait_for_ms(m_refreshIntervalMillis);
+            boost::posix_time::milliseconds wait_for_ms(static_cast<boost::int64_t>(m_refreshIntervalMillis));
             m_refreshCV.timed_wait(lock, wait_for_ms);
         } else {
             m_refreshCV.wait(lock);

@@ -74,7 +74,7 @@ namespace cryptonote
     LOG_PRINT_L2("destinations include " << num_stdaddresses << " standard addresses and " << num_subaddresses << " subaddresses");
   }
   //---------------------------------------------------------------
-  bool construct_miner_tx(size_t height, size_t median_size, uint64_t already_generated_coins, size_t current_block_size, uint64_t fee, std::string miner_address_str, transaction& tx, const blobdata& extra_nonce, size_t max_outs, uint8_t hard_fork_version) {
+  bool construct_miner_tx(size_t height, size_t median_size, uint64_t already_generated_coins, size_t current_block_size, uint64_t fee, std::string miner_address_str, transaction& tx, const blobdata& extra_nonce, size_t max_outs, uint8_t hard_fork_version, bool uncle_included, const cryptonote::block *uncle) {
     tx.vin.clear();
     tx.vout.clear();
     tx.extra.clear();
@@ -94,29 +94,51 @@ namespace cryptonote
 	
     cryptonote::account_public_address miner_address = info.address;
     
-    if(info.is_subaddress)
-    {
-      txkey.pub = rct::rct2pk(hwdev.scalarmultKey(rct::pk2rct(miner_address.m_spend_public_key), rct::sk2rct(txkey.sec)));
-    }
-    add_tx_pub_key_to_extra(tx, txkey.pub);
-    if(!extra_nonce.empty())
-      if(!add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
-        return false;
-
     txin_gen in;
     in.height = height;
 
-    uint64_t block_reward;
-    if(!get_block_reward(median_size, current_block_size, already_generated_coins, block_reward, hard_fork_version))
+    uint64_t block_reward = 0;
+    uint64_t base_reward;
+    if(!get_block_reward(median_size, current_block_size, already_generated_coins, base_reward, hard_fork_version))
     {
       LOG_PRINT_L0("Block is too big");
       return false;
     }
 
+    size_t miner_index = 0;
+
+    if (uncle_included)
+    {
+      block_reward += (base_reward / NEPHEW_REWARD_RATIO);
+      miner_index = 1;
+
+      add_tx_pub_key_to_extra(tx, get_tx_pub_key_from_extra(uncle->miner_tx));
+
+      txout_to_key tku;
+      tku.key = boost::get<txout_to_key>(uncle->miner_tx.vout[0].target).key;
+
+      tx_out outu;
+      outu.amount = base_reward / UNCLE_REWARD_RATIO;
+      outu.target = tku;
+      tx.vout.push_back(outu);
+    }
+
+    if(info.is_subaddress)
+    {
+      txkey.pub = rct::rct2pk(hwdev.scalarmultKey(rct::pk2rct(miner_address.m_spend_public_key), rct::sk2rct(txkey.sec)));
+    }
+
+    add_tx_pub_key_to_extra(tx, txkey.pub);
+    if(!extra_nonce.empty())
+      if(!add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
+        return false;
+
 #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
-    LOG_PRINT_L1("Creating block template: reward " << block_reward <<
+    LOG_PRINT_L1("Creating block template: reward " << base_reward <<
       ", fee " << fee);
 #endif
+
+    block_reward += base_reward;
     block_reward += fee;
 
     crypto::key_derivation derivation = AUTO_VAL_INIT(derivation);;
@@ -124,7 +146,7 @@ namespace cryptonote
     bool r = crypto::generate_key_derivation(miner_address.m_view_public_key, txkey.sec, derivation);
     CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to generate_key_derivation(" << miner_address.m_view_public_key << ", " << txkey.sec << ")");
 
-    r = crypto::derive_public_key(derivation, 0, miner_address.m_spend_public_key, out_eph_public_key);
+    r = crypto::derive_public_key(derivation, miner_index, miner_address.m_spend_public_key, out_eph_public_key);
     CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to derive_public_key(" << derivation << ", " << miner_address.m_spend_public_key << ")");
 
     txout_to_key tk;

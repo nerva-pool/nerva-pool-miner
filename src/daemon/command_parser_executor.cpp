@@ -1,3 +1,4 @@
+// Copyright (c) 2018, The Masari Project
 // Copyright (c) 2014-2018, The Monero Project
 // 
 // All rights reserved.
@@ -186,10 +187,29 @@ bool t_command_parser_executor::print_block(const std::vector<std::string>& args
   return false;
 }
 
+bool t_command_parser_executor::print_uncle_block(const std::vector<std::string>& args)
+{
+  if (args.empty())
+  {
+    std::cout << "expected: print_uncle_block (<uncle_block_hash>)" << std::endl;
+    return false;
+  }
+  
+  const std::string& arg = args.front();
+  crypto::hash uncle_hash;
+  if (parse_hash256(arg, uncle_hash))
+  {
+    return m_executor.print_uncle_block(uncle_hash);
+  }
+  
+  return false;
+}
+
 bool t_command_parser_executor::print_transaction(const std::vector<std::string>& args)
 {
   bool include_hex = false;
   bool include_json = false;
+  bool prune = false;
 
   // Assumes that optional flags come after mandatory argument <transaction_hash>
   for (unsigned int i = 1; i < args.size(); ++i) {
@@ -197,6 +217,8 @@ bool t_command_parser_executor::print_transaction(const std::vector<std::string>
       include_hex = true;
     else if (args[i] == "+json")
       include_json = true;
+    else if (args[i] == "+prune")
+      prune = true;
     else
     {
       std::cout << "unexpected argument: " << args[i] << std::endl;
@@ -213,7 +235,7 @@ bool t_command_parser_executor::print_transaction(const std::vector<std::string>
   crypto::hash tx_hash;
   if (parse_hash256(str_hash, tx_hash))
   {
-    m_executor.print_transaction(tx_hash, include_hex, include_json);
+    m_executor.print_transaction(tx_hash, include_hex, include_json, prune);
   }
 
   return true;
