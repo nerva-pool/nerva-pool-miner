@@ -82,14 +82,9 @@ namespace cryptonote
       }
     }
 
-    const char *env_rpc_login = nullptr;
-    const bool has_rpc_arg = command_line::has_arg(vm, arg.rpc_login);
-    const bool use_rpc_env = !has_rpc_arg && (env_rpc_login = getenv("RPC_LOGIN")) != nullptr && strlen(env_rpc_login) > 0;
-    boost::optional<tools::login> login{};
-    if (has_rpc_arg || use_rpc_env)
+    if (command_line::has_arg(vm, arg.rpc_login))
     {
-      config.login = tools::login::parse(
-          has_rpc_arg ? command_line::get_arg(vm, arg.rpc_login) : std::string(env_rpc_login), true, [](bool verify) {
+      config.login = tools::login::parse(command_line::get_arg(vm, arg.rpc_login), true, [](bool verify) {
         return tools::password_container::prompt(verify, "RPC server password");
       });
 

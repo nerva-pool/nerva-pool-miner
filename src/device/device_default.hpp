@@ -61,8 +61,6 @@ namespace hw {
  
             bool set_mode(device_mode mode) override;
 
-            device_type get_type() const override {return device_type::SOFTWARE;};
-
             /* ======================================================================= */
             /*  LOCKER                                                                 */
             /* ======================================================================= */ 
@@ -75,7 +73,7 @@ namespace hw {
             /* ======================================================================= */
             bool  get_public_address(cryptonote::account_public_address &pubkey) override;
             bool  get_secret_keys(crypto::secret_key &viewkey , crypto::secret_key &spendkey) override;
-            bool  generate_chacha_key(const cryptonote::account_keys &keys, crypto::chacha_key &key, uint64_t kdf_rounds) override;
+            bool  generate_chacha_key(const cryptonote::account_keys &keys, crypto::chacha_key &key) override;
  
             /* ======================================================================= */
             /*                               SUB ADDRESS                               */
@@ -95,7 +93,6 @@ namespace hw {
             bool  sc_secret_add(crypto::secret_key &r, const crypto::secret_key &a, const crypto::secret_key &b) override;
             crypto::secret_key  generate_keys(crypto::public_key &pub, crypto::secret_key &sec, const crypto::secret_key& recovery_key = crypto::secret_key(), bool recover = false) override;
             bool  generate_key_derivation(const crypto::public_key &pub, const crypto::secret_key &sec, crypto::key_derivation &derivation) override;
-            bool  conceal_derivation(crypto::key_derivation &derivation, const crypto::public_key &tx_pub_key, const std::vector<crypto::public_key> &additional_tx_pub_keys, const crypto::key_derivation &main_derivation, const std::vector<crypto::key_derivation> &additional_derivations) override;
             bool  derivation_to_scalar(const crypto::key_derivation &derivation, const size_t output_index, crypto::ec_scalar &res) override;
             bool  derive_secret_key(const crypto::key_derivation &derivation, const std::size_t output_index, const crypto::secret_key &sec,  crypto::secret_key &derived_sec) override;
             bool  derive_public_key(const crypto::key_derivation &derivation, const std::size_t output_index, const crypto::public_key &pub,  crypto::public_key &derived_pub) override;

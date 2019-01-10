@@ -109,7 +109,7 @@ namespace cryptonote
   struct block_complete_entry
   {
     blobdata block;
-    std::vector<blobdata> txs;
+    std::list<blobdata> txs;
     BEGIN_KV_SERIALIZE_MAP()
       KV_SERIALIZE(block)
       KV_SERIALIZE(txs)
@@ -145,7 +145,7 @@ namespace cryptonote
 
     struct request
     {
-      std::vector<blobdata>   txs;
+      std::list<blobdata>   txs;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(txs)
@@ -161,8 +161,8 @@ namespace cryptonote
 
     struct request
     {
-      std::vector<crypto::hash>    txs;
-      std::vector<crypto::hash>    blocks;
+      std::list<crypto::hash>    txs;
+      std::list<crypto::hash>    blocks;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE_CONTAINER_POD_AS_BLOB(txs)
@@ -177,11 +177,11 @@ namespace cryptonote
 
     struct request
     {
-      std::vector<blobdata>              txs;
-      std::vector<block_complete_entry>  blocks;
-      std::vector<crypto::hash>          missed_ids;
+      std::list<blobdata>              txs;
+      std::list<block_complete_entry>  blocks;
+      std::list<crypto::hash>               missed_ids;
       uint64_t                         current_blockchain_height;
-      std::vector<block_complete_entry>  uncles;
+      std::list<block_complete_entry>  uncles;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(txs)
@@ -215,7 +215,7 @@ namespace cryptonote
 
     struct request
     {
-      std::vector<crypto::hash> block_ids; /*IDs of the first 10 blocks are sequential, next goes with pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block */
+      std::list<crypto::hash> block_ids; /*IDs of the first 10 blocks are sequential, next goes with pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block */
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE_CONTAINER_POD_AS_BLOB(block_ids)
@@ -232,7 +232,7 @@ namespace cryptonote
       uint64_t start_height;
       uint64_t total_height;
       uint64_t cumulative_difficulty;
-      std::vector<crypto::hash> m_block_ids;
+      std::list<crypto::hash> m_block_ids;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(start_height)

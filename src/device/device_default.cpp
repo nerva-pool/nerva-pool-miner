@@ -100,14 +100,14 @@ namespace hw {
         /*                             WALLET & ADDRESS                            */
         /* ======================================================================= */
 
-        bool  device_default::generate_chacha_key(const cryptonote::account_keys &keys, crypto::chacha_key &key, uint64_t kdf_rounds) {
+        bool  device_default::generate_chacha_key(const cryptonote::account_keys &keys, crypto::chacha_key &key) {
             const crypto::secret_key &view_key = keys.m_view_secret_key;
             const crypto::secret_key &spend_key = keys.m_spend_secret_key;
-            epee::mlocked<tools::scrubbed_arr<char, sizeof(view_key) + sizeof(spend_key) + 1>> data;
+            tools::scrubbed_arr<char, sizeof(view_key) + sizeof(spend_key) + 1> data;
             memcpy(data.data(), &view_key, sizeof(view_key));
             memcpy(data.data() + sizeof(view_key), &spend_key, sizeof(spend_key));
             data[sizeof(data) - 1] = CHACHA8_KEY_TAIL;
-            crypto::generate_chacha_key(data.data(), sizeof(data), key, kdf_rounds);
+            crypto::generate_chacha_key(data.data(), sizeof(data), key);
             return true;
         }
         bool  device_default::get_public_address(cryptonote::account_public_address &pubkey) {
@@ -261,10 +261,6 @@ namespace hw {
 
         bool device_default::generate_key_image(const crypto::public_key &pub, const crypto::secret_key &sec, crypto::key_image &image){
             crypto::generate_key_image(pub, sec,image);
-            return true;
-        }
-
-        bool device_default::conceal_derivation(crypto::key_derivation &derivation, const crypto::public_key &tx_pub_key, const std::vector<crypto::public_key> &additional_tx_pub_keys, const crypto::key_derivation &main_derivation, const std::vector<crypto::key_derivation> &additional_derivations){
             return true;
         }
 

@@ -50,7 +50,7 @@ namespace rpc
 
   void DaemonHandler::handle(const GetBlocksFast::Request& req, GetBlocksFast::Response& res)
   {
-    std::vector<std::pair<blobdata, std::vector<blobdata> > > blocks;
+    std::list<std::pair<blobdata, std::list<blobdata> > > blocks;
 
     if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.start_height, COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT))
     {
@@ -61,6 +61,9 @@ namespace rpc
 
     res.blocks.resize(blocks.size());
     res.output_indices.resize(blocks.size());
+
+    //TODO: really need to switch uses of std::list to std::vector unless
+    //      it's a huge performance concern
 
     auto it = blocks.begin();
 
@@ -86,7 +89,7 @@ namespace rpc
           res.error_details = "incorrect number of transactions retrieved for block";
           return;
       }
-      std::vector<transaction> txs;
+      std::list<transaction> txs;
       for (const auto& blob : it->second)
       {
         txs.resize(txs.size() + 1);
@@ -160,8 +163,8 @@ namespace rpc
 
   void DaemonHandler::handle(const GetTransactions::Request& req, GetTransactions::Response& res)
   {
-    std::vector<cryptonote::transaction> found_txs;
-    std::vector<crypto::hash> missed_hashes;
+    std::list<cryptonote::transaction> found_txs;
+    std::list<crypto::hash> missed_hashes;
 
     bool r = m_core.get_transactions(req.tx_hashes, found_txs, missed_hashes);
 
@@ -175,6 +178,7 @@ namespace rpc
 
     size_t num_found = found_txs.size();
 
+    // std::list is annoying
     std::vector<cryptonote::transaction> found_txs_vec
     {
       std::make_move_iterator(std::begin(found_txs)),
@@ -200,7 +204,7 @@ namespace rpc
     // if any missing from blockchain, check in tx pool
     if (!missed_vec.empty())
     {
-      std::vector<cryptonote::transaction> pool_txs;
+      std::list<cryptonote::transaction> pool_txs;
 
       m_core.get_pool_transactions(pool_txs);
 

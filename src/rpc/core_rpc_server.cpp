@@ -250,7 +250,7 @@ namespace cryptonote
     if (use_bootstrap_daemon_if_necessary<COMMAND_RPC_GET_BLOCKS_FAST>(invoke_http_mode::BIN, "/getblocks.bin", req, res, r))
       return r;
 
-    std::vector<std::pair<cryptonote::blobdata, std::vector<cryptonote::blobdata> > > bs;
+    std::list<std::pair<cryptonote::blobdata, std::list<cryptonote::blobdata> > > bs;
 
     if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, bs, res.current_height, res.start_height, COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT))
     {
@@ -281,7 +281,7 @@ namespace cryptonote
         }
       size_t txidx = 0;
       ntxes += bd.second.size();
-      for (std::vector<cryptonote::blobdata>::iterator i = bd.second.begin(); i != bd.second.end(); ++i)
+      for (std::list<cryptonote::blobdata>::iterator i = bd.second.begin(); i != bd.second.end(); ++i)
       {
         unpruned_size += i->size();
         if (req.prune)
@@ -313,7 +313,7 @@ namespace cryptonote
       if (use_bootstrap_daemon_if_necessary<COMMAND_RPC_GET_ALT_BLOCKS_HASHES>(invoke_http_mode::JON, "/get_alt_blocks_hashes", req, res, r))
         return r;
 
-      std::vector<block> blks;
+      std::list<block> blks;
 
       if(!m_core.get_alternative_blocks(blks))
       {
@@ -355,8 +355,8 @@ namespace cryptonote
         res.status = "Error retrieving block at height " + std::to_string(height);
         return true;
       }
-      std::vector<transaction> txs;
-      std::vector<crypto::hash> missed_txs;
+      std::list<transaction> txs;
+      std::list<crypto::hash> missed_txs;
       m_core.get_transactions(blk.tx_hashes, txs, missed_txs);
       res.blocks.resize(res.blocks.size() + 1);
       res.blocks.back().block = block_to_blob(blk);
@@ -571,8 +571,8 @@ namespace cryptonote
       }
       vh.push_back(*reinterpret_cast<const crypto::hash*>(b.data()));
     }
-    std::vector<crypto::hash> missed_txs;
-    std::vector<transaction> txs;
+    std::list<crypto::hash> missed_txs;
+    std::list<transaction> txs;
     bool r = m_core.get_transactions(vh, txs, missed_txs);
     if(!r)
     {
@@ -593,7 +593,7 @@ namespace cryptonote
       if(r)
       {
         // sort to match original request
-        std::vector<transaction> sorted_txs;
+        std::list<transaction> sorted_txs;
         std::vector<tx_info>::const_iterator i;
         for (const crypto::hash &h: vh)
         {
@@ -611,9 +611,7 @@ namespace cryptonote
               return true;
             }
             sorted_txs.push_back(std::move(txs.front()));
-            //hack: vector erase
-            txs.erase(txs.begin(), txs.begin() + 1);
-            //txs.pop_front();
+            txs.pop_front();
           }
           else if ((i = std::find_if(pool_tx_info.begin(), pool_tx_info.end(), [h](const tx_info &txi) { return epee::string_tools::pod_to_hex(h) == txi.id_hash; })) != pool_tx_info.end())
           {
@@ -624,8 +622,7 @@ namespace cryptonote
               return true;
             }
             sorted_txs.push_back(tx);
-            //hack-todo: implement vector.remove
-            //missed_txs.remove(h);
+            missed_txs.remove(h);
             pool_tx_hashes.insert(h);
             const std::string hash_string = epee::string_tools::pod_to_hex(h);
             for (const auto &ti: pool_tx_info)
@@ -644,7 +641,7 @@ namespace cryptonote
       LOG_PRINT_L2("Found " << found_in_pool << "/" << vh.size() << " transactions in the pool");
     }
 
-    std::vector<std::string>::const_iterator txhi = req.txs_hashes.begin();
+    std::list<std::string>::const_iterator txhi = req.txs_hashes.begin();
     std::vector<crypto::hash>::const_iterator vhi = vh.begin();
     for(auto& tx: txs)
     {
@@ -720,11 +717,11 @@ namespace cryptonote
         vh.push_back(btxs);
     }
     
-    std::vector<crypto::hash> missed_txs;
-    std::vector<transaction> txs;
+    std::list<crypto::hash> missed_txs;
+    std::list<transaction> txs;
     bool r = m_core.get_transactions(vh, txs, missed_txs);
 
-    std::vector<std::string> tx_hashes;
+    std::list<std::string> tx_hashes;
     for(auto& tx: txs)
       tx_hashes.push_back(string_tools::pod_to_hex(get_transaction_hash(tx)));
     
@@ -747,7 +744,7 @@ namespace cryptonote
       if(r)
       {
         // sort to match original request
-        std::vector<transaction> sorted_txs;
+        std::list<transaction> sorted_txs;
         std::vector<tx_info>::const_iterator i;
         for (const crypto::hash &h: vh)
         {
@@ -765,9 +762,7 @@ namespace cryptonote
               return true;
             }
             sorted_txs.push_back(std::move(txs.front()));
-            //hack: vector erase
-            txs.erase(txs.begin(), txs.begin() + 1);
-            //txs.pop_front();
+            txs.pop_front();
           }
           else if ((i = std::find_if(pool_tx_info.begin(), pool_tx_info.end(), [h](const tx_info &txi) { return epee::string_tools::pod_to_hex(h) == txi.id_hash; })) != pool_tx_info.end())
           {
@@ -778,8 +773,7 @@ namespace cryptonote
               return true;
             }
             sorted_txs.push_back(tx);
-            //hack-todo: implement vector.remove
-            //missed_txs.remove(h);
+            missed_txs.remove(h);
             pool_tx_hashes.insert(h);
             const std::string hash_string = epee::string_tools::pod_to_hex(h);
             for (const auto &ti: pool_tx_info)
@@ -798,7 +792,7 @@ namespace cryptonote
       LOG_PRINT_L2("Found " << found_in_pool << "/" << vh.size() << " transactions in the pool");
     }
 
-    std::vector<std::string>::const_iterator txhi = tx_hashes.begin();
+    std::list<std::string>::const_iterator txhi = tx_hashes.begin();
     std::vector<crypto::hash>::const_iterator vhi = vh.begin();
     for(auto& tx: txs)
     {
@@ -1092,8 +1086,8 @@ namespace cryptonote
   bool core_rpc_server::on_get_peer_list(const COMMAND_RPC_GET_PEER_LIST::request& req, COMMAND_RPC_GET_PEER_LIST::response& res)
   {
     PERF_TIMER(on_get_peer_list);
-    std::vector<nodetool::peerlist_entry> white_list;
-    std::vector<nodetool::peerlist_entry> gray_list;
+    std::list<nodetool::peerlist_entry> white_list;
+    std::list<nodetool::peerlist_entry> gray_list;
     m_p2p.get_peerlist_manager().get_peerlist_full(gray_list, white_list);
 
 
@@ -1936,10 +1930,10 @@ namespace cryptonote
     PERF_TIMER(on_flush_txpool);
 
     bool failed = false;
-    std::vector<crypto::hash> txids;
+    std::list<crypto::hash> txids;
     if (req.txids.empty())
     {
-      std::vector<transaction> pool_txs;
+      std::list<transaction> pool_txs;
       bool r = m_core.get_pool_transactions(pool_txs);
       if (!r)
       {
@@ -2099,7 +2093,7 @@ namespace cryptonote
     PERF_TIMER(on_get_alternate_chains);
     try
     {
-      std::vector<std::pair<Blockchain::block_extended_info, uint64_t>> chains = m_core.get_blockchain_storage().get_alternative_chains();
+      std::list<std::pair<Blockchain::block_extended_info, uint64_t>> chains = m_core.get_blockchain_storage().get_alternative_chains();
       for (const auto &i: chains)
       {
         res.chains.push_back(COMMAND_RPC_GET_ALTERNATE_CHAINS::chain_info{epee::string_tools::pod_to_hex(get_block_hash(i.first.bl)), i.first.height, i.second, i.first.cumulative_difficulty, i.first.cumulative_weight});

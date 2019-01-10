@@ -4158,7 +4158,7 @@ void BlockchainLMDB::update_version(const uint32_t version)
 void BlockchainLMDB::migrate_1_2()
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  MGINFO_RED("Migrating blockchain from DB version 1 to 2 - this may take a while:");
+  MLOG_YELLOW(el::Level::Info, "Migrating blockchain from DB version 1 to 2 - this may take a while:");
 
   auto modify_payload = [](MDB_val &v)
   {

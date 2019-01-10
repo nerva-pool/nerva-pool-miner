@@ -50,6 +50,8 @@
 #define CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT              60*60*2
 #define CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE             10
 
+#define BULLETPROOF_MAX_OUTPUTS                         16
+
 #define BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW               60
 
 #define CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V2           60*24

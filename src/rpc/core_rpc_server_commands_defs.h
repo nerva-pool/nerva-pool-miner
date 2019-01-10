@@ -80,7 +80,7 @@ namespace cryptonote
 
     struct request
     {
-      std::vector<crypto::hash> block_ids; //*first 10 blocks id goes sequential, next goes in pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block */
+      std::list<crypto::hash> block_ids; //*first 10 blocks id goes sequential, next goes in pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block */
       uint64_t    start_height;
       bool        prune;
       BEGIN_KV_SERIALIZE_MAP()
@@ -110,7 +110,7 @@ namespace cryptonote
 
     struct response
     {
-      std::vector<block_complete_entry> blocks;
+      std::list<block_complete_entry> blocks;
       uint64_t    start_height;
       uint64_t    current_height;
       std::string status;
@@ -178,7 +178,7 @@ namespace cryptonote
 
     struct request
     {
-      std::vector<crypto::hash> block_ids; //*first 10 blocks id goes sequential, next goes in pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block */
+      std::list<crypto::hash> block_ids; //*first 10 blocks id goes sequential, next goes in pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block */
       uint64_t    start_height;
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE_CONTAINER_POD_AS_BLOB(block_ids)
@@ -188,7 +188,7 @@ namespace cryptonote
 
     struct response
     {
-      std::vector<crypto::hash> m_block_ids;
+      std::list<crypto::hash> m_block_ids;
       uint64_t    start_height;
       uint64_t    current_height;
       std::string status;
@@ -273,7 +273,7 @@ namespace cryptonote
         uint64_t total_received;
         uint64_t total_received_unlocked = 0; // OpenMonero only
         uint64_t scanned_height;
-        std::vector<transaction> transactions;
+        std::list<transaction> transactions;
         uint64_t blockchain_height;
         uint64_t scanned_block_height;
         std::string status;
@@ -561,7 +561,7 @@ namespace cryptonote
   {
     struct request
     {
-      std::vector<std::string> txs_hashes;
+      std::list<std::string> txs_hashes;
       bool decode_as_json;
       bool prune;
 
@@ -598,11 +598,11 @@ namespace cryptonote
     struct response
     {
       // older compatibility stuff
-      std::vector<std::string> txs_as_hex;  //transactions blobs as hex (old compat)
-      std::vector<std::string> txs_as_json; //transactions decoded as json (old compat)
+      std::list<std::string> txs_as_hex;  //transactions blobs as hex (old compat)
+      std::list<std::string> txs_as_json; //transactions decoded as json (old compat)
 
       // in both old and new
-      std::vector<std::string> missed_tx;   //not found transactions
+      std::list<std::string> missed_tx;   //not found transactions
 
       // new style
       std::vector<entry> txs;
@@ -1753,7 +1753,7 @@ namespace cryptonote
     struct response
     {
       std::string status;
-      std::vector<connection_info> connections;
+      std::list<connection_info> connections;
       
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
@@ -2065,7 +2065,7 @@ namespace cryptonote
   {
     struct request
     {
-      std::vector<std::string> txids;
+      std::list<std::string> txids;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(txids)
@@ -2284,7 +2284,7 @@ namespace cryptonote
   {
     struct request
     {
-      std::vector<std::string> txids;
+      std::list<std::string> txids;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(txids)

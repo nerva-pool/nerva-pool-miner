@@ -26,20 +26,16 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#pragma once 
 
-namespace epee
-{
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-namespace fnv
-{
-  inline uint64_t FNV1a(const char *ptr, size_t sz)
-  {
-    uint64_t h = 0xcbf29ce484222325;
-    for (size_t i = 0; i < sz; ++i)
-      h = (h ^ *(const uint8_t*)ptr++) * 0x100000001b3;
-    return h;
-  }
+void *aligned_malloc(size_t bytes, size_t align);
+void *aligned_realloc(void *ptr, size_t bytes, size_t align);
+void aligned_free(void *ptr);
+
+#ifdef __cplusplus
 }
-
-}
+#endif

@@ -48,12 +48,11 @@
 #include "crypto/chacha.h"
 #include "ringct/rctTypes.h"
 
-
 #ifndef USE_DEVICE_LEDGER
 #define USE_DEVICE_LEDGER 1
 #endif
 
-#if !defined(HAVE_HIDAPI) 
+#if !defined(HAVE_PCSC) 
 #undef  USE_DEVICE_LEDGER
 #define USE_DEVICE_LEDGER 0
 #endif
@@ -79,6 +78,7 @@ namespace hw {
            return false;
     }
 
+
     class device {
     protected:
         std::string  name;
@@ -96,12 +96,6 @@ namespace hw {
             TRANSACTION_CREATE_FAKE,
             TRANSACTION_PARSE
         };
-        enum device_type
-        {
-          SOFTWARE = 0,
-          LEDGER = 1
-        };
-
 
         /* ======================================================================= */
         /*                              SETUP/TEARDOWN                             */
@@ -115,9 +109,7 @@ namespace hw {
         virtual bool connect(void) = 0;
         virtual bool disconnect(void) = 0;
 
-        virtual bool set_mode(device_mode mode) = 0;
-
-        virtual device_type get_type() const = 0;
+        virtual bool  set_mode(device_mode mode) = 0;
 
 
         /* ======================================================================= */
@@ -133,7 +125,7 @@ namespace hw {
         /* ======================================================================= */
         virtual bool  get_public_address(cryptonote::account_public_address &pubkey) = 0;
         virtual bool  get_secret_keys(crypto::secret_key &viewkey , crypto::secret_key &spendkey)  = 0;
-        virtual bool  generate_chacha_key(const cryptonote::account_keys &keys, crypto::chacha_key &key, uint64_t kdf_rounds) = 0;
+        virtual bool  generate_chacha_key(const cryptonote::account_keys &keys, crypto::chacha_key &key) = 0;
 
         /* ======================================================================= */
         /*                               SUB ADDRESS                               */
@@ -153,7 +145,6 @@ namespace hw {
         virtual bool  sc_secret_add( crypto::secret_key &r, const crypto::secret_key &a, const crypto::secret_key &b) = 0;
         virtual crypto::secret_key  generate_keys(crypto::public_key &pub, crypto::secret_key &sec, const crypto::secret_key& recovery_key = crypto::secret_key(), bool recover = false) = 0;
         virtual bool  generate_key_derivation(const crypto::public_key &pub, const crypto::secret_key &sec, crypto::key_derivation &derivation) = 0;
-        virtual bool  conceal_derivation(crypto::key_derivation &derivation, const crypto::public_key &tx_pub_key, const std::vector<crypto::public_key> &additional_tx_pub_keys, const crypto::key_derivation &main_derivation, const std::vector<crypto::key_derivation> &additional_derivations) = 0;
         virtual bool  derivation_to_scalar(const crypto::key_derivation &derivation, const size_t output_index, crypto::ec_scalar &res) = 0;
         virtual bool  derive_secret_key(const crypto::key_derivation &derivation, const std::size_t output_index, const crypto::secret_key &sec,  crypto::secret_key &derived_sec) = 0;
         virtual bool  derive_public_key(const crypto::key_derivation &derivation, const std::size_t output_index, const crypto::public_key &pub,  crypto::public_key &derived_pub) = 0;
@@ -210,17 +201,6 @@ namespace hw {
         ~reset_mode() { hwref.set_mode(hw::device::NONE);}
     };
 
-    class device_registry {
-    private:
-      std::map<std::string, std::unique_ptr<device>> registry;
-
-    public:
-      device_registry();
-      bool register_device(const std::string & device_name, device * hw_device);
-      device& get_device(const std::string & device_descriptor);
-    };
-
-    device& get_device(const std::string & device_descriptor);
-    bool register_device(const std::string & device_name, device * hw_device);
+    device& get_device(const std::string device_descriptor) ;
 }
 

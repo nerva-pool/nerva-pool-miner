@@ -189,9 +189,9 @@ namespace cryptonote
   // Returns a list of connection_info objects describing each open p2p connection
   //------------------------------------------------------------------------------------------------------------------------
   template<class t_core>
-  std::vector<connection_info> t_cryptonote_protocol_handler<t_core>::get_connections()
+  std::list<connection_info> t_cryptonote_protocol_handler<t_core>::get_connections()
   {
-    std::vector<connection_info> connections;
+    std::list<connection_info> connections;
 
     m_p2p->for_each_connection([&](const connection_context& cntxt, nodetool::peerid_type peer_id, uint32_t support_flags)
     {
@@ -348,7 +348,7 @@ namespace cryptonote
       return 1;
     }
     m_core.pause_mine();
-    std::vector<block_complete_entry> blocks;
+    std::list<block_complete_entry> blocks;
     blocks.push_back(arg.b);
     m_core.prepare_handle_incoming_blocks(blocks);
     for(auto tx_blob_it = arg.b.txs.begin(); tx_blob_it!=arg.b.txs.end();tx_blob_it++)
@@ -435,7 +435,7 @@ namespace cryptonote
         }
       }      
       
-      std::vector<blobdata> have_tx;
+      std::list<blobdata> have_tx;
       
       // Instead of requesting missing transactions by hash like BTC, 
       // we do it by index (thanks to a suggestion from moneromooo) because
@@ -575,8 +575,8 @@ namespace cryptonote
         else
         {
           std::vector<crypto::hash> tx_ids;
-          std::vector<transaction> txes;
-          std::vector<crypto::hash> missing;
+          std::list<transaction> txes;
+          std::list<crypto::hash> missing;
           tx_ids.push_back(tx_hash);
           if (m_core.get_transactions(tx_ids, txes, missing) && missing.empty())
           {
@@ -623,7 +623,7 @@ namespace cryptonote
         b.block = arg.b.block;
         b.txs = have_tx;
 
-        std::vector<block_complete_entry> blocks;
+        std::list<block_complete_entry> blocks;
         blocks.push_back(b);
         m_core.prepare_handle_incoming_blocks(blocks);
           
@@ -684,8 +684,8 @@ namespace cryptonote
   {
     MLOG_P2P_MESSAGE("Received NOTIFY_REQUEST_FLUFFY_MISSING_TX (" << arg.missing_tx_indices.size() << " txes), block hash " << arg.block_hash);
     
-    std::vector<std::pair<cryptonote::blobdata, block>> local_blocks;
-    std::vector<cryptonote::blobdata> local_txs;
+    std::list<std::pair<cryptonote::blobdata, block>> local_blocks;
+    std::list<cryptonote::blobdata> local_txs;
 
     block b;
     if (!m_core.get_block_by_hash(arg.block_hash, b))
@@ -722,8 +722,8 @@ namespace cryptonote
       }
     }    
 
-    std::vector<cryptonote::transaction> txs;
-    std::vector<crypto::hash> missed;
+    std::list<cryptonote::transaction> txs;
+    std::list<crypto::hash> missed;
     if (!m_core.get_transactions(txids, txs, missed))
     {
       LOG_ERROR_CCONTEXT("Failed to handle request NOTIFY_REQUEST_FLUFFY_MISSING_TX, "
@@ -915,7 +915,7 @@ namespace cryptonote
       }
     }
 
-    std::vector<block_complete_entry> blocks;
+    std::list<block_complete_entry> blocks;
 
     const boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
     uint64_t start_height = std::numeric_limits<uint64_t>::max();
@@ -1045,7 +1045,7 @@ skip:
         {
           const uint64_t previous_height = m_core.get_current_blockchain_height();
           uint64_t start_height;
-          std::vector<cryptonote::block_complete_entry> blocks;
+          std::list<cryptonote::block_complete_entry> blocks;
           boost::uuids::uuid span_connection_id;
           if (!m_block_queue.get_next_span(start_height, blocks, span_connection_id))
           {
@@ -1116,7 +1116,7 @@ skip:
               LOG_ERROR_CCONTEXT("Internal error: tvc.size() != block_entry.txs.size()");
               return true;
             }
-            std::vector<blobdata>::const_iterator it = block_entry.txs.begin();
+            std::list<blobdata>::const_iterator it = block_entry.txs.begin();
             for (size_t i = 0; i < tvc.size(); ++i, ++it)
             {
               if(tvc[i].m_verifivation_failed)
@@ -1343,7 +1343,7 @@ skip:
   template<class t_core>
   bool t_cryptonote_protocol_handler<t_core>::should_download_next_span(cryptonote_connection_context& context) const
   {
-    std::vector<crypto::hash> hashes;
+    std::list<crypto::hash> hashes;
     boost::uuids::uuid span_connection_id;
     boost::posix_time::ptime request_time;
     std::pair<uint64_t, uint64_t> span;
@@ -1362,7 +1362,7 @@ skip:
       // we might be in a weird case where there is a filled next span,
       // but it starts higher than the current height
       uint64_t height;
-      std::vector<cryptonote::block_complete_entry> bcel;
+      std::list<cryptonote::block_complete_entry> bcel;
       if (!m_block_queue.get_next_span(height, bcel, span_connection_id, true))
         return false;
       if (height > m_core.get_current_blockchain_height())
@@ -1462,13 +1462,13 @@ skip:
           MDEBUG(context << " we have the next span, and it is scheduled, resuming");
           ++context.m_callback_request_count;
           m_p2p->request_callback(context);
-          return true;
+          return 1;
         }
 
         for (size_t n = 0; n < 50; ++n)
         {
           if (m_stopping)
-            return true;
+            return 1;
           boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
         }
       }
@@ -1510,7 +1510,7 @@ skip:
       {
         if (span.second == 0)
         {
-          std::vector<crypto::hash> hashes;
+          std::list<crypto::hash> hashes;
           boost::uuids::uuid span_connection_id;
           boost::posix_time::ptime time;
           span = m_block_queue.get_next_span_if_scheduled(hashes, span_connection_id, time);
@@ -1544,7 +1544,7 @@ skip:
             context.m_last_known_hash = context.m_needed_objects.front();
 
           //hack: vector erase
-          context.m_needed_objects.erase(context.m_needed_objects.begin(), context.m_needed_objects.begin() + 1);
+          context.m_needed_objects.pop_front();
           //context.m_needed_objects.pop_front();
         }
         const uint64_t first_block_height = context.m_last_response_height - context.m_needed_objects.size() + 1;
@@ -1554,7 +1554,7 @@ skip:
       if (span.second == 0 && !force_next_span)
       {
         MDEBUG(context << " still no span reserved, we may be in the corner case of next span scheduled and everything else scheduled/filled");
-        std::vector<crypto::hash> hashes;
+        std::list<crypto::hash> hashes;
         boost::uuids::uuid span_connection_id;
         boost::posix_time::ptime time;
         span = m_block_queue.get_next_span_if_scheduled(hashes, span_connection_id, time);
@@ -1586,11 +1586,7 @@ skip:
             return false;
           }
           while (skip--)
-          {
-            //hack: vector erase
-            context.m_needed_objects.erase(context.m_needed_objects.begin(), context.m_needed_objects.begin() + 1);
-            //context.m_needed_objects.pop_front();
-          }
+            context.m_needed_objects.pop_front();
           if (context.m_needed_objects.size() < span.second)
           {
             MERROR("ERROR: span " << span.first << "/" << span.second << ", m_needed_objects " << context.m_needed_objects.size());
@@ -1631,9 +1627,7 @@ skip:
       {
         // we'll want to start off from where we are on that peer, which may not be added yet
         if (context.m_last_known_hash != crypto::null_hash && r.block_ids.front() != context.m_last_known_hash)
-        //hack: vector insert
-        r.block_ids.insert(r.block_ids.begin(), context.m_last_known_hash);
-        //r.block_ids.push_front(context.m_last_known_hash);
+          r.block_ids.push_front(context.m_last_known_hash);
       }
 
       handler_request_blocks_history( r.block_ids ); // change the limit(?), sleep(?)
@@ -1768,7 +1762,7 @@ skip:
   {
     NOTIFY_NEW_FLUFFY_BLOCK::request fluffy_arg = AUTO_VAL_INIT(fluffy_arg);
     fluffy_arg.current_blockchain_height = arg.current_blockchain_height;    
-    std::vector<blobdata> fluffy_txs;
+    std::list<blobdata> fluffy_txs;
     fluffy_arg.b = arg.b;
     fluffy_arg.b.txs = fluffy_txs;
 
@@ -1801,7 +1795,7 @@ skip:
     m_p2p->relay_notify_to_list(NOTIFY_NEW_FLUFFY_BLOCK::ID, fluffyBlob, fluffyConnections);
     m_p2p->relay_notify_to_list(NOTIFY_NEW_BLOCK::ID, fullBlob, fullConnections);
 
-    return true;
+    return 1;
   }
   //------------------------------------------------------------------------------------------------------------------------
   template<class t_core>
