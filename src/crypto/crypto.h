@@ -34,7 +34,6 @@
 #include <iostream>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
-#include <boost/utility/value_init.hpp>
 #include <boost/optional.hpp>
 #include <type_traits>
 #include <vector>
@@ -42,6 +41,7 @@
 #include "common/pod-class.h"
 #include "common/util.h"
 #include "memwipe.h"
+#include "mlocker.h"
 #include "generic-ops.h"
 #include "hex.h"
 #include "span.h"
@@ -68,7 +68,7 @@ namespace crypto {
     friend class crypto_ops;
   };
 
-  using secret_key = tools::scrubbed<ec_scalar>;
+  using secret_key = epee::mlocked<tools::scrubbed<ec_scalar>>;
 
   POD_CLASS public_keyV {
     std::vector<public_key> keys;
@@ -101,6 +101,7 @@ namespace crypto {
 #pragma pack(pop)
 
   void hash_to_scalar(const void *data, size_t length, ec_scalar &res);
+  void random32_unbiased(unsigned char *bytes);
 
   static_assert(sizeof(ec_point) == 32 && sizeof(ec_scalar) == 32 &&
     sizeof(public_key) == 32 && sizeof(secret_key) == 32 &&

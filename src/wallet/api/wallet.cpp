@@ -332,7 +332,7 @@ void Wallet::error(const std::string &category, const std::string &str) {
 }
 
 ///////////////////////// WalletImpl implementation ////////////////////////
-WalletImpl::WalletImpl(NetworkType nettype)
+WalletImpl::WalletImpl(NetworkType nettype, uint64_t kdf_rounds)
     :m_wallet(nullptr)
     , m_status(Wallet::Status_Ok)
     , m_trustedDaemon(false)
@@ -342,7 +342,7 @@ WalletImpl::WalletImpl(NetworkType nettype)
     , m_rebuildWalletCache(false)
     , m_is_connected(false)
 {
-    m_wallet = new tools::wallet2(static_cast<cryptonote::network_type>(nettype));
+    m_wallet = new tools::wallet2(static_cast<cryptonote::network_type>(nettype), kdf_rounds, true);
     m_history = new TransactionHistoryImpl(this);
     m_wallet2Callback = new Wallet2CallbackImpl(this);
     m_wallet->callback(m_wallet2Callback);

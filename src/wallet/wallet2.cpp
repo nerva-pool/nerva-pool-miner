@@ -649,7 +649,7 @@ const size_t MAX_SPLIT_ATTEMPTS = 30;
 constexpr const std::chrono::seconds wallet2::rpc_timeout;
 const char* wallet2::tr(const char* str) { return i18n_translate(str, "tools::wallet2"); }
 
-wallet2::wallet2(network_type nettype, bool restricted):
+wallet2::wallet2(network_type nettype, uint64_t kdf_rounds, bool restricted):
   m_multisig_rescan_info(NULL),
   m_multisig_rescan_k(NULL),
   m_run(true),
@@ -677,6 +677,7 @@ wallet2::wallet2(network_type nettype, bool restricted):
   m_key_reuse_mitigation2(false),
   m_segregation_height(0),
   m_is_initialized(false),
+  m_kdf_rounds(kdf_rounds),
   m_restricted(restricted),
   is_old_file_format(false),
   m_node_rpc_proxy(m_http_client, m_daemon_rpc_mutex),
@@ -2714,7 +2715,7 @@ bool wallet2::store_keys(const std::string& keys_file_name, const epee::wipeable
 
   // Encrypt the entire JSON object.
   crypto::chacha_key key;
-  crypto::generate_chacha_key(password.data(), password.size(), key);
+  crypto::generate_chacha_key(password.data(), password.size(), key, m_kdf_rounds);
   std::string cipher;
   cipher.resize(account_data.size());
   keys_file_data.iv = crypto::rand<crypto::chacha_iv>();
@@ -2746,7 +2747,7 @@ bool wallet2::load_keys(const std::string& keys_file_name, const epee::wipeable_
   r = ::serialization::parse_binary(buf, keys_file_data);
   THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "internal error: failed to deserialize \"" + keys_file_name + '\"');
   crypto::chacha_key key;
-  crypto::generate_chacha_key(password.data(), password.size(), key);
+  crypto::generate_chacha_key(password.data(), password.size(), key, m_kdf_rounds);
   std::string account_data;
   account_data.resize(keys_file_data.account_data.size());
   crypto::chacha20(keys_file_data.account_data.data(), keys_file_data.account_data.size(), key, keys_file_data.iv, &account_data[0]);
@@ -2939,7 +2940,7 @@ bool wallet2::load_keys(const std::string& keys_file_name, const epee::wipeable_
  */
 bool wallet2::verify_password(const epee::wipeable_string& password) const
 {
-  return verify_password(m_keys_file, password, m_watch_only || m_multisig, m_account.get_device());
+  return verify_password(m_keys_file, password, m_watch_only || m_multisig, m_account.get_device(), m_kdf_rounds);
 }
 
 /*!
@@ -2954,7 +2955,7 @@ bool wallet2::verify_password(const epee::wipeable_string& password) const
  * can be used prior to rewriting wallet keys file, to ensure user has entered the correct password
  *
  */
-bool wallet2::verify_password(const std::string& keys_file_name, const epee::wipeable_string& password, bool no_spend_key, hw::device &hwdev)
+bool wallet2::verify_password(const std::string& keys_file_name, const epee::wipeable_string& password, bool no_spend_key, hw::device &hwdev, uint64_t kdf_rounds)
 {
   rapidjson::Document json;
   wallet2::keys_file_data keys_file_data;
@@ -2966,7 +2967,7 @@ bool wallet2::verify_password(const std::string& keys_file_name, const epee::wip
   r = ::serialization::parse_binary(buf, keys_file_data);
   THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "internal error: failed to deserialize \"" + keys_file_name + '\"');
   crypto::chacha_key key;
-  crypto::generate_chacha_key(password.data(), password.size(), key);
+  crypto::generate_chacha_key(password.data(), password.size(), key, kdf_rounds);
   std::string account_data;
   account_data.resize(keys_file_data.account_data.size());
   crypto::chacha20(keys_file_data.account_data.data(), keys_file_data.account_data.size(), key, keys_file_data.iv, &account_data[0]);
@@ -3808,8 +3809,8 @@ bool wallet2::check_connection(uint32_t *version, uint32_t timeout)
 //----------------------------------------------------------------------------------------------------
 bool wallet2::generate_chacha_key_from_secret_keys(crypto::chacha_key &key) const
 {
-  hw::device &hwdev =  m_account.get_device();
-  return hwdev.generate_chacha_key(m_account.get_keys(), key);
+  hw::device &hwdev = m_account.get_device();
+  return hwdev.generate_chacha_key(m_account.get_keys(), key, m_kdf_rounds);
 }
 //----------------------------------------------------------------------------------------------------
 void wallet2::load(const std::string& wallet_, const epee::wipeable_string& password)
@@ -10101,7 +10102,7 @@ size_t wallet2::import_multisig(std::vector<cryptonote::blobdata> blobs)
 std::string wallet2::encrypt(const std::string &plaintext, const crypto::secret_key &skey, bool authenticated) const
 {
   crypto::chacha_key key;
-  crypto::generate_chacha_key(&skey, sizeof(skey), key);
+  crypto::generate_chacha_key(&skey, sizeof(skey), key, m_kdf_rounds);
   std::string ciphertext;
   crypto::chacha_iv iv = crypto::rand<crypto::chacha_iv>();
   ciphertext.resize(plaintext.size() + sizeof(iv) + (authenticated ? sizeof(crypto::signature) : 0));
@@ -10131,7 +10132,7 @@ std::string wallet2::decrypt(const std::string &ciphertext, const crypto::secret
     error::wallet_internal_error, "Unexpected ciphertext size");
 
   crypto::chacha_key key;
-  crypto::generate_chacha_key(&skey, sizeof(skey), key);
+  crypto::generate_chacha_key(&skey, sizeof(skey), key, m_kdf_rounds);
   const crypto::chacha_iv &iv = *(const crypto::chacha_iv*)&ciphertext[0];
   std::string plaintext;
   plaintext.resize(ciphertext.size() - prefix_size);
