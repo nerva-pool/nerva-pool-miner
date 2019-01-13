@@ -64,12 +64,11 @@
             "name": "Mainnet",
             "type": "cppdbg",
             "request": "launch",
-            "preLaunchTask": "build",
             "program": "${workspaceFolder}/builder/build/dev/bin/nervad",
             "args": [
-                "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                "--mining-threads", "8",
-                "--block-sync-size", "1"
+                //"--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
+                //"--mining-threads", "8",
+                "--block-sync-size", "1",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

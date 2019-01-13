@@ -45,6 +45,7 @@
 #include "cryptonote_basic/cryptonote_basic_impl.h"
 #include "wallet/wallet2.h"
 #include "console_handler.h"
+#include "wipeable_string.h"
 #include "common/i18n.h"
 #include "common/password.h"
 #include "crypto/crypto.h"  // for definition of crypto::secret_key
@@ -92,13 +93,13 @@ namespace cryptonote
     //! \return Prompts user for password and verifies against local file. Logs on error and returns `none`
     boost::optional<tools::password_container> get_and_verify_password() const;
 
-    bool new_wallet(const boost::program_options::variables_map& vm, const crypto::secret_key& recovery_key,
+    boost::optional<epee::wipeable_string> new_wallet(const boost::program_options::variables_map& vm, const crypto::secret_key& recovery_key,
         bool recover, bool two_random, const std::string &old_language);
-    bool new_wallet(const boost::program_options::variables_map& vm, const cryptonote::account_public_address& address,
+    boost::optional<epee::wipeable_string> new_wallet(const boost::program_options::variables_map& vm, const cryptonote::account_public_address& address,
         const boost::optional<crypto::secret_key>& spendkey, const crypto::secret_key& viewkey);
-    bool new_wallet(const boost::program_options::variables_map& vm,
-        const std::string &multisig_keys, const std::string &old_language);
-    bool new_wallet(const boost::program_options::variables_map& vm, const std::string& device_name);
+    boost::optional<epee::wipeable_string> new_wallet(const boost::program_options::variables_map& vm,
+        const epee::wipeable_string &multisig_keys, const std::string &old_language);
+    boost::optional<epee::wipeable_string> new_wallet(const boost::program_options::variables_map& vm);
     bool open_wallet(const boost::program_options::variables_map& vm);
     bool close_wallet();
 
@@ -192,6 +193,7 @@ namespace cryptonote
     bool verify(const std::vector<std::string> &args);
     bool export_key_images(const std::vector<std::string> &args);
     bool import_key_images(const std::vector<std::string> &args);
+    bool hw_reconnect(const std::vector<std::string> &args);
     bool export_outputs(const std::vector<std::string> &args);
     bool import_outputs(const std::vector<std::string> &args);
     bool show_transfer(const std::vector<std::string> &args);
@@ -228,7 +230,7 @@ namespace cryptonote
      * \brief Prints the seed with a nice message
      * \param seed seed to print
      */
-    void print_seed(std::string seed);
+    void print_seed(const epee::wipeable_string &seed);
 
     /*!
      * \brief Gets the word seed language from the user.
@@ -251,6 +253,7 @@ namespace cryptonote
     virtual void on_unconfirmed_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index);
     virtual void on_money_spent(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& in_tx, uint64_t amount, const cryptonote::transaction& spend_tx, const cryptonote::subaddress_index& subaddr_index);
     virtual void on_skip_transaction(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx);
+    virtual boost::optional<epee::wipeable_string> on_get_password(const char *reason);
     //----------------------------------------------------------
 
     friend class refresh_progress_reporter_t;
@@ -319,13 +322,12 @@ namespace cryptonote
     std::string m_import_path;
     std::string m_subaddress_lookahead;
 
-    std::string m_electrum_seed;  // electrum-style seed parameter
+    epee::wipeable_string m_electrum_seed;  // electrum-style seed parameter
 
     crypto::secret_key m_recovery_key;  // recovery key (used as random for wallet gen)
     bool m_restore_deterministic_wallet;  // recover flag
     bool m_restore_multisig_wallet;  // recover flag
     bool m_non_deterministic;  // old 2-random generation
-    bool m_trusted_daemon;
     bool m_allow_mismatched_daemon_version;
     bool m_restoring;           // are we restoring, by whatever method?
     uint64_t m_restore_height;  // optional

@@ -590,7 +590,7 @@ namespace cryptonote
     return m_blockchain.get_txpool_tx_count(include_unrelayed_txes);
   }
   //---------------------------------------------------------------------------------
-  void tx_memory_pool::get_transactions(std::list<transaction>& txs, bool include_unrelayed_txes) const
+  void tx_memory_pool::get_transactions(std::vector<transaction>& txs, bool include_unrelayed_txes) const
   {
     CRITICAL_REGION_LOCAL(m_transactions_lock);
     CRITICAL_REGION_LOCAL1(m_blockchain);

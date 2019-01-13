@@ -163,7 +163,7 @@ namespace cryptonote
      *
      * @return false if start_offset > blockchain height, else true
      */
-    bool get_blocks(uint64_t start_offset, size_t count, std::list<std::pair<cryptonote::blobdata,block>>& blocks, std::list<cryptonote::blobdata>& txs) const;
+    bool get_blocks(uint64_t start_offset, size_t count, std::vector<std::pair<cryptonote::blobdata,block>>& blocks, std::vector<cryptonote::blobdata>& txs) const;
 
     /**
      * @brief get blocks from blocks based on start height and count
@@ -174,7 +174,7 @@ namespace cryptonote
      *
      * @return false if start_offset > blockchain height, else true
      */
-    bool get_blocks(uint64_t start_offset, size_t count, std::list<std::pair<cryptonote::blobdata,block>>& blocks) const;
+    bool get_blocks(uint64_t start_offset, size_t count, std::vector<std::pair<cryptonote::blobdata,block>>& blocks) const;
 
     /**
      * @brief compiles a list of all blocks stored as alternative chains
@@ -229,7 +229,7 @@ namespace cryptonote
      *
      * @return false on erroneous blocks, else true
      */
-    bool prepare_handle_incoming_blocks(const std::list<block_complete_entry>  &blocks);
+    bool prepare_handle_incoming_blocks(const std::vector<block_complete_entry>  &blocks);
 
     /**
      * @brief incoming blocks post-processing, cleanup, and disk sync
@@ -389,7 +389,7 @@ namespace cryptonote
      *
      * @return true if a block found in common, else false
      */
-    bool find_blockchain_supplement(const std::list<crypto::hash>& qblock_ids, std::list<crypto::hash>& hashes, uint64_t& start_height, uint64_t& current_height) const;
+    bool find_blockchain_supplement(const std::list<crypto::hash>& qblock_ids, std::vector<crypto::hash>& hashes, uint64_t& start_height, uint64_t& current_height) const;
 
     /**
      * @brief get recent block hashes for a foreign chain
@@ -435,7 +435,7 @@ namespace cryptonote
      *
      * @return true if a block found in common or req_start_block specified, else false
      */
-    bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::list<std::pair<cryptonote::blobdata, std::list<cryptonote::blobdata> > >& blocks, uint64_t& total_height, uint64_t& start_height, size_t max_count) const;
+    bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > >& blocks, uint64_t& total_height, uint64_t& start_height, bool pruned, bool get_miner_tx_hash, size_t max_count) const;
 
     /**
      * @brief retrieves a set of blocks and their transactions, and possibly other transactions
@@ -719,6 +719,7 @@ namespace cryptonote
      * @param txs_ids a container of hashes for which to get the corresponding transactions
      * @param txs return-by-reference a container to store result transactions in
      * @param missed_txs return-by-reference a container to store missed transactions in
+     * @param pruned whether to return full or pruned blobs
      *
      * @return false if an unexpected exception occurs, else true
      */
@@ -988,7 +989,7 @@ namespace cryptonote
 
     bool is_within_compiled_block_hash_area(uint64_t height) const;
     bool is_within_compiled_block_hash_area() const { return is_within_compiled_block_hash_area(m_db->height()); }
-    uint64_t prevalidate_block_hashes(uint64_t height, const std::list<crypto::hash> &hashes);
+    uint64_t prevalidate_block_hashes(uint64_t height, const std::vector<crypto::hash> &hashes);
 
     void lock();
     void unlock();

@@ -83,10 +83,12 @@ namespace cryptonote
       std::list<crypto::hash> block_ids; //*first 10 blocks id goes sequential, next goes in pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block */
       uint64_t    start_height;
       bool        prune;
+      bool        no_miner_tx;
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE_CONTAINER_POD_AS_BLOB(block_ids)
         KV_SERIALIZE(start_height)
         KV_SERIALIZE(prune)
+        KV_SERIALIZE_OPT(no_miner_tx, false)
       END_KV_SERIALIZE_MAP()
     };
 
@@ -110,7 +112,7 @@ namespace cryptonote
 
     struct response
     {
-      std::list<block_complete_entry> blocks;
+      std::vector<block_complete_entry> blocks;
       uint64_t    start_height;
       uint64_t    current_height;
       std::string status;
@@ -188,7 +190,7 @@ namespace cryptonote
 
     struct response
     {
-      std::list<crypto::hash> m_block_ids;
+      std::vector<crypto::hash> m_block_ids;
       uint64_t    start_height;
       uint64_t    current_height;
       std::string status;
@@ -561,7 +563,7 @@ namespace cryptonote
   {
     struct request
     {
-      std::list<std::string> txs_hashes;
+      std::vector<std::string> txs_hashes;
       bool decode_as_json;
       bool prune;
 

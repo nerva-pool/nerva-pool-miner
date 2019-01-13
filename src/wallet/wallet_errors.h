@@ -208,6 +208,13 @@ namespace tools
       }
     };
     //----------------------------------------------------------------------------------------------------
+    struct password_needed : public wallet_runtime_error
+    {
+      explicit password_needed(std::string&& loc, const std::string &msg = "Password needed")
+        : wallet_runtime_error(std::move(loc), msg)
+      {
+      }
+    };
     const char* const file_error_messages[] = {
       "file already exists",
       "file not found",
@@ -392,6 +399,16 @@ namespace tools
     {
       explicit get_tx_pool_error(std::string&& loc)
         : refresh_error(std::move(loc), "error getting transaction pool")
+      {
+      }
+
+      std::string to_string() const { return refresh_error::to_string(); }
+    };
+    //----------------------------------------------------------------------------------------------------
+    struct out_of_hashchain_bounds_error : public refresh_error
+    {
+      explicit out_of_hashchain_bounds_error(std::string&& loc)
+        : refresh_error(std::move(loc), "Index out of bounds of of hashchain")
       {
       }
 

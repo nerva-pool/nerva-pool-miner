@@ -35,8 +35,10 @@ set(common_sources
   download.cpp
   util.cpp
   i18n.cpp
+  notify.cpp
   password.cpp
   perf_timer.cpp
+  spawn.cpp
   threadpool.cpp
   updates.cpp
   aligned.c)
@@ -57,6 +59,7 @@ set(common_private_headers
   download.h
   http_connection.h
   int-util.h
+  notify.h
   pod-class.h
   rpc_client.h
   scoped_message_writer.h
@@ -66,6 +69,7 @@ set(common_private_headers
   i18n.h
   password.h
   perf_timer.h
+  spawn.h
   stack_trace.h
   threadpool.h
   updates.h
@@ -89,6 +93,7 @@ target_link_libraries(common
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
     ${Boost_REGEX_LIBRARY}
+    ${Boost_CHRONO_LIBRARY}
   PRIVATE
     ${OPENSSL_LIBRARIES}
     ${EXTRA_LIBRARIES})
