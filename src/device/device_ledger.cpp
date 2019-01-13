@@ -340,7 +340,7 @@ namespace hw {
 
     bool device_ledger::connect(void) {
       this->disconnect();
-      hw_device.connect(0x2c97,0x0001, 0, 0xffa0, hw_device.OR_SELECT);
+      hw_device.connect(0x2c97, 0x0001, 0, 0xffa0);
       this->reset();
       #ifdef DEBUG_HWDEVICE
       cryptonote::account_public_address pubkey;
@@ -396,7 +396,7 @@ namespace hw {
            CHECK_AND_ASSERT_THROW_MES(false, " device_ledger::set_mode(unsigned int mode): invalid mode: "<<mode);
         }
         MDEBUG("Switch to mode: " <<mode);
-        return true;
+        return device::set_mode(mode);
     }
 
 
@@ -789,8 +789,6 @@ namespace hw {
         }
 
         #ifdef DEBUG_HWDEVICE
-        bool recover_x = recover;
-        const crypto::secret_key recovery_key_x = recovery_key;
         crypto::public_key pub_x;
         crypto::secret_key sec_x;
         #endif

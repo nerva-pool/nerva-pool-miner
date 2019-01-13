@@ -31,7 +31,7 @@
 
 
 #include "device_default.hpp"
-#include "common/int-util.h"
+#include "int-util.h"
 #include "cryptonote_basic/account.h"
 #include "cryptonote_basic/subaddress_index.h"
 #include "ringct/rctOps.h"
@@ -69,21 +69,21 @@ namespace hw {
         }
         
         bool device_default::init(void) {
-            dfns();
+            return true;
         }
         bool device_default::release() {
-            dfns();
+            return true;
         }
 
         bool device_default::connect(void) {
-            dfns();
+            return true;
         }
         bool device_default::disconnect() {
-            dfns();
+            return true;
         }
 
         bool  device_default::set_mode(device_mode mode) {
-            return true;
+            return device::set_mode(mode);
         }
 
         /* ======================================================================= */

@@ -47,6 +47,7 @@
 #include "crypto/crypto.h"
 #include "crypto/chacha.h"
 #include "ringct/rctTypes.h"
+#include "cryptonote_config.h"
 
 
 #ifndef USE_DEVICE_LEDGER
@@ -79,13 +80,21 @@ namespace hw {
            return false;
     }
 
+    class i_device_callback {
+    public:
+        virtual void on_button_request() {}
+        virtual void on_pin_request(epee::wipeable_string & pin) {}
+        virtual void on_passphrase_request(bool on_device, epee::wipeable_string & passphrase) {}
+        virtual ~i_device_callback() = default;
+    };
+
     class device {
     protected:
         std::string  name;
 
     public:
 
-        device()  {}
+        device(): mode(NONE)  {}
         device(const device &hwdev) {}
         virtual ~device()   {}
 
@@ -99,9 +108,16 @@ namespace hw {
         enum device_type
         {
           SOFTWARE = 0,
-          LEDGER = 1
+          LEDGER = 1,
+          TREZOR = 2
         };
 
+
+        enum device_protocol_t {
+            PROTOCOL_DEFAULT,
+            PROTOCOL_PROXY,     // Originally defined by Ledger
+            PROTOCOL_COLD,      // Originally defined by Trezor
+        };
 
         /* ======================================================================= */
         /*                              SETUP/TEARDOWN                             */
@@ -115,10 +131,14 @@ namespace hw {
         virtual bool connect(void) = 0;
         virtual bool disconnect(void) = 0;
 
-        virtual bool set_mode(device_mode mode) = 0;
+        virtual bool set_mode(device_mode mode) { this->mode = mode; return true; }
+        virtual device_mode get_mode() const { return mode; }
 
         virtual device_type get_type() const = 0;
 
+        virtual device_protocol_t device_protocol() const { return PROTOCOL_DEFAULT; };
+        virtual void set_callback(i_device_callback * callback) {};
+        virtual void set_derivation_path(const std::string &derivation_path) {};
 
         /* ======================================================================= */
         /*  LOCKER                                                                 */
@@ -202,6 +222,14 @@ namespace hw {
         virtual bool  mlsag_sign(const rct::key &c, const rct::keyV &xx, const rct::keyV &alpha, const size_t rows, const size_t dsRows, rct::keyV &ss) = 0;
 
         virtual bool  close_tx(void) = 0;
+
+        virtual bool  has_ki_cold_sync(void) const { return false; }
+        virtual bool  has_tx_cold_sign(void) const { return false; }
+
+        virtual void  set_network_type(cryptonote::network_type network_type) { }
+
+    protected:
+        device_mode mode;
     } ;
 
     struct reset_mode {
