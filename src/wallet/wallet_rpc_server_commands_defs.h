@@ -1542,6 +1542,28 @@ namespace wallet_rpc
     };
   };
 
+  struct COMMAND_RPC_REFRESH
+  {
+    struct request
+    {
+      uint64_t start_height;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE_OPT(start_height, (uint64_t) 0)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      uint64_t blocks_fetched;
+      bool received_money;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(blocks_fetched);
+        KV_SERIALIZE(received_money);
+      END_KV_SERIALIZE_MAP()
+    };
+  };
   struct COMMAND_RPC_START_MINING
   {
     struct request
@@ -1632,6 +1654,77 @@ namespace wallet_rpc
     struct response
     {
       BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+
+  struct COMMAND_RPC_CLOSE_WALLET
+  {
+    struct request
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+
+  struct COMMAND_RPC_CHANGE_WALLET_PASSWORD
+  {
+    struct request
+    {
+      std::string old_password;
+      std::string new_password;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(old_password)
+        KV_SERIALIZE(new_password)
+      END_KV_SERIALIZE_MAP()
+    };
+    struct response
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+
+  struct COMMAND_RPC_RESTORE_DETERMINISTIC_WALLET
+  {
+    struct request
+    {
+      uint64_t restore_height;
+      std::string filename;
+      std::string seed;
+      std::string seed_offset;
+      std::string password;
+      std::string language;
+
+      BEGIN_KV_SERIALIZE_MAP()
+      KV_SERIALIZE_OPT(restore_height, (uint64_t)0)
+      KV_SERIALIZE(filename)
+      KV_SERIALIZE(seed)
+      KV_SERIALIZE(seed_offset)
+      KV_SERIALIZE(password)
+      KV_SERIALIZE(language)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::string address;
+      std::string seed;
+      std::string info;
+      bool was_deprecated;
+
+      BEGIN_KV_SERIALIZE_MAP()
+      KV_SERIALIZE(address)
+      KV_SERIALIZE(seed)
+      KV_SERIALIZE(info)
+      KV_SERIALIZE(was_deprecated)
       END_KV_SERIALIZE_MAP()
     };
   };
