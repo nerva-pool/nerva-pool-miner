@@ -215,6 +215,13 @@ namespace tools
       {
       }
     };
+    struct password_entry_failed : public wallet_runtime_error
+    {
+      explicit password_entry_failed(std::string&& loc, const std::string &msg = "Password entry failed")
+        : wallet_runtime_error(std::move(loc), msg)
+      {
+      }
+    };
     const char* const file_error_messages[] = {
       "file already exists",
       "file not found",
@@ -415,6 +422,13 @@ namespace tools
       std::string to_string() const { return refresh_error::to_string(); }
     };
     //----------------------------------------------------------------------------------------------------
+    struct signature_check_failed : public wallet_logic_error
+    {
+      explicit signature_check_failed(std::string&& loc, const std::string& message)
+        : wallet_logic_error(std::move(loc), "Signature check failed " + message)
+      {
+      }
+    };
     struct transfer_error : public wallet_logic_error
     {
     protected:

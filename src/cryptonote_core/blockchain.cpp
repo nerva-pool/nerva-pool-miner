@@ -1970,7 +1970,7 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     }
     else
     {
-      MGINFO_BLUE("----- BLOCK ADDED AS ALTERNATIVE -----" << std::endl << "id:\t" << id << std::endl << "prev:\t" << b.prev_id << std::endl << "PoW:\t" << proof_of_work << std::endl << "height:\t" << bei.height << std::endl << "version:\t" << std::to_string(b.major_version) << std::endl << "difficulty:\t" << current_diff << std::endl << "weight:\t" <<  current_diff + uncle_diffic << std::endl << "cumulative difficulty:\t" << bei.cumulative_difficulty << std::endl << "cumulative weight:\t" << bei.cumulative_weight << std::endl << "block reward:\t" << print_money(get_outs_money_amount(b.miner_tx)) << std::endl << "uncle:\t" << b.uncle);
+      LOG_PRINT_L3("----- BLOCK ADDED AS ALTERNATIVE -----" << std::endl << "id:\t" << id << std::endl << "prev:\t" << b.prev_id << std::endl << "PoW:\t" << proof_of_work << std::endl << "height:\t" << bei.height << std::endl << "version:\t" << std::to_string(b.major_version) << std::endl << "difficulty:\t" << current_diff << std::endl << "weight:\t" <<  current_diff + uncle_diffic << std::endl << "cumulative difficulty:\t" << bei.cumulative_difficulty << std::endl << "cumulative weight:\t" << bei.cumulative_weight << std::endl << "block reward:\t" << print_money(get_outs_money_amount(b.miner_tx)) << std::endl << "uncle:\t" << b.uncle);
       return true;
     }
   }

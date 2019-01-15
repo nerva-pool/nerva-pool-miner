@@ -1366,7 +1366,7 @@ namespace tools
 
     try
     {
-      m_wallet->rescan_blockchain();
+      m_wallet->rescan_blockchain(req.hard);
     }
     catch (const std::exception& e)
     {
@@ -1973,12 +1973,13 @@ namespace tools
     if (!m_wallet) return not_open(er);
     try
     {
-      std::vector<std::pair<crypto::key_image, crypto::signature>> ski = m_wallet->export_key_images();
-      res.signed_key_images.resize(ski.size());
-      for (size_t n = 0; n < ski.size(); ++n)
+      std::pair<size_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> ski = m_wallet->export_key_images();
+      res.offset = ski.first;
+      res.signed_key_images.resize(ski.second.size());
+      for (size_t n = 0; n < ski.second.size(); ++n)
       {
-         res.signed_key_images[n].key_image = epee::string_tools::pod_to_hex(ski[n].first);
-         res.signed_key_images[n].signature = epee::string_tools::pod_to_hex(ski[n].second);
+         res.signed_key_images[n].key_image = epee::string_tools::pod_to_hex(ski.second[n].first);
+         res.signed_key_images[n].signature = epee::string_tools::pod_to_hex(ski.second[n].second);
       }
     }
 
@@ -2581,6 +2582,11 @@ namespace tools
     {
       er.code = WALLET_RPC_ERROR_CODE_ADDRESS_INDEX_OUT_OF_BOUNDS;
       er.message = e.what();
+    }
+    catch (const error::signature_check_failed& e)
+    {
+        er.code = WALLET_RPC_ERROR_CODE_WRONG_SIGNATURE;
+        er.message = e.what();
     }
     catch (const std::exception& e)
     {

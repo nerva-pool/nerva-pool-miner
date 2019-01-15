@@ -37,7 +37,7 @@
                     "ignoreFailures": true
                 }
             ]
-        }
+        },
         {
             "name": "Testnet",
             "type": "cppdbg",
@@ -87,11 +87,9 @@
             "name": "Wallet",
             "type": "cppdbg",
             "request": "launch",
-            "preLaunchTask": "build",
             "program": "${workspaceFolder}/builder/build/dev/bin/nerva-wallet-cli",
             "args": [
-                "--wallet-file", "~/.nerva/wallets/angrywasp-testnet",
-                "--wallet-password", "",
+                "--hw-device", "default"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

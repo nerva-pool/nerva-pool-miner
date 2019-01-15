@@ -49,10 +49,6 @@ using namespace epee;
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
 
-#define ENCRYPTED_PAYMENT_ID_TAIL 0x8d
-
-// #define ENABLE_HASH_CASH_INTEGRITY_CHECK
-
 using namespace crypto;
 
 static const uint64_t valid_decomposed_outputs[] = {

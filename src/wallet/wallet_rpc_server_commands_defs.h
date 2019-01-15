@@ -871,7 +871,10 @@ namespace wallet_rpc
   {
     struct request
     {
+      bool hard;
+
       BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE_OPT(hard, false);
       END_KV_SERIALIZE_MAP()
     };
 
@@ -1348,9 +1351,11 @@ namespace wallet_rpc
 
     struct response
     {
+      uint32_t offset;
       std::vector<signed_key_image> signed_key_images;
 
       BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(offset);
         KV_SERIALIZE(signed_key_images);
       END_KV_SERIALIZE_MAP()
     };
