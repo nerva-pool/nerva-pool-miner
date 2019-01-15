@@ -108,8 +108,7 @@ namespace hw {
         enum device_type
         {
           SOFTWARE = 0,
-          LEDGER = 1,
-          TREZOR = 2
+          LEDGER = 1
         };
 
 
