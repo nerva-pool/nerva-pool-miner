@@ -63,6 +63,7 @@ namespace epee
     to_hex::buffer_unchecked((char*)out.data(), src); // can't see the non const version in wipeable_string??
     return out;
   }
+
   std::string to_hex::string(const span<const std::uint8_t> src) { return convert<std::string>(src); }
   epee::wipeable_string to_hex::wipeable_string(const span<const std::uint8_t> src) { return convert<epee::wipeable_string>(src); }
 

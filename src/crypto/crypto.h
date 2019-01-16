@@ -32,14 +32,11 @@
 
 #include <cstddef>
 #include <iostream>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
 #include <boost/optional.hpp>
 #include <type_traits>
 #include <vector>
 
 #include "common/pod-class.h"
-#include "common/util.h"
 #include "memwipe.h"
 #include "mlocker.h"
 #include "generic-ops.h"
@@ -52,8 +49,6 @@ namespace crypto {
   extern "C" {
 #include "random.h"
   }
-
-  extern boost::mutex random_lock;
 
 #pragma pack(push, 1)
   POD_CLASS ec_point {
@@ -150,11 +145,12 @@ namespace crypto {
       const public_key *const *, std::size_t, const signature *);
   };
 
+  void generate_random_bytes_thread_safe(size_t N, uint8_t *bytes);
+
   /* Generate N random bytes
    */
   inline void rand(size_t N, uint8_t *bytes) {
-    boost::lock_guard<boost::mutex> lock(random_lock);
-    generate_random_bytes_not_thread_safe(N, bytes);
+    generate_random_bytes_thread_safe(N, bytes);
   }
 
   /* Generate a value filled with random bytes.
@@ -162,8 +158,7 @@ namespace crypto {
   template<typename T>
   typename std::enable_if<std::is_pod<T>::value, T>::type rand() {
     typename std::remove_cv<T>::type res;
-    boost::lock_guard<boost::mutex> lock(random_lock);
-    generate_random_bytes_not_thread_safe(sizeof(T), &res);
+    generate_random_bytes_thread_safe(sizeof(T), (uint8_t*)&res);
     return res;
   }
 
@@ -280,8 +275,8 @@ namespace crypto {
     epee::to_hex::formatted(o, epee::as_byte_span(v)); return o;
   }
 
-  const static crypto::public_key null_pkey = boost::value_initialized<crypto::public_key>();
-  const static crypto::secret_key null_skey = boost::value_initialized<crypto::secret_key>();
+  const extern crypto::public_key null_pkey;
+  const extern crypto::secret_key null_skey;
 }
 
 CRYPTO_MAKE_HASHABLE(public_key)

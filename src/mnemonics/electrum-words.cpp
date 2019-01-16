@@ -37,22 +37,14 @@
  */
 
 #include <string>
-#include <cassert>
-#include <map>
 #include <cstdint>
 #include <vector>
 #include <unordered_map>
-#include <boost/algorithm/string.hpp>
 #include "wipeable_string.h"
 #include "misc_language.h"
-#include "crypto/crypto.h"  // for declaration of crypto::secret_key
-#include <fstream>
-#include "common/int-util.h"
+#include "int-util.h"
 #include "mnemonics/electrum-words.h"
-#include <stdexcept>
-#include <boost/filesystem.hpp>
 #include <boost/crc.hpp>
-#include <boost/algorithm/string/join.hpp>
 
 #include "chinese_simplified.h"
 #include "english.h"
@@ -215,7 +207,7 @@ namespace
     }
     boost::crc_32_type result;
     result.process_bytes(trimmed_words.data(), trimmed_words.length());
-    return result.checksum() % crypto::ElectrumWords::seed_length;
+    return result.checksum() % word_list.size();
   }
 
   /*!
@@ -335,6 +327,7 @@ namespace crypto
           return false;
         }
 
+        w[0] = SWAP32LE(w[0]);
         dst.append((const char*)&w[0], 4);  // copy 4 bytes to position
         memwipe(w, sizeof(w));
       }

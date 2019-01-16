@@ -34,7 +34,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <memory>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
 #include <boost/shared_ptr.hpp>
@@ -70,7 +69,8 @@ namespace crypto {
 #include "random.h"
   }
 
-  boost::mutex random_lock;
+  const crypto::public_key null_pkey = crypto::public_key{};
+  const crypto::secret_key null_skey = crypto::secret_key{};
 
   static inline unsigned char *operator &(ec_point &point) {
     return &reinterpret_cast<unsigned char &>(point);
@@ -119,12 +119,6 @@ namespace crypto {
     sc_reduce32(bytes);
   }
   /* generate a random 32-byte (256-bit) integer and copy it to res */
-  static inline void random_scalar_not_thread_safe(ec_scalar &res) {
-    unsigned char tmp[64];
-    generate_random_bytes_not_thread_safe(64, tmp);
-    sc_reduce(tmp);
-    memcpy(&res, tmp, 32);
-  }
   static inline void random_scalar(ec_scalar &res) {
     random32_unbiased((unsigned char*)res.data);
   }

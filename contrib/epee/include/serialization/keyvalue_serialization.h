@@ -92,6 +92,7 @@ public: \
     if (!ret) \
       epee::serialize_default(this_ref.varialble, default_value); \
   } while(0);
+
 #define KV_SERIALIZE_CONTAINER_POD_AS_BLOB_N(varialble, val_name) \
   epee::serialization::selector<is_store>::serialize_stl_container_pod_val_as_blob(this_ref.varialble, stg, hparent_section, val_name);
 

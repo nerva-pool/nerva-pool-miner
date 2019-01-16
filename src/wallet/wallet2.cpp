@@ -122,6 +122,7 @@ using namespace cryptonote;
 #define STAGENET_SEGREGATION_FORK_HEIGHT 1000000
 #define SEGREGATION_FORK_VICINITY 1500 /* blocks */
 
+#define FIRST_REFRESH_GRANULARITY     1000
 
 namespace
 {
@@ -268,6 +269,7 @@ std::unique_ptr<tools::wallet2> make_basic(const boost::program_options::variabl
   boost::filesystem::path ringdb_path = command_line::get_arg(vm, opts.shared_ringdb_dir);
   wallet->set_ring_database(ringdb_path.string());
   wallet->device_name(device_name);
+  wallet->device_derivation_path(device_derivation_path);
 
   try
   {
@@ -455,7 +457,7 @@ std::pair<std::unique_ptr<tools::wallet2>, tools::password_container> generate_f
     THROW_WALLET_EXCEPTION_IF(deprecated_wallet, tools::error::wallet_internal_error,
       tools::wallet2::tr("Cannot generate deprecated wallets from JSON"));
 
-	    wallet.reset(make_basic(vm, unattended, opts, password_prompter).release());
+	  wallet.reset(make_basic(vm, unattended, opts, password_prompter).release());
     wallet->set_refresh_from_block_height(field_scan_from_height);
     wallet->explicit_refresh_from_block_height(field_scan_from_height_found);
     wallet->set_seed_language(seed_lang);
@@ -774,6 +776,7 @@ wallet2::wallet2(network_type nettype, uint64_t kdf_rounds, bool unattended):
   m_default_priority(0),
   m_refresh_type(RefreshOptimizeCoinbase),
   m_auto_refresh(true),
+  m_first_refresh_done(false),
   m_refresh_from_block_height(0),
   m_explicit_refresh_from_block_height(true),
   m_confirm_missing_payment_id(true),
@@ -903,8 +906,6 @@ bool wallet2::init(std::string daemon_address, boost::optional<epee::net_utils::
   m_daemon_login = std::move(daemon_login);
   m_trusted_daemon = trusted_daemon;
   // When switching from light wallet to full wallet, we need to reset the height we got from lw node.
-  if(m_light_wallet)
-    m_local_bc_height = m_blockchain.size();
   return m_http_client.set_server(get_daemon_address(), get_daemon_login(), ssl);
 }
 //----------------------------------------------------------------------------------------------------
@@ -1441,9 +1442,9 @@ void wallet2::process_new_transaction(const crypto::hash &txid, const cryptonote
         for (size_t i = 1; i < tx.vout.size(); ++i)
         {
           tpool.submit(&waiter, boost::bind(&wallet2::check_acc_out_precomp_once, this, std::cref(tx.vout[i]), std::cref(derivation), std::cref(additional_derivations), i,
-            std::cref(is_out_data_ptr), std::ref(tx_scan_info[i]), std::ref(output_found[i])));
+            std::cref(is_out_data_ptr), std::ref(tx_scan_info[i]), std::ref(output_found[i])), true);
         }
-        waiter.wait();
+        waiter.wait(&tpool);
 
         hw::device &hwdev = m_account.get_device();
         boost::unique_lock<hw::device> hwdev_lock (hwdev);
@@ -1464,9 +1465,9 @@ void wallet2::process_new_transaction(const crypto::hash &txid, const cryptonote
       for (size_t i = 0; i < tx.vout.size(); ++i)
       {
         tpool.submit(&waiter, boost::bind(&wallet2::check_acc_out_precomp_once, this, std::cref(tx.vout[i]), std::cref(derivation), std::cref(additional_derivations), i,
-            std::cref(is_out_data_ptr), std::ref(tx_scan_info[i]), std::ref(output_found[i])));
+            std::cref(is_out_data_ptr), std::ref(tx_scan_info[i]), std::ref(output_found[i])), true);
       }
-      waiter.wait();
+      waiter.wait(&tpool);
 
       hw::device &hwdev = m_account.get_device();
       boost::unique_lock<hw::device> hwdev_lock (hwdev);
@@ -1899,17 +1900,17 @@ void wallet2::process_new_blockchain_entry(const cryptonote::block& b, const cry
       LOG_PRINT_L2( "Skipped block by timestamp, height: " << height << ", block time " << b.timestamp << ", account time " << m_account.get_createtime());
   }
   m_blockchain.push_back(bl_id);
-  ++m_local_bc_height;
 
   if (0 != m_callback)
     m_callback->on_new_block(height, b);
 }
 //----------------------------------------------------------------------------------------------------
-void wallet2::get_short_chain_history(std::list<crypto::hash>& ids) const
+void wallet2::get_short_chain_history(std::list<crypto::hash>& ids, uint64_t granularity) const
 {
   size_t i = 0;
   size_t current_multiplier = 1;
-  size_t sz = m_blockchain.size() - m_blockchain.offset();
+  size_t blockchain_size = std::max((size_t)(m_blockchain.size() / granularity * granularity), m_blockchain.offset());
+  size_t sz = blockchain_size - m_blockchain.offset();
   if(!sz)
   {
     ids.push_back(m_blockchain.genesis());
@@ -2018,7 +2019,7 @@ void wallet2::process_parsed_blocks(uint64_t start_height, const std::vector<cry
     }
   }
   THROW_WALLET_EXCEPTION_IF(txidx != num_txes, error::wallet_internal_error, "txidx does not match tx_cache_data size");
-  waiter.wait();
+  waiter.wait(&tpool);
 
   hw::device &hwdev =  m_account.get_device();
   hw::reset_mode rst(hwdev);
@@ -2038,11 +2039,11 @@ void wallet2::process_parsed_blocks(uint64_t start_height, const std::vector<cry
   for (auto &slot: tx_cache_data)
   {
     for (auto &iod: slot.primary)
-      tpool.submit(&waiter, [&gender, &iod]() { gender(iod); });
+      tpool.submit(&waiter, [&gender, &iod]() { gender(iod); }, true);
     for (auto &iod: slot.additional)
-      tpool.submit(&waiter, [&gender, &iod]() { gender(iod); });
+      tpool.submit(&waiter, [&gender, &iod]() { gender(iod); }, true);
   }
-  waiter.wait();
+  waiter.wait(&tpool);
 
   auto geniod = [&](const cryptonote::transaction &tx, size_t n_vouts, size_t txidx) {
     for (size_t k = 0; k < n_vouts; ++k)
@@ -2072,18 +2073,18 @@ void wallet2::process_parsed_blocks(uint64_t start_height, const std::vector<cry
     {
       THROW_WALLET_EXCEPTION_IF(txidx >= tx_cache_data.size(), error::wallet_internal_error, "txidx out of range");
       const size_t n_vouts = m_refresh_type == RefreshType::RefreshOptimizeCoinbase ? 1 : parsed_blocks[i].block.miner_tx.vout.size();
-      tpool.submit(&waiter, [&, i, txidx](){ geniod(parsed_blocks[i].block.miner_tx, n_vouts, txidx); });
+      tpool.submit(&waiter, [&, i, n_vouts, txidx](){ geniod(parsed_blocks[i].block.miner_tx, n_vouts, txidx); }, true);
     }
     ++txidx;
     for (size_t j = 0; j < parsed_blocks[i].txes.size(); ++j)
     {
       THROW_WALLET_EXCEPTION_IF(txidx >= tx_cache_data.size(), error::wallet_internal_error, "txidx out of range");
-      tpool.submit(&waiter, [&, i, j, txidx](){ geniod(parsed_blocks[i].txes[j], parsed_blocks[i].txes[j].vout.size(), txidx); });
+      tpool.submit(&waiter, [&, i, j, txidx](){ geniod(parsed_blocks[i].txes[j], parsed_blocks[i].txes[j].vout.size(), txidx); }, true);
       ++txidx;
     }
   }
   THROW_WALLET_EXCEPTION_IF(txidx != tx_cache_data.size(), error::wallet_internal_error, "txidx did not reach expected value");
-  waiter.wait();
+  waiter.wait(&tpool);
   hwdev.set_mode(hw::device::NONE);
 
   size_t tx_cache_data_offset = 0;
@@ -2117,16 +2118,16 @@ void wallet2::process_parsed_blocks(uint64_t start_height, const std::vector<cry
   }
 }
 //----------------------------------------------------------------------------------------------------
-void wallet2::refresh()
+void wallet2::refresh(bool trusted_daemon)
 {
   uint64_t blocks_fetched = 0;
-  refresh(0, blocks_fetched);
+  refresh(trusted_daemon, 0, blocks_fetched);
 }
 //----------------------------------------------------------------------------------------------------
-void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched)
+void wallet2::refresh(bool trusted_daemon, uint64_t start_height, uint64_t & blocks_fetched)
 {
   bool received_money = false;
-  refresh(start_height, blocks_fetched, received_money);
+  refresh(trusted_daemon, start_height, blocks_fetched, received_money);
 }
 //----------------------------------------------------------------------------------------------------
 void wallet2::pull_and_parse_next_blocks(uint64_t start_height, uint64_t &blocks_start_height, std::list<crypto::hash> &short_chain_history, const std::vector<cryptonote::block_complete_entry> &prev_blocks, const std::vector<parsed_block> &prev_parsed_blocks, std::vector<cryptonote::block_complete_entry> &blocks, std::vector<parsed_block> &parsed_blocks, bool &error)
@@ -2157,9 +2158,9 @@ void wallet2::pull_and_parse_next_blocks(uint64_t start_height, uint64_t &blocks
     for (size_t i = 0; i < blocks.size(); ++i)
     {
       tpool.submit(&waiter, boost::bind(&wallet2::parse_block_round, this, std::cref(blocks[i].block),
-        std::ref(parsed_blocks[i].block), std::ref(parsed_blocks[i].hash), std::ref(parsed_blocks[i].error)));
+        std::ref(parsed_blocks[i].block), std::ref(parsed_blocks[i].hash), std::ref(parsed_blocks[i].error)), true);
     }
-    waiter.wait();
+    waiter.wait(&tpool);
     for (size_t i = 0; i < blocks.size(); ++i)
     {
       if (parsed_blocks[i].error)
@@ -2182,10 +2183,10 @@ void wallet2::pull_and_parse_next_blocks(uint64_t start_height, uint64_t &blocks
             boost::unique_lock<boost::mutex> lock(error_lock);
             error = true;
           }
-        });
+        }, true);
       }
     }
-    waiter.wait();
+    waiter.wait(&tpool);
   }
   catch(...)
   {
@@ -2225,6 +2226,13 @@ void wallet2::update_pool_state(bool refreshed)
 {
   MDEBUG("update_pool_state start");
 
+  auto keys_reencryptor = epee::misc_utils::create_scope_leave_handler([&, this]() {
+    if (m_encrypt_keys_after_refresh)
+    {
+      encrypt_keys(*m_encrypt_keys_after_refresh);
+      m_encrypt_keys_after_refresh = boost::none;
+    }
+  });
   // get the pool state
   cryptonote::COMMAND_RPC_GET_TRANSACTION_POOL_HASHES::request req;
   cryptonote::COMMAND_RPC_GET_TRANSACTION_POOL_HASHES::response res;
@@ -2452,7 +2460,7 @@ void wallet2::fast_refresh(uint64_t stop_height, uint64_t &blocks_start_height, 
     while (missing_blocks-- > 0)
       m_blockchain.push_back(crypto::null_hash); // maybe a bit suboptimal, but deque won't do huge reallocs like vector
     m_blockchain.push_back(m_checkpoints.get_points().at(checkpoint_height));
-    m_local_bc_height = m_blockchain.size();
+    m_blockchain.trim(checkpoint_height);
     short_chain_history.clear();
     get_short_chain_history(short_chain_history);
   }
@@ -2471,7 +2479,6 @@ void wallet2::fast_refresh(uint64_t stop_height, uint64_t &blocks_start_height, 
     if (hashes.size() + current_index < stop_height) {
       drop_from_short_history(short_chain_history, 3);
       std::vector<crypto::hash>::iterator right = hashes.end();
-      //std::deque d;
       // prepend 3 more
       for (int i = 0; i<3; i++) {
         right--;
@@ -2483,10 +2490,9 @@ void wallet2::fast_refresh(uint64_t stop_height, uint64_t &blocks_start_height, 
     {
       if(current_index >= m_blockchain.size())
       {
-        if (!(current_index % 1000))
+        if (!(current_index % 1024))
           LOG_PRINT_L2( "Skipped block by height: " << current_index);
         m_blockchain.push_back(bl_id);
-        ++m_local_bc_height;
 
         if (0 != m_callback)
         { // FIXME: this isn't right, but simplewallet just logs that we got a block.
@@ -2532,7 +2538,7 @@ bool wallet2::delete_address_book_row(std::size_t row_id) {
 }
 
 //----------------------------------------------------------------------------------------------------
-void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& received_money)
+void wallet2::refresh(bool trusted_daemon, uint64_t start_height, uint64_t & blocks_fetched, bool& received_money)
 {
   if(m_light_wallet) {
 
@@ -2547,7 +2553,6 @@ void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& re
       // Update lw heights
       m_light_wallet_scanned_block_height = res.scanned_block_height;
       m_light_wallet_blockchain_height = res.blockchain_height;
-      m_local_bc_height = res.blockchain_height;
       // If new height - call new_block callback
       if(m_light_wallet_blockchain_height != prev_height)
       {
@@ -2581,7 +2586,7 @@ void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& re
   bool refreshed = false;
 
   // pull the first set of blocks
-  get_short_chain_history(short_chain_history);
+  get_short_chain_history(short_chain_history, 1);//(m_first_refresh_done || trusted_daemon) ? 1 : FIRST_REFRESH_GRANULARITY);
   m_run.store(true, std::memory_order_relaxed);
   if (start_height > m_blockchain.size() || m_refresh_from_block_height > m_blockchain.size()) {
     if (!start_height)
@@ -2590,7 +2595,7 @@ void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& re
     fast_refresh(start_height, blocks_start_height, short_chain_history);
     // regenerate the history now that we've got a full set of hashes
     short_chain_history.clear();
-    get_short_chain_history(short_chain_history);
+    get_short_chain_history(short_chain_history, 1);//(m_first_refresh_done || trusted_daemon) ? 1 : FIRST_REFRESH_GRANULARITY);
     start_height = 0;
     // and then fall through to regular refresh processing
   }
@@ -2632,6 +2637,12 @@ void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& re
       {
         try
         {
+          printf("Processing\n");
+          printf("blocks_start_height: %ld\n", blocks_start_height);
+          printf("blocks.size: %ld\n", blocks.size());
+          printf("parsed_blocks.size: %ld\n", parsed_blocks.size());
+          printf("added_blocks.size: %ld\n", added_blocks);
+
           process_parsed_blocks(blocks_start_height, blocks, parsed_blocks, added_blocks);
         }
         catch (const tools::error::out_of_hashchain_bounds_error&)
@@ -2648,7 +2659,7 @@ void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& re
           short_chain_history.clear();
           get_short_chain_history(short_chain_history);
           fast_refresh(stop_height, blocks_start_height, short_chain_history, true);
-          THROW_WALLET_EXCEPTION_IF(m_blockchain.size() != stop_height, error::wallet_internal_error, "Unexpected hashchain size");
+          THROW_WALLET_EXCEPTION_IF((m_blockchain.size() == stop_height || (m_blockchain.size() == 1 && stop_height == 0) ? false : true), error::wallet_internal_error, "Unexpected hashchain size");
           THROW_WALLET_EXCEPTION_IF(m_blockchain.offset() != 0, error::wallet_internal_error, "Unexpected hashchain offset");
           for (const auto &h: tip)
             m_blockchain.push_back(h);
@@ -2659,7 +2670,7 @@ void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& re
         }
       blocks_fetched += added_blocks;
       }
-      waiter.wait();
+      waiter.wait(&tpool);
       if(!first && blocks_start_height == next_blocks_start_height)
       {
         m_node_rpc_proxy.set_height(m_blockchain.size());
@@ -2667,7 +2678,6 @@ void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& re
         break;
       }
 
-      // switch to the new blocks from the daemon
       first = false;
 
       // handle error from async fetching thread
@@ -2675,6 +2685,7 @@ void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& re
       {
         throw std::runtime_error("proxy exception in refresh thread");
       }
+
       blocks_start_height = next_blocks_start_height;
       blocks = std::move(next_blocks);
       parsed_blocks = std::move(next_parsed_blocks);
@@ -2682,13 +2693,13 @@ void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& re
     catch (const tools::error::password_needed&)
     {
       blocks_fetched += added_blocks;
-      waiter.wait();
+      waiter.wait(&tpool);
       throw;
     }
     catch (const std::exception&)
     {
       blocks_fetched += added_blocks;
-      waiter.wait();
+      waiter.wait(&tpool);
       if(try_count < 3)
       {
         LOG_PRINT_L1("Another try pull_blocks (try_count=" << try_count << ")...");
@@ -2716,14 +2727,15 @@ void wallet2::refresh(uint64_t start_height, uint64_t & blocks_fetched, bool& re
     LOG_PRINT_L1("Failed to check pending transactions");
   }
 
+  m_first_refresh_done = true;
   LOG_PRINT_L1("Refresh done, blocks received: " << blocks_fetched << ", balance (all accounts): " << print_money(balance_all()) << ", unlocked: " << print_money(unlocked_balance_all()));
 }
 //----------------------------------------------------------------------------------------------------
-bool wallet2::refresh(uint64_t & blocks_fetched, bool& received_money, bool& ok)
+bool wallet2::refresh(bool trusted_daemon, uint64_t & blocks_fetched, bool& received_money, bool& ok)
 {
   try
   {
-    refresh(0, blocks_fetched, received_money);
+    refresh(trusted_daemon, 0, blocks_fetched, received_money);
     ok = true;
   }
   catch (...)
@@ -2807,7 +2819,7 @@ void wallet2::detach_blockchain(uint64_t height)
   // size  1 2 3 4 5 6 7 8 9
   // block 0 1 2 3 4 5 6 7 8
   //               C
-  THROW_WALLET_EXCEPTION_IF(height <= m_checkpoints.get_max_height() && m_blockchain.size() > m_checkpoints.get_max_height(),
+  THROW_WALLET_EXCEPTION_IF(height < m_blockchain.offset() && m_blockchain.size() > m_blockchain.offset(),
       error::wallet_internal_error, "Daemon claims reorg below last checkpoint");
 
   size_t transfers_detached = 0;
@@ -2844,7 +2856,6 @@ void wallet2::detach_blockchain(uint64_t height)
 
   size_t blocks_detached = m_blockchain.size() - height;
   m_blockchain.crop(height);
-  m_local_bc_height -= blocks_detached;
 
   for (auto it = m_payments.begin(); it != m_payments.end(); )
   {
@@ -2869,6 +2880,7 @@ bool wallet2::deinit()
 {
   m_is_initialized=false;
   unlock_keys_file();
+  m_account.deinit();
   return true;
 }
 //----------------------------------------------------------------------------------------------------
@@ -2887,7 +2899,6 @@ bool wallet2::clear()
   m_scanned_pool_txs[0].clear();
   m_scanned_pool_txs[1].clear();
   m_address_book.clear();
-  m_local_bc_height = 1;
   m_subaddresses.clear();
   m_subaddress_labels.clear();
   return true;
@@ -3234,7 +3245,7 @@ bool wallet2::load_keys(const std::string& keys_file_name, const epee::wipeable_
     }
     GET_FIELD_FROM_JSON_RETURN_ON_ERROR(json, refresh_height, uint64_t, Uint64, false, 0);
     // rough cover of early bug that caused an underflow in estimated heights (estimate minus blocks_per_month)
-    m_refresh_from_block_height = field_refresh_height > (((uint64_t)(-1)) / 2) ? 0 : field_refresh_height;
+    m_refresh_from_block_height = field_refresh_height;
     GET_FIELD_FROM_JSON_RETURN_ON_ERROR(json, confirm_missing_payment_id, int, Int, false, true);
     m_confirm_missing_payment_id = field_confirm_missing_payment_id;
         GET_FIELD_FROM_JSON_RETURN_ON_ERROR(json, ask_password, AskPasswordType, Int, false, AskPasswordToDecrypt);
@@ -4448,7 +4459,6 @@ void wallet2::load(const std::string& wallet_, const epee::wipeable_string& pass
   if (get_num_subaddress_accounts() == 0)
     add_subaddress_account(tr("Primary account"));
 
-  m_local_bc_height = m_blockchain.size();
 
   try
   {
@@ -4840,7 +4850,7 @@ void wallet2::rescan_blockchain(bool hard, bool refresh)
   }
 
   if (refresh)
-    this->refresh();
+    this->refresh(false);
 }
 //----------------------------------------------------------------------------------------------------
 bool wallet2::is_transfer_unlocked(const transfer_details& td) const
@@ -4853,7 +4863,7 @@ bool wallet2::is_transfer_unlocked(uint64_t unlock_time, uint64_t block_height) 
   if(!is_tx_spendtime_unlocked(unlock_time, block_height))
     return false;
 
-  if(block_height + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE > m_local_bc_height)
+  if(block_height + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE > get_blockchain_current_height())
     return false;
 
   return true;
@@ -4864,7 +4874,7 @@ bool wallet2::is_tx_spendtime_unlocked(uint64_t unlock_time, uint64_t block_heig
   if(unlock_time < CRYPTONOTE_MAX_BLOCK_NUMBER)
   {
     //interpret as block index
-    if(m_local_bc_height-1 + CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS >= unlock_time)
+    if(get_blockchain_current_height()-1 + CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS >= unlock_time)
       return true;
     else
       return false;
@@ -5023,7 +5033,7 @@ size_t wallet2::pop_best_value(std::vector<size_t> &unused_indices, const std::v
 // returns:
 //    direct return: amount of money found
 //    modified reference: selected_transfers, a list of iterators/indices of input sources
-uint64_t wallet2::select_transfers(uint64_t needed_money, std::vector<size_t> unused_transfers_indices, std::vector<size_t>& selected_transfers, bool trusted_daemon) const
+uint64_t wallet2::select_transfers(uint64_t needed_money, std::vector<size_t> unused_transfers_indices, std::vector<size_t>& selected_transfers) const
 {
   uint64_t found_money = 0;
   selected_transfers.reserve(unused_transfers_indices.size());
@@ -10290,7 +10300,6 @@ void wallet2::import_blockchain(const std::tuple<size_t, crypto::hash, std::vect
   generate_genesis(genesis);
   crypto::hash genesis_hash = get_block_hash(genesis);
   check_genesis(genesis_hash);
-  m_local_bc_height = m_blockchain.size();
 }
 //----------------------------------------------------------------------------------------------------
 std::pair<size_t, std::vector<tools::wallet2::transfer_details>> wallet2::export_outputs() const
@@ -10730,9 +10739,14 @@ size_t wallet2::import_multisig(std::vector<cryptonote::blobdata> blobs)
   m_multisig_rescan_info = &info;
   try
   {
-    refresh();
+    refresh(false);
   }
-  catch (...) {}
+  catch (...)
+  {
+    m_multisig_rescan_info = NULL;
+    m_multisig_rescan_k = NULL;
+    throw;
+  }
   m_multisig_rescan_info = NULL;
   m_multisig_rescan_k = NULL;
 
