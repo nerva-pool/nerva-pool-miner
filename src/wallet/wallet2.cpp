@@ -2637,12 +2637,6 @@ void wallet2::refresh(bool trusted_daemon, uint64_t start_height, uint64_t & blo
       {
         try
         {
-          printf("Processing\n");
-          printf("blocks_start_height: %ld\n", blocks_start_height);
-          printf("blocks.size: %ld\n", blocks.size());
-          printf("parsed_blocks.size: %ld\n", parsed_blocks.size());
-          printf("added_blocks.size: %ld\n", added_blocks);
-
           process_parsed_blocks(blocks_start_height, blocks, parsed_blocks, added_blocks);
         }
         catch (const tools::error::out_of_hashchain_bounds_error&)

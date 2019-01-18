@@ -1231,6 +1231,13 @@ void BlockchainLMDB::open(const std::string& filename, const int db_flags, uint3
     throw DB_ERROR("Database could not be opened");
   }
 
+  boost::optional<bool> is_hdd_result = tools::is_hdd(filename.c_str());
+  if (is_hdd_result)
+  {
+    if (is_hdd_result.value())
+        MCLOG_RED(el::Level::Warning, "global", "The blockchain is on a rotating drive: this will be very slow, use an SSD if possible");
+  }
+
   m_folder = filename;
 
 #ifdef __OpenBSD__
@@ -2138,9 +2145,20 @@ uint64_t BlockchainLMDB::get_block_timestamp(const uint64_t& height) const
   check_open();
 
   TXN_PREFIX_RDONLY();
-  mdb_block_info bi = get_block_info(height);
+  RCURSOR(block_info);
+
+  MDB_val_set(result, height);
+  auto get_result = mdb_cursor_get(m_cur_block_info, (MDB_val *)&zerokval, &result, MDB_GET_BOTH);
+  if (get_result == MDB_NOTFOUND)
+  {
+    throw0(BLOCK_DNE(std::string("Attempt to get timestamp from height ").append(boost::lexical_cast<std::string>(height)).append(" failed -- timestamp not in db").c_str()));
+  }
+  else if (get_result)
+    throw0(DB_ERROR("Error attempting to retrieve a timestamp from the db"));
+
+  mdb_block_info *bi = (mdb_block_info *)result.mv_data;
+  uint64_t ret = bi->bi_timestamp;
   TXN_POSTFIX_RDONLY();
-  uint64_t ret = bi.bi_timestamp;
   return ret;
 }
 
@@ -2303,15 +2321,47 @@ difficulty_type BlockchainLMDB::get_block_difficulty(const uint64_t& height) con
 uint64_t BlockchainLMDB::get_block_already_generated_coins(const uint64_t& height) const
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  mdb_block_info bi = get_block_info(height);
-  return bi.bi_coins;
+  check_open();
+
+  TXN_PREFIX_RDONLY();
+  RCURSOR(block_info);
+
+  MDB_val_set(result, height);
+  auto get_result = mdb_cursor_get(m_cur_block_info, (MDB_val *)&zerokval, &result, MDB_GET_BOTH);
+  if (get_result == MDB_NOTFOUND)
+  {
+    throw0(BLOCK_DNE(std::string("Attempt to get generated coins from height ").append(boost::lexical_cast<std::string>(height)).append(" failed -- block size not in db").c_str()));
+  }
+  else if (get_result)
+    throw0(DB_ERROR("Error attempting to retrieve a total generated coins from the db"));
+
+  mdb_block_info *bi = (mdb_block_info *)result.mv_data;
+  uint64_t ret = bi->bi_coins;
+  TXN_POSTFIX_RDONLY();
+  return ret;
 }
 
 crypto::hash BlockchainLMDB::get_block_hash_from_height(const uint64_t& height) const
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  mdb_block_info bi = get_block_info(height);
-  return bi.bi_hash;
+  check_open();
+
+  TXN_PREFIX_RDONLY();
+  RCURSOR(block_info);
+
+  MDB_val_set(result, height);
+  auto get_result = mdb_cursor_get(m_cur_block_info, (MDB_val *)&zerokval, &result, MDB_GET_BOTH);
+  if (get_result == MDB_NOTFOUND)
+  {
+    throw0(BLOCK_DNE(std::string("Attempt to get hash from height ").append(boost::lexical_cast<std::string>(height)).append(" failed -- hash not in db").c_str()));
+  }
+  else if (get_result)
+    throw0(DB_ERROR(lmdb_error("Error attempting to retrieve a block hash from the db: ", get_result).c_str()));
+
+  mdb_block_info *bi = (mdb_block_info *)result.mv_data;
+  crypto::hash ret = bi->bi_hash;
+  TXN_POSTFIX_RDONLY();
+  return ret;
 }
 
 std::vector<block> BlockchainLMDB::get_blocks_range(const uint64_t& h1, const uint64_t& h2) const
@@ -3119,7 +3169,7 @@ void BlockchainLMDB::set_batch_transactions(bool batch_transactions)
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
   if ((batch_transactions) && (m_batch_transactions))
   {
-    LOG_PRINT_L0("WARNING: batch transaction mode already enabled, but asked to enable batch mode");
+    LOG_PRINT_L3("WARNING: batch transaction mode already enabled, but asked to enable batch mode");
   }
   m_batch_transactions = batch_transactions;
   LOG_PRINT_L3("batch transactions " << (m_batch_transactions ? "enabled" : "disabled"));
@@ -3270,7 +3320,7 @@ uint64_t BlockchainLMDB::add_block(const block& blk, const size_t& block_size, c
   check_open();
   uint64_t m_height = height();
 
-  if (m_height % 1000 == 0)
+  if (m_height % 1024 == 0)
   {
     // for batch mode, DB resize check is done at start of batch transaction
     if (! m_batch_active && need_resize())

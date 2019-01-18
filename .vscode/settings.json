@@ -68,5 +68,6 @@
         "intrin.h": "c",
         "forward_list": "cpp",
         "*.cuh": "cpp"
-    }
+    },
+    "C_Cpp.dimInactiveRegions": false
 }

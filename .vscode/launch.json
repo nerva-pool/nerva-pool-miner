@@ -90,7 +90,7 @@
             "program": "${workspaceFolder}/builder/build/dev/bin/nerva-wallet-cli",
             "preLaunchTask": "delete-files",
             "args": [
-                "--hw-device", "Ledger", "--testnet", "--generate-from-device", "hw-tn", "--password", "", "--restore-height", "36400", "--log-level", "3"
+                "--hw-device", "Ledger", "--testnet", "--generate-from-device", "hw-tn", "--password", "", "--restore-height", "36400"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
