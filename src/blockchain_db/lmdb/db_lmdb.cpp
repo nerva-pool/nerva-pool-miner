@@ -2123,13 +2123,15 @@ void BlockchainLMDB::get_v3_data_opt(char* salt, uint64_t height, const int vari
           std::memcpy(_cache.data() + index, bi, sizeof(mdb_block_info));
       }
       _cache_state = topHash;
-      LOG_PRINT_L0("initialized miner cache at " << height);
+      LOG_PRINT_L3("initialized miner cache at " << height);
   }
+
+  std::array<uint32_t, 36864> rand_seq = mt.generate_v3_sequence(seed, (uint32_t)height);
+  uint32_t i_config = 0;
 
   for (uint32_t i = 0; i < count; i++)
   {
-    //block hash
-    r = mt.next(1, (uint32_t)(height - 1));
+    r = rand_seq[i_config++];
     bi = &_cache[r];
     std::memcpy(blob_data, bi->bi_hash.data, 32);
 
@@ -2139,13 +2141,10 @@ void BlockchainLMDB::get_v3_data_opt(char* salt, uint64_t height, const int vari
     b = 64;
     for (uint32_t j = 0; j < 4; j++)
     {
-      r = mt.next(6, (uint32_t)(height - 6));
-      x = mt.next(r - 5, r + 5);
-      y = mt.next(r - 5, r + 5);
-
-      r = mt.next(6, (uint32_t)(height - 6));
-      z = mt.next(r - 5, r + 5);
-      w = mt.next(r - 5, r + 5);
+      x = rand_seq[i_config++];
+      y = rand_seq[i_config++];
+      z = rand_seq[i_config++];
+      w = rand_seq[i_config++];
 
       bi = &_cache[x];
       t = (uint32_t)bi->bi_timestamp;
@@ -2168,15 +2167,10 @@ void BlockchainLMDB::get_v3_data_opt(char* salt, uint64_t height, const int vari
       b += 4;
     }
 
-    //block hash
-    r = mt.next(1, (uint32_t)(height - 1));
+    r = rand_seq[i_config++];
     bi = &_cache[r];
     std::memcpy(blob_data + 96, bi->bi_hash.data, 32);
-
     std::memcpy(salt + (i * 128), blob_data, 128);
-
-    if (variant >= 4)
-      mt.set_seed(seed ^ mt.generate_uint());
   }
 
   free(bd);

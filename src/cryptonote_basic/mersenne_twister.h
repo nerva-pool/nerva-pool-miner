@@ -112,6 +112,43 @@ namespace angrywasp
                 for (uint32_t i = 0; i < length; i++)
                     data[i] = (char)(generate_uint() / (0xffffffff / (uint32_t)0xff));
             }
+
+            //generate number sequence for v3/4
+            std::array<uint32_t, 36864> generate_v3_sequence(uint32_t seed, uint32_t height)
+            {
+              std::array<uint32_t, 36864> reval;
+              size_t oIndex = 0;
+              uint32_t y, r;
+              for(size_t i = 0; i < 2048; ++i)
+              {
+                {
+                  uint32_t kk;
+                  for (kk = 0; kk < 27; kk++)
+                  {
+                      y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
+                      mt[kk] = mt[kk + M] ^ (y >> 1) ^ mag01[y & 0x1];
+                  }
+                  mti = 0;
+                }
+
+                reval[oIndex++] = next(1, (uint32_t)(height - 1));
+
+                for(uint8_t j = 0; j < 4; ++j)
+                {
+                  r = next(6, (uint32_t)(height - 6));
+                  reval[oIndex++] = next(r - 5, r + 5);
+                  reval[oIndex++] = next(r - 5, r + 5);
+                  
+                  r = next(6, (uint32_t)(height - 6));
+                  reval[oIndex++] = next(r - 5, r + 5);
+                  reval[oIndex++] = next(r - 5, r + 5);
+                }
+
+                reval[oIndex++] = next(1, (uint32_t)(height - 1));
+                set_seed(seed ^ generate_uint());
+              }
+              return reval;
+            }
     };
 };
 
