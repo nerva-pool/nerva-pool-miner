@@ -2017,13 +2017,28 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
 
   err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
 
+  static thread_local std::vector<mdb_block_info> _cache;
+  static thread_local crypto::hash _cache_state;
+  const auto topHash = top_block_hash();
+  if(std::memcmp(_cache_state.data, topHash.data, sizeof(crypto::hash)))
+  {
+      _cache.resize(height - 1);
+      for(uint64_t index = 0; index <= height; ++index)
+      {
+          MDB_val_set(query, index);
+          err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &query, MDB_GET_BOTH); check_error(err);
+          bi = (mdb_block_info*)query.mv_data;
+          std::memcpy(_cache.data() + index, bi, sizeof(mdb_block_info));
+      }
+      _cache_state = topHash;
+      LOG_PRINT_L0("initialized miner cache at " << height);
+  }
+
   for (uint32_t i = 0; i < count; i++)
   {
     //block hash
     r = mt.next(1, (uint32_t)(height - 1));
-    MDB_val_set(rh1, r);
-    err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rh1, MDB_GET_BOTH); check_error(err);
-    bi = (mdb_block_info*)rh1.mv_data;
+    bi = &_cache[r];
     std::memcpy(blob_data, bi->bi_hash.data, 32);
 
     //random diff/timestamps
@@ -2040,30 +2055,22 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
       z = mt.next(r - 5, r + 5);
       w = mt.next(r - 5, r + 5);
 
-      MDB_val_set(rx, x);
-      err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rx, MDB_GET_BOTH); check_error(err);
-      bi = (mdb_block_info*)rx.mv_data;
+      bi = &_cache[x];
       t = (uint32_t)bi->bi_timestamp;
       std::memcpy(blob_data + a, &t, 4);
       a += 4;
 
-      MDB_val_set(ry, y);
-      err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &ry, MDB_GET_BOTH); check_error(err);
-      bi = (mdb_block_info*)ry.mv_data;
+      bi = &_cache[y];
       t = (uint32_t)bi->bi_diff;
       std::memcpy(blob_data + a, &t, 4);
       a += 4;
 
-      MDB_val_set(rz, z);
-      err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rz, MDB_GET_BOTH); check_error(err);
-      bi = (mdb_block_info*)rz.mv_data;
+      bi = &_cache[z];
       t = (uint32_t)(bi->bi_coins >> 32U);
       std::memcpy(blob_data + b, &t, 4);
       b += 4;
 
-      MDB_val_set(rw, w);
-      err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rw, MDB_GET_BOTH); check_error(err);
-      bi = (mdb_block_info*)rw.mv_data;
+      bi = &_cache[w];
       t = (uint32_t)bi->bi_coins;
       std::memcpy(blob_data + b, &t, 4);
       b += 4;
@@ -2071,9 +2078,7 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
 
     //block hash
     r = mt.next(1, (uint32_t)(height - 1));
-    MDB_val_set(rh4, r);
-    err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &rh4, MDB_GET_BOTH); check_error(err);
-    bi = (mdb_block_info*)rh4.mv_data;
+    bi = &_cache[r];
     std::memcpy(blob_data + 96, bi->bi_hash.data, 32);
 
     std::memcpy(salt + (i * 128), blob_data, 128);
