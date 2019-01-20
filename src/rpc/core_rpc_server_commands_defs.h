@@ -2405,7 +2405,9 @@ namespace cryptonote
   {
     struct request
     {
+      uint64_t height;
       BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(height)
       END_KV_SERIALIZE_MAP()
     };
 
