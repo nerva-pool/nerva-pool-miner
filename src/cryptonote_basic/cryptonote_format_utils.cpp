@@ -930,7 +930,7 @@ namespace cryptonote
     return str;
   }
 
-  bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
+  bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc, bool mining)
   {
     blobdata bd = get_block_hashing_blob(b);
     uint64_t ht = height - 256;
@@ -953,7 +953,10 @@ namespace cryptonote
     for (int i = 0; i < 32; i += 4)
       seed ^= *(uint32_t*)&h.data[i];
 
-    bc->get_db().get_v3_data(salt, (uint32_t)ht, 4, seed);
+    if (mining)
+      bc->get_db().get_v3_data_opt(salt, (uint32_t)ht, 4, seed);
+    else
+      bc->get_db().get_v3_data(salt, (uint32_t)ht, 4, seed);
 
     uint32_t m = seed % 3;
 
@@ -1041,12 +1044,12 @@ namespace cryptonote
     return true;
   }
 
-  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
+  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc, bool mining)
   {
     switch (b.major_version)
     {
       case 10:
-        return get_block_longhash_v10(b, res, height, bc);
+        return get_block_longhash_v10(b, res, height, bc, mining);
       case 9:
         return get_block_longhash_v9(b, res, height, bc);
       case 8:
@@ -1081,7 +1084,7 @@ namespace cryptonote
   crypto::hash get_block_longhash(const block& b, uint64_t height, const cryptonote::Blockchain* bc)
   {
     crypto::hash p = null_hash;
-    get_block_longhash(b, p, height, bc);
+    get_block_longhash(b, p, height, bc, false);
     return p;
   }
   //---------------------------------------------------------------

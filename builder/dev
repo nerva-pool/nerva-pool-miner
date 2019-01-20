@@ -14,5 +14,5 @@ detectos
 mkdir -p ${BUILDER_DIR}/build/dev
 cd ${BUILDER_DIR}/build/dev
 
-cmake -D CMAKE_BUILD_TYPE=debug -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../..
+cmake -D CMAKE_BUILD_TYPE=release -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../..
 make -j6
