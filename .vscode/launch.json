@@ -8,7 +8,7 @@
             "name": "Stagenet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/bin/nervad",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
                 "--stagenet",
                 "--data-dir", "~/.nerva/stagenet/node2",
@@ -42,12 +42,12 @@
             "name": "Testnet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/bin/nervad",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
                 "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
                 "--mining-threads", "4",
                 "--testnet",
-                "--block-sync-size", "1"
+                "--block-sync-size", "1",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -66,10 +66,10 @@
             "name": "Mainnet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/bin/nervad",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
-                //"--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                //"--mining-threads", "8",
+                "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
+                "--mining-threads", "4",
                 "--block-sync-size", "1",
             ],
             "stopAtEntry": false,
@@ -89,7 +89,7 @@
             "name": "Wallet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/bin/nerva-wallet-cli",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
             "preLaunchTask": "delete-files",
             "args": [
                 "--hw-device", "Ledger", "--testnet", "--generate-from-device", "hw-tn", "--password", "", "--restore-height", "36400"

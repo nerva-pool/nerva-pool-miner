@@ -229,6 +229,8 @@ public:
   virtual void get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const;
   virtual void get_v3_data_opt(char* salt, uint64_t height, const int variant, uint32_t seed) const;
 
+  virtual void build_cache(uint64_t height) const;
+
   virtual uint64_t get_block_timestamp(const uint64_t& height) const;
 
   virtual uint64_t get_top_block_timestamp() const;

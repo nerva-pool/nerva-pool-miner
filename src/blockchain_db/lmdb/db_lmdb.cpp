@@ -1995,6 +1995,39 @@ void check_error(int err)
     fprintf(stderr, "get_v3_data failed, error %d %s\n", err, mdb_strerror(err));
 }
 
+static thread_local std::vector<mdb_block_info> _cache;
+static thread_local uint64_t last_height = 0;
+
+void BlockchainLMDB::build_cache(uint64_t height) const
+{
+  if (last_height == height)
+    return;
+
+  _cache.resize(height);
+
+  MDB_txn *txn;
+  MDB_cursor *cur;
+  if (auto r = lmdb_txn_begin(m_env, NULL, MDB_RDONLY, &txn))
+    throw0(DB_ERROR(lmdb_error("Failed to create a transaction for the db: ", r).c_str()));
+
+  int err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
+
+  mdb_block_info* bi;
+  
+  for(uint64_t index = 0; index < height; ++index)
+  {
+    MDB_val_set(query, index);
+    err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &query, MDB_GET_BOTH); check_error(err);
+    bi = (mdb_block_info*)query.mv_data;
+    std::memcpy(_cache.data() + index, bi, sizeof(mdb_block_info));
+  }
+
+  mdb_cursor_close(cur);
+  mdb_txn_abort(txn); 
+
+  last_height = height;
+}
+
 void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const
 {
   MDB_txn *txn;
@@ -2089,54 +2122,24 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
 
 void BlockchainLMDB::get_v3_data_opt(char* salt, uint64_t height, const int variant, uint32_t seed) const
 {
-  MDB_txn *txn;
-  MDB_cursor *cur;
   angrywasp::mersenne_twister mt(seed);
-  char* bd = (char*)malloc(128);
-  char* blob_data = bd;
   
   int err = 0;
   uint32_t t = 0;
   uint64_t r = 0, x = 0, y = 0, z = 0, w = 0;
   uint8_t a = 32, b = 64;
 
-  uint32_t count = (variant == 3) ? 32 : 2048;
-
-  mdb_block_info* bi;
-
-  if (auto r = lmdb_txn_begin(m_env, NULL, MDB_RDONLY, &txn))
-      throw0(DB_ERROR(lmdb_error("Failed to create a transaction for the db: ", r).c_str()));
-
-  err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
-
-  static thread_local std::vector<mdb_block_info> _cache;
-  static thread_local crypto::hash _cache_state;
-  const auto topHash = top_block_hash();
-  if(std::memcmp(_cache_state.data, topHash.data, sizeof(crypto::hash)))
-  {
-      _cache.resize(height - 1);
-      for(uint64_t index = 0; index <= height; ++index)
-      {
-          MDB_val_set(query, index);
-          err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &query, MDB_GET_BOTH); check_error(err);
-          bi = (mdb_block_info*)query.mv_data;
-          std::memcpy(_cache.data() + index, bi, sizeof(mdb_block_info));
-      }
-      _cache_state = topHash;
-      LOG_PRINT_L3("initialized miner cache at " << height);
-  }
-
+  build_cache(height);
   std::array<uint32_t, 36864> rand_seq = mt.generate_v3_sequence(seed, (uint32_t)height);
   uint32_t i_config = 0;
+  mdb_block_info* bi;
 
-  for (uint32_t i = 0; i < count; i++)
+  for (uint32_t i = 0; i < 2048; i++)
   {
     r = rand_seq[i_config++];
     bi = &_cache[r];
-    std::memcpy(blob_data, bi->bi_hash.data, 32);
+    std::memcpy(salt + (i * 128), bi->bi_hash.data, 32);
 
-    //random diff/timestamps
-    //random coin count hi/lo
     a = 32;
     b = 64;
     for (uint32_t j = 0; j < 4; j++)
@@ -2148,34 +2151,29 @@ void BlockchainLMDB::get_v3_data_opt(char* salt, uint64_t height, const int vari
 
       bi = &_cache[x];
       t = (uint32_t)bi->bi_timestamp;
-      std::memcpy(blob_data + a, &t, 4);
+      std::memcpy(salt + (i * 128) + a, &t, 4);
       a += 4;
 
       bi = &_cache[y];
       t = (uint32_t)bi->bi_diff;
-      std::memcpy(blob_data + a, &t, 4);
+      std::memcpy(salt + (i * 128) + a, &t, 4);
       a += 4;
 
       bi = &_cache[z];
       t = (uint32_t)(bi->bi_coins >> 32U);
-      std::memcpy(blob_data + b, &t, 4);
+      std::memcpy(salt + (i * 128) + b, &t, 4);
       b += 4;
 
       bi = &_cache[w];
       t = (uint32_t)bi->bi_coins;
-      std::memcpy(blob_data + b, &t, 4);
+      std::memcpy(salt + (i * 128) + b, &t, 4);
       b += 4;
     }
 
     r = rand_seq[i_config++];
     bi = &_cache[r];
-    std::memcpy(blob_data + 96, bi->bi_hash.data, 32);
-    std::memcpy(salt + (i * 128), blob_data, 128);
+    std::memcpy(salt + (i * 128) + 96, bi->bi_hash.data, 32);
   }
-
-  free(bd);
-  mdb_cursor_close(cur);
-  mdb_txn_abort(txn); 
 }
 
 cryptonote::blobdata BlockchainLMDB::get_uncle_blob_from_height(const uint64_t& height) const
@@ -2198,7 +2196,6 @@ cryptonote::blobdata BlockchainLMDB::get_uncle_blob_from_height(const uint64_t& 
 
   blobdata bd;
   bd.assign(reinterpret_cast<char*>(result.mv_data), result.mv_size);
-    //block hash
   TXN_POSTFIX_RDONLY();
 
   return bd;

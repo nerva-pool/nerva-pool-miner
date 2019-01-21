@@ -940,6 +940,8 @@ public:
   virtual void get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const = 0;
   virtual void get_v3_data_opt(char* salt, uint64_t height, const int variant, uint32_t seed) const = 0;
 
+  virtual void build_cache(uint64_t height) const = 0;
+
   /**
    * @brief fetch an uncle block blob by mined height
    *
