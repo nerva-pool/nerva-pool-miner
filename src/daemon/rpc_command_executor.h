@@ -36,6 +36,7 @@
 //
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
+
 #pragma once
 
 #include <boost/optional/optional_fwd.hpp>
@@ -95,7 +96,9 @@ public:
 
   bool print_block_by_height(uint64_t height);
 
-  bool print_transaction(crypto::hash transaction_hash, bool include_hex, bool include_json);
+  bool print_uncle_block(crypto::hash uncle_hash);
+
+  bool print_transaction(crypto::hash transaction_hash, bool include_hex, bool include_json, bool prune);
 
   bool is_key_image_spent(const crypto::key_image &ki);
 
@@ -158,6 +161,8 @@ public:
   bool relay_tx(const std::string &txid);
 
   bool sync_info();
+
+  bool pop_blocks(uint64_t num_blocks);
 };
 
 } // namespace daemonize

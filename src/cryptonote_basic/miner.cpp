@@ -1,3 +1,4 @@
+// Copyright (c) 2018, The Masari Project
 // Copyright (c) 2014-2018, The Monero Project
 //
 // All rights reserved.
@@ -87,6 +88,7 @@ namespace cryptonote
     const command_line::arg_descriptor<std::string> arg_extra_messages =  {"extra-messages-file", "Specify file for extra messages to include into coinbase transactions", "", true};
     const command_line::arg_descriptor<std::string> arg_start_mining =    {"start-mining", "Specify wallet address to mining for", "", true};
     const command_line::arg_descriptor<uint32_t>      arg_mining_threads =  {"mining-threads", "Specify mining threads count", 0, true};
+    const command_line::arg_descriptor<bool>      arg_optimized_miner =  {"disable-optimized-miner", "Disable the optimized mining routine", false, true};
     const command_line::arg_descriptor<bool>        arg_bg_mining_enable =  {"bg-mining-enable", "enable/disable background mining", true, true};
     const command_line::arg_descriptor<bool>        arg_bg_mining_ignore_battery =  {"bg-mining-ignore-battery", "if true, assumes plugged in when unable to query system power status", false, true};    
     const command_line::arg_descriptor<uint64_t>    arg_bg_mining_min_idle_interval_seconds =  {"bg-mining-min-idle-interval", "Specify min lookback interval in seconds for determining idle state", miner::BACKGROUND_MINING_DEFAULT_MIN_IDLE_INTERVAL_IN_SECONDS, true};
@@ -212,6 +214,7 @@ namespace cryptonote
     command_line::add_arg(desc, arg_extra_messages);
     command_line::add_arg(desc, arg_start_mining);
     command_line::add_arg(desc, arg_mining_threads);
+    command_line::add_arg(desc, arg_optimized_miner);
     command_line::add_arg(desc, arg_bg_mining_enable);
     command_line::add_arg(desc, arg_bg_mining_ignore_battery);    
     command_line::add_arg(desc, arg_bg_mining_min_idle_interval_seconds);
@@ -260,6 +263,10 @@ namespace cryptonote
         m_threads_total = command_line::get_arg(vm, arg_mining_threads);
       }
     }
+
+    m_optimized = true; //default to true
+    if(command_line::has_arg(vm, arg_optimized_miner))
+        m_optimized = false;
 
     // Background mining parameters
     // Let init set all parameters even if background mining is not enabled, they can start later with params set
@@ -329,6 +336,11 @@ namespace cryptonote
       LOG_PRINT_L0("Background mining controller thread started" );
     }
 
+    if(get_ignore_battery())
+    {
+      MINFO("Ignoring battery");
+    }
+
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -382,7 +394,7 @@ namespace cryptonote
     for(; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++)
     {
       crypto::hash h;
-      get_block_longhash(bl, h, height, NULL);
+      get_block_longhash(bl, h, height, NULL, false);
 
       if(check_hash(h, diffic))
       {
@@ -480,13 +492,16 @@ namespace cryptonote
 
       b.nonce = nonce;
       crypto::hash h;
-      get_block_longhash(b, h, height, m_blockchain);
+      get_block_longhash(b, h, height, m_blockchain, m_optimized);
 
       if(check_hash(h, local_diff))
       {
         //we lucky!
         ++m_config.current_extra_message_index;
         MGINFO_GREEN("Found block at height: " << height);
+	if (is_uncle_block_included(b)) {
+          MGINFO_GREEN("Uncle mined: " << b.uncle);
+        }
         if(!m_phandler->handle_block_found(b))
         {
           --m_config.current_extra_message_index;

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+reset
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/env
+source ${BUILDER_DIR}/helpers
+
+detectos
+detectversion
+
+mkdir -p ${BUILDER_DIR}/build/dev/$1
+cd ${BUILDER_DIR}/build/dev/$1
+cmake -D CMAKE_BUILD_TYPE=$1 -D STATIC=ON -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
+make -j2

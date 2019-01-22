@@ -89,6 +89,12 @@ t_command_server::t_command_server(
     , "Print a given block."
     );
   m_command_lookup.set_handler(
+      "print_uncle_block"
+    , std::bind(&t_command_parser_executor::print_uncle_block, &m_parser, p::_1)
+    , "print_uncle_block <uncle_block_hash>"
+    , "Print an uncle block."
+    );
+  m_command_lookup.set_handler(
       "print_tx"
     , std::bind(&t_command_parser_executor::print_transaction, &m_parser, p::_1)
     , "print_tx <transaction_hash> [+hex] [+json]"
@@ -297,6 +303,17 @@ t_command_server::t_command_server(
       "sync_info"
     , std::bind(&t_command_parser_executor::sync_info, &m_parser, p::_1)
     , "Print information about the blockchain sync state."
+    );
+    m_command_lookup.set_handler(
+      "pop_blocks"
+    , std::bind(&t_command_parser_executor::pop_blocks, &m_parser, p::_1)
+    , "pop_blocks <nblocks>"
+    , "Remove blocks from end of blockchain"
+    );
+    m_command_lookup.set_handler(
+      "version"
+    , std::bind(&t_command_parser_executor::version, &m_parser, p::_1)
+    , "Print version information."
     );
 }
 

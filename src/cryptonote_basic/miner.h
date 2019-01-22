@@ -148,6 +148,7 @@ namespace cryptonote
     std::list<uint64_t> m_last_hash_rates;
     bool m_do_print_hashrate;
     bool m_do_mining;
+    bool m_optimized = true;;
 
     cryptonote::Blockchain* m_blockchain;
 

@@ -86,6 +86,7 @@ int main(int argc, char const * argv[])
       command_line::add_arg(core_settings, daemon_args::arg_log_file);
       command_line::add_arg(core_settings, daemon_args::arg_log_level);
       command_line::add_arg(core_settings, daemon_args::arg_max_log_file_size);
+      command_line::add_arg(core_settings, daemon_args::arg_max_log_files);
       command_line::add_arg(core_settings, daemon_args::arg_max_concurrency);
       command_line::add_arg(core_settings, daemon_args::arg_zmq_rpc_bind_ip);
       command_line::add_arg(core_settings, daemon_args::arg_zmq_rpc_bind_port);
@@ -140,11 +141,32 @@ int main(int argc, char const * argv[])
       return 0;
     }
 
+    std::string config = command_line::get_arg(vm, daemon_args::arg_config_file);
+    boost::filesystem::path config_path(config);
+    boost::system::error_code ec;
+    if (bf::exists(config_path, ec))
+    {
+      try
+      {
+        po::store(po::parse_config_file<char>(config_path.string<std::string>().c_str(), core_settings), vm);
+      }
+      catch (const std::exception &e)
+      {
+        // log system isn't initialized yet
+        std::cerr << "Error parsing config file: " << e.what() << std::endl;
+        throw;
+      }
+    }
+    else if (!command_line::is_arg_defaulted(vm, daemon_args::arg_config_file))
+    {
+      std::cerr << "Can't find config file " << config << std::endl;
+      return 1;
+    }
     const bool testnet = command_line::get_arg(vm, cryptonote::arg_testnet_on);
     const bool stagenet = command_line::get_arg(vm, cryptonote::arg_stagenet_on);
     if (testnet && stagenet)
     {
-      std::cerr << "Can't specify more than one of --testnet and --stagenet" << ENDL;
+      std::cerr << "Can't specify more than one of --tesnet and --stagenet" << ENDL;
       return 1;
     }
 
@@ -172,29 +194,6 @@ int main(int argc, char const * argv[])
     //bf::path relative_path_base = daemonizer::get_relative_path_base(vm);
     bf::path relative_path_base = data_dir;
 
-    std::string config = command_line::get_arg(vm, daemon_args::arg_config_file);
-
-    boost::filesystem::path data_dir_path(data_dir);
-    boost::filesystem::path config_path(config);
-    if (!config_path.has_parent_path())
-    {
-      config_path = data_dir / config_path;
-    }
-
-    boost::system::error_code ec;
-    if (bf::exists(config_path, ec))
-    {
-      try
-      {
-        po::store(po::parse_config_file<char>(config_path.string<std::string>().c_str(), core_settings), vm);
-      }
-      catch (const std::exception &e)
-      {
-        // log system isn't initialized yet
-        std::cerr << "Error parsing config file: " << e.what() << std::endl;
-        throw;
-      }
-    }
     po::notify(vm);
 
     // log_file_path
@@ -206,7 +205,7 @@ int main(int argc, char const * argv[])
     if (!command_line::is_arg_defaulted(vm, daemon_args::arg_log_file))
       log_file_path = command_line::get_arg(vm, daemon_args::arg_log_file);
     log_file_path = bf::absolute(log_file_path, relative_path_base);
-    mlog_configure(log_file_path.string(), true, command_line::get_arg(vm, daemon_args::arg_max_log_file_size));
+    mlog_configure(log_file_path.string(), true, command_line::get_arg(vm, daemon_args::arg_max_log_file_size), command_line::get_arg(vm, daemon_args::arg_max_log_files));
 
     // Set log level
     if (!command_line::is_arg_defaulted(vm, daemon_args::arg_log_level))
@@ -217,6 +216,15 @@ int main(int argc, char const * argv[])
     // after logs initialized
     tools::create_directories_if_necessary(data_dir.string());
 
+#ifdef STACK_TRACE
+    tools::set_stack_trace_log(log_file_path.filename().string());
+#endif // STACK_TRACE
+
+    if (!command_line::is_arg_defaulted(vm, daemon_args::arg_max_concurrency))
+      tools::set_max_concurrency(command_line::get_arg(vm, daemon_args::arg_max_concurrency));
+
+    // logging is now set up
+    MGINFO("Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")");
     // If there are positional options, we're running a daemon command
     {
       auto command = command_line::get_arg(vm, daemon_args::arg_command);
@@ -240,11 +248,14 @@ int main(int argc, char const * argv[])
           return 1;
         }
 
+        const char *env_rpc_login = nullptr;
+        const bool has_rpc_arg = command_line::has_arg(vm, arg.rpc_login);
+        const bool use_rpc_env = !has_rpc_arg && (env_rpc_login = getenv("RPC_LOGIN")) != nullptr && strlen(env_rpc_login) > 0;
         boost::optional<tools::login> login{};
-        if (command_line::has_arg(vm, arg.rpc_login))
+        if (has_rpc_arg || use_rpc_env)
         {
           login = tools::login::parse(
-            command_line::get_arg(vm, arg.rpc_login), false, [](bool verify) {
+            has_rpc_arg ? command_line::get_arg(vm, arg.rpc_login) : std::string(env_rpc_login), false, [](bool verify) {
 #ifdef HAVE_READLINE
         rdln::suspend_readline pause_readline;
 #endif
@@ -265,21 +276,14 @@ int main(int argc, char const * argv[])
         }
         else
         {
+#ifdef HAVE_READLINE
+          rdln::suspend_readline pause_readline;
+#endif
           std::cerr << "Unknown command: " << command.front() << std::endl;
           return 1;
         }
       }
     }
-
-#ifdef STACK_TRACE
-    tools::set_stack_trace_log(log_file_path.filename().string());
-#endif // STACK_TRACE
-
-    if (!command_line::is_arg_defaulted(vm, daemon_args::arg_max_concurrency))
-      tools::set_max_concurrency(command_line::get_arg(vm, daemon_args::arg_max_concurrency));
-
-    // logging is now set up
-    MGINFO("NERVA '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")");
 
     blacklist::read_blacklist_from_url(testnet);
 

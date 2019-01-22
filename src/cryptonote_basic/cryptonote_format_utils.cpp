@@ -49,10 +49,6 @@ using namespace epee;
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
 
-#define ENCRYPTED_PAYMENT_ID_TAIL 0x8d
-
-// #define ENABLE_HASH_CASH_INTEGRITY_CHECK
-
 using namespace crypto;
 
 static const uint64_t valid_decomposed_outputs[] = {
@@ -818,6 +814,9 @@ namespace cryptonote
     crypto::hash tree_root_hash = get_tx_tree_hash(b);
     blob.append(reinterpret_cast<const char*>(&tree_root_hash), sizeof(tree_root_hash));
     blob.append(tools::get_varint_data(b.tx_hashes.size()+1));
+    if (b.major_version >= 11) {
+      blob.append(reinterpret_cast<const char*>(&b.uncle), sizeof(b.uncle));
+    }
     return blob;
   }
   //---------------------------------------------------------------
@@ -931,7 +930,9 @@ namespace cryptonote
     return str;
   }
 
-  bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
+  static thread_local char salt[262144] = {0};
+
+  bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc, bool optimized)
   {
     blobdata bd = get_block_hashing_blob(b);
     uint64_t ht = height - 256;
@@ -944,8 +945,6 @@ namespace cryptonote
       CRITICAL_REGION_END();
     }
 
-    char* salt = (char*)malloc(262144);
-
     uint32_t seed = b.nonce ^ height;
 
     crypto::hash h;
@@ -954,7 +953,10 @@ namespace cryptonote
     for (int i = 0; i < 32; i += 4)
       seed ^= *(uint32_t*)&h.data[i];
 
-    bc->get_db().get_v3_data(salt, (uint32_t)ht, 4, seed);
+    if (optimized)
+      bc->get_db().get_v3_data_opt(salt, (uint32_t)ht, 4, seed);
+    else
+      bc->get_db().get_v3_data(salt, (uint32_t)ht, 4, seed);
 
     uint32_t m = seed % 3;
 
@@ -971,7 +973,6 @@ namespace cryptonote
 
     crypto::cn_slow_hash(bd.data(), bd.size(), res, 4, 0x40000, ((height + 1) % 64), r, salt, temp_lookup_1[m], xx, yy, zz, ww);
 
-    free(salt);
     return true;
   }
 
@@ -988,13 +989,12 @@ namespace cryptonote
       CRITICAL_REGION_END();
     }
 
-    char* salt_data = (char*)malloc(128 * 32);
-    char* salt = salt_data;
+    char* salt = (char*)malloc(128 * 32);
 
     bc->get_db().get_v3_data(salt, (uint32_t)ht, 3, b.nonce ^ (uint32_t)ht);
     crypto::cn_slow_hash(bd.data(), bd.size(), res, 3, 0x40000, ((height + 1) % 64), r, salt);
     
-    free(salt_data);
+    free(salt);
 
     return true;
   }
@@ -1042,12 +1042,12 @@ namespace cryptonote
     return true;
   }
 
-  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
+  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc, bool optimized)
   {
     switch (b.major_version)
     {
       case 10:
-        return get_block_longhash_v10(b, res, height, bc);
+        return get_block_longhash_v10(b, res, height, bc, optimized);
       case 9:
         return get_block_longhash_v9(b, res, height, bc);
       case 8:
@@ -1082,7 +1082,7 @@ namespace cryptonote
   crypto::hash get_block_longhash(const block& b, uint64_t height, const cryptonote::Blockchain* bc)
   {
     crypto::hash p = null_hash;
-    get_block_longhash(b, p, height, bc);
+    get_block_longhash(b, p, height, bc, false);
     return p;
   }
   //---------------------------------------------------------------

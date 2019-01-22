@@ -83,6 +83,8 @@ public:
 
   bool print_block(const std::vector<std::string>& args);
 
+  bool print_uncle_block(const std::vector<std::string>& args);
+
   bool print_transaction(const std::vector<std::string>& args);
 
   bool is_key_image_spent(const std::vector<std::string>& args);
@@ -144,6 +146,10 @@ public:
   bool relay_tx(const std::vector<std::string>& args);
 
   bool sync_info(const std::vector<std::string>& args);
+
+  bool pop_blocks(const std::vector<std::string>& args);
+
+  bool version(const std::vector<std::string>& args);
 };
 
 } // namespace daemonize

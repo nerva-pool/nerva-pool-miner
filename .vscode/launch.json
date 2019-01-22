@@ -5,18 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "bashdb",
-            "request": "launch",
-            "name": "Bash-Debug",
-            "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/builder/linux-static",
-            "args": ["build-release"]
-        },
-        {
-            "name": "Stagenet Miner",
+            "name": "Stagenet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/debug/bin/nervad",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
                 "--stagenet",
                 "--data-dir", "~/.nerva/stagenet/node2",
@@ -30,40 +22,7 @@
                 "--add-exclusive-node", "127.0.0.1:38080",
                 "--add-exclusive-node", "127.0.0.1:48080",
                 "--start-mining", "NV1tXu3czVbaBWYcKg28X4P2mHrJZMnS8R3TshtYgJVrfA9XLrKRKzVcjaPLgjNiwzH3DNTeywRTURDJUY59a5Lb2vWSG9s5q",
-                "--mining-threads", "1",
-                "--block-sync-size", "1"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Stagenet",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/builder/build/debug/bin/nervad",
-            "preLaunchTask": "build-debug",
-            "args": [
-                "--stagenet",
-                "--data-dir", "~/.nerva/stagenet/node4",
-                "--no-igd",
-                "--hide-my-port",
-                "--p2p-bind-port", "58080",
-                "--rpc-bind-port", "58081",
-                "--zmq-rpc-bind-port", "58082",
-                "--rpc-restricted-bind-port", "58083",
-                "--add-exclusive-node", "127.0.0.1:28080",
-                "--add-exclusive-node", "127.0.0.1:38080",
-                "--add-exclusive-node", "127.0.0.1:48080",
+                "--mining-threads", "1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -82,12 +41,11 @@
             "name": "Testnet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/debug/bin/nervad",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
-                "--testnet",
                 "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                "--mining-threads", "1",
-                "--block-sync-size", "1"
+                "--mining-threads", "4",
+                "--testnet"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -101,16 +59,31 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "Testnet-Win",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad.exe",
+            "args": [
+                "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
+                "--mining-threads", "4",
+                "--testnet"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
         },
         {
             "name": "Mainnet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/debug/bin/nervad",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
                 "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                "--mining-threads", "8",
-                "--block-sync-size", "1"
+                "--mining-threads", "4",
+                "--block-sync-size", "1",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -126,13 +99,13 @@
             ]
         },
         {
-            "name": "Import",
+            "name": "Wallet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/bin/nerva-blockchain-import",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "preLaunchTask": "delete-files",
             "args": [
-                "--data-dir", "${workspaceFolder}/build/debug/bin/import-test",
-                "--input-file", "${workspaceFolder}/build/debug/bin/mainnet-180950.raw",
+                "--hw-device", "Ledger", "--testnet", "--generate-from-device", "hw-tn", "--password", "", "--restore-height", "36400"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

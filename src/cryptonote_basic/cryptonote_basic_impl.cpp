@@ -41,7 +41,7 @@ using namespace epee;
 #include "misc_language.h"
 #include "common/base58.h"
 #include "crypto/hash.h"
-#include "common/int-util.h"
+#include "int-util.h"
 #include "common/dns_utils.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
@@ -195,6 +195,11 @@ namespace cryptonote {
       return false;
 
     return true;
+  }
+  //-----------------------------------------------------------------------
+  bool is_uncle_block_included(const block& bl)
+  {
+    return bl.uncle != crypto::null_hash;
   }
   //-----------------------------------------------------------------------
   bool get_account_address_from_str(

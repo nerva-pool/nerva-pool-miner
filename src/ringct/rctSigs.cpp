@@ -862,7 +862,7 @@ namespace rct {
                   results[i] = verRange(rv.outPk[i].mask, rv.p.rangeSigs[i]);
               });
             }
-            waiter.wait();
+            waiter.wait(&tpool);
 
             for (size_t i = 0; i < rv.outPk.size(); ++i) {
               if (!results[i]) {
@@ -970,7 +970,7 @@ namespace rct {
                 results[i] = verRange(rv.outPk[i].mask, rv.p.rangeSigs[i]);
             });
           }
-          waiter.wait();
+          waiter.wait(&tpool);
 
           for (size_t i = 0; i < results.size(); ++i) {
             if (!results[i]) {
@@ -989,7 +989,7 @@ namespace rct {
                 results[i] = verRctMGSimple(message, rv.p.MGs[i], rv.mixRing[i], pseudoOuts[i]);
             });
           }
-          waiter.wait();
+          waiter.wait(&tpool);
 
           for (size_t i = 0; i < results.size(); ++i) {
             if (!results[i]) {

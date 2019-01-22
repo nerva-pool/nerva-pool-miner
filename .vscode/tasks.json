@@ -4,9 +4,18 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build-debug",
+            "label": "build",
             "type": "shell",
-            "command": "cd ${workspaceFolder}/build/debug && make -j2",
+            "command": "mkdir ${workspaceFolder}/build && cd ${workspaceFolder}/build && cmake -D CMAKE_BUILD_TYPE=debug -D BUILD_SHARED_LIBS=OFF .. && make -j2",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "delete-files",
+            "type": "shell",
+            "command": "rm -rf ${workspaceFolder}/hw-tn.cache ${workspaceFolder}/hw-tn.keys",
             "group": {
                 "kind": "build",
                 "isDefault": true

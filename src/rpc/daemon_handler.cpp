@@ -52,7 +52,7 @@ namespace rpc
   {
     std::vector<std::pair<std::pair<blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, blobdata> > > > blocks;
 
-    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.start_height, true, COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT))
+    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.start_height, req.prune, true, COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT))
     {
       res.status = Message::STATUS_FAILED;
       res.error_details = "core::find_blockchain_supplement() returned false";
@@ -89,11 +89,29 @@ namespace rpc
           res.error_details = "incorrect number of transactions retrieved for block";
           return;
       }
-      std::vector<transaction> txs;
-      for (const auto& p : it->second)
+
+      cryptonote::rpc::block_output_indices& indices = res.output_indices[block_count];
+
+      // miner tx output indices
       {
-        txs.resize(txs.size() + 1);
-        if (!parse_and_validate_tx_from_blob(p.second, txs.back()))
+        cryptonote::rpc::tx_output_indices tx_indices;
+        if (!m_core.get_tx_outputs_gindexs(get_transaction_hash(bwt.block.miner_tx), tx_indices))
+        {
+          res.status = Message::STATUS_FAILED;
+          res.error_details = "core::get_tx_outputs_gindexs() returned false";
+          return;
+        }
+        indices.push_back(std::move(tx_indices));
+      }
+
+      // assume each block returned is returned with all its transactions
+      // in the correct order.
+      auto hash_it = bwt.block.tx_hashes.begin();
+      bwt.transactions.reserve(it->second.size());
+      for (const auto& blob : it->second)
+      {
+        bwt.transactions.emplace_back();
+        if (!parse_and_validate_tx_from_blob(blob.second, bwt.transactions.back()))
         {
           res.blocks.clear();
           res.output_indices.clear();
@@ -101,41 +119,17 @@ namespace rpc
           res.error_details = "failed retrieving a requested transaction";
           return;
         }
-      }
-
-      cryptonote::rpc::block_output_indices& indices = res.output_indices[block_count];
-
-      // miner tx output indices
-      {
-        cryptonote::rpc::tx_output_indices tx_indices;
-        bool r = m_core.get_tx_outputs_gindexs(get_transaction_hash(bwt.block.miner_tx), tx_indices);
-        if (!r)
-        {
-          res.status = Message::STATUS_FAILED;
-          res.error_details = "core::get_tx_outputs_gindexs() returned false";
-          return;
-        }
-        indices.push_back(tx_indices);
-      }
-
-      // assume each block returned is returned with all its transactions
-      // in the correct order.
-      auto tx_it = txs.begin();
-      for (const crypto::hash& h : bwt.block.tx_hashes)
-      {
-        bwt.transactions.emplace(h, *tx_it);
-        tx_it++;
 
         cryptonote::rpc::tx_output_indices tx_indices;
-        bool r = m_core.get_tx_outputs_gindexs(h, tx_indices);
-        if (!r)
+        if (!m_core.get_tx_outputs_gindexs(*hash_it, tx_indices))
         {
           res.status = Message::STATUS_FAILED;
           res.error_details = "core::get_tx_outputs_gindexs() returned false";
           return;
         }
 
-        indices.push_back(tx_indices);
+        indices.push_back(std::move(tx_indices));
+        ++hash_it;
       }
 
       it++;
@@ -163,10 +157,10 @@ namespace rpc
 
   void DaemonHandler::handle(const GetTransactions::Request& req, GetTransactions::Response& res)
   {
-    std::vector<cryptonote::transaction> found_txs_vec;
-    std::vector<crypto::hash> missed_vec;
+    std::vector<cryptonote::transaction> found_txs;
+    std::vector<crypto::hash> missed_hashes;
 
-    bool r = m_core.get_transactions(req.tx_hashes, found_txs_vec, missed_vec);
+    bool r = m_core.get_transactions(req.tx_hashes, found_txs, missed_hashes);
 
     // TODO: consider fixing core::get_transactions to not hide exceptions
     if (!r)
@@ -176,7 +170,20 @@ namespace rpc
       return;
     }
 
-    size_t num_found = found_txs_vec.size();
+    size_t num_found = found_txs.size();
+
+    // std::list is annoying
+    std::vector<cryptonote::transaction> found_txs_vec
+    {
+      std::make_move_iterator(std::begin(found_txs)),
+      std::make_move_iterator(std::end(found_txs))
+    };
+
+    std::vector<crypto::hash> missed_vec
+    {
+      std::make_move_iterator(std::begin(missed_hashes)),
+      std::make_move_iterator(std::end(missed_hashes))
+    };
 
     std::vector<uint64_t> heights(num_found);
     std::vector<bool> in_pool(num_found, false);

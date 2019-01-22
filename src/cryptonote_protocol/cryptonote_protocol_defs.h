@@ -66,15 +66,15 @@ namespace cryptonote
 
     uint64_t live_time;
 
-	uint64_t avg_download;
-	uint64_t current_download;
-	
-	uint64_t avg_upload;
-	uint64_t current_upload;
-  
-	uint32_t support_flags;
+    uint64_t avg_download;
+    uint64_t current_download;
+    
+    uint64_t avg_upload;
+    uint64_t current_upload;
+    
+    uint32_t support_flags;
 
-	std::string connection_id;
+    std::string connection_id;
 
     uint64_t height;
 
@@ -145,7 +145,7 @@ namespace cryptonote
 
     struct request
     {
-      std::vector<blobdata>   txs;
+      std::list<blobdata>   txs;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(txs)
@@ -161,8 +161,8 @@ namespace cryptonote
 
     struct request
     {
-      std::vector<crypto::hash>    txs;
-      std::vector<crypto::hash>    blocks;
+      std::list<crypto::hash>    txs;
+      std::list<crypto::hash>    blocks;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE_CONTAINER_POD_AS_BLOB(txs)
@@ -179,13 +179,15 @@ namespace cryptonote
     {
       std::vector<blobdata>              txs;
       std::vector<block_complete_entry>  blocks;
-      std::vector<crypto::hash>          missed_ids;
+      std::vector<crypto::hash>               missed_ids;
       uint64_t                         current_blockchain_height;
+      std::list<block_complete_entry>  uncles;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(txs)
         KV_SERIALIZE(blocks)
         KV_SERIALIZE_CONTAINER_POD_AS_BLOB(missed_ids)
+        KV_SERIALIZE(uncles)
         KV_SERIALIZE(current_blockchain_height)
       END_KV_SERIALIZE_MAP()
     };

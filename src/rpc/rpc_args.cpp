@@ -87,6 +87,7 @@ namespace cryptonote
       config.login = tools::login::parse(command_line::get_arg(vm, arg.rpc_login), true, [](bool verify) {
         return tools::password_container::prompt(verify, "RPC server password");
       });
+
       if (!config.login)
         return boost::none;
 
@@ -102,7 +103,7 @@ namespace cryptonote
     {
       if (!config.login)
       {
-        LOG_ERROR(arg.rpc_access_control_origins.name  << tr(" requires RFC server password --") << arg.rpc_login.name << tr(" cannot be empty"));
+        LOG_ERROR(arg.rpc_access_control_origins.name  << tr(" requires RPC server password --") << arg.rpc_login.name << tr(" cannot be empty"));
         return boost::none;
       }
 

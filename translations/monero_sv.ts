@@ -1702,7 +1702,7 @@ Om argumentet &quot;tag_description&quot; anges, så tilldelas taggen &lt;taggna
    Set the fee too default/unimportant/normal/elevated/priority.
  confirm-missing-payment-id &lt;1|0>
  ask-password &lt;1|0>
- unit &lt;nerva|millipot|micropot|nanopot|picopot>
+ unit &lt;nerva|millinerva|micronerva|nanonerva|piconerva>
    Set the default nerva (sub-)unit.
  min-outputs-count [n]
    Try to keep at least that many outputs of value at least min-outputs-value.
@@ -1737,7 +1737,7 @@ Om argumentet &quot;tag_description&quot; anges, så tilldelas taggen &lt;taggna
    Sätt avgiften till default/unimportant/normal/elevated/priority.
  confirm-missing-payment-id &lt;1|0>
  ask-password &lt;1|0>
- unit &lt;nerva|millipot|micropot|nanopot|picopot>
+ unit &lt;nerva|millinerva|micronerva|nanonerva|piconerva>
    Ange standardvärde för nervaenhet.
  min-outputs-count [n]
    Försök att behålla åtminstone så många utgångar med åtminstone värdet min-outputs-value.
@@ -2609,8 +2609,8 @@ Varning: Några ingångsnycklar som spenderas kommer från </translation>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="1923"/>
-        <source>nerva, millipot, micropot, nanopot, picopot</source>
-        <translation>nerva, millipot, micropot, nanopot, picopot</translation>
+        <source>nerva, millinerva, micronerva, nanonerva, piconerva</source>
+        <translation>nerva, millinerva, micronerva, nanonerva, piconerva</translation>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="1975"/>

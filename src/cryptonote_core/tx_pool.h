@@ -277,7 +277,7 @@ namespace cryptonote
      *
      * @return true
      */
-    bool get_transactions_and_spent_keys_info(std::vector<tx_info>& tx_infos, std::vector<spent_key_image_info>& key_image_infos, bool include_sensitive_data, bool include_blob) const;
+    bool get_transactions_and_spent_keys_info(std::vector<tx_info>& tx_infos, std::vector<spent_key_image_info>& key_image_infos, bool include_sensitive_data = true) const;
 
     /**
      * @brief get information about all transactions and key images in the pool
@@ -324,14 +324,14 @@ namespace cryptonote
      *
      * @return true
      */
-    bool get_relayable_transactions(std::vector<std::pair<crypto::hash, cryptonote::blobdata>>& txs) const;
+    bool get_relayable_transactions(std::list<std::pair<crypto::hash, cryptonote::blobdata>>& txs) const;
 
     /**
      * @brief tell the pool that certain transactions were just relayed
      *
      * @param txs the list of transactions (and their hashes)
      */
-    void set_relayed(const std::vector<std::pair<crypto::hash, cryptonote::blobdata>>& txs);
+    void set_relayed(const std::list<std::pair<crypto::hash, cryptonote::blobdata>>& txs);
 
     /**
      * @brief get the total number of transactions in the pool
