@@ -22,8 +22,7 @@
                 "--add-exclusive-node", "127.0.0.1:38080",
                 "--add-exclusive-node", "127.0.0.1:48080",
                 "--start-mining", "NV1tXu3czVbaBWYcKg28X4P2mHrJZMnS8R3TshtYgJVrfA9XLrKRKzVcjaPLgjNiwzH3DNTeywRTURDJUY59a5Lb2vWSG9s5q",
-                "--mining-threads", "1",
-                "--block-sync-size", "1"
+                "--mining-threads", "1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -46,8 +45,7 @@
             "args": [
                 "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
                 "--mining-threads", "4",
-                "--testnet",
-                "--block-sync-size", "1",
+                "--testnet"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -61,6 +59,21 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "Testnet-Win",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad.exe",
+            "args": [
+                "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
+                "--mining-threads", "4",
+                "--testnet"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
         },
         {
             "name": "Mainnet",

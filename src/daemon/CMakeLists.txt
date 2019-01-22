@@ -26,20 +26,10 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(blocksdat "")
-if(PER_BLOCK_CHECKPOINT)
-  if(APPLE)
-    add_custom_command(OUTPUT blocksdat.o MAIN_DEPENDENCY ../blocks/checkpoints.dat COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && touch stub.c && ${CMAKE_C_COMPILER} -o stub.o -c stub.c COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && ${CMAKE_LINKER} ${LD_RAW_FLAGS} -r -sectcreate __DATA __blocks_dat ../blocks/checkpoints.dat -o ${CMAKE_CURRENT_BINARY_DIR}/blocksdat.o stub.o && rm -f stub.*)
-  else()
-    add_custom_command(OUTPUT blocksdat.o MAIN_DEPENDENCY ../blocks/checkpoints.dat COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && cp ../blocks/checkpoints.dat blocks.dat && ${CMAKE_LINKER} ${LD_RAW_FLAGS} -r -b binary -o ${CMAKE_CURRENT_BINARY_DIR}/blocksdat.o blocks.dat && rm -f blocks.dat)
-  endif()
-  set(blocksdat "blocksdat.o")
-endif()
 
 if (WIN32 OR STATIC)
   add_definitions(-DCURL_STATICLIB)
 endif ()
-
 set(daemon_sources
   command_parser_executor.cpp
   command_server.cpp
@@ -82,9 +72,7 @@ monero_private_headers(daemon
 monero_add_executable(daemon
   ${daemon_sources}
   ${daemon_headers}
-  ${daemon_private_headers}
-  ${blocksdat}
-)
+  ${daemon_private_headers})
 target_link_libraries(daemon
   PRIVATE
     rpc
@@ -97,7 +85,6 @@ target_link_libraries(daemon
     daemonizer
     serialization
     daemon_rpc_server
-    epee
     ${EPEE_READLINE}
     version
     ${Boost_CHRONO_LIBRARY}
@@ -109,7 +96,8 @@ target_link_libraries(daemon
     ${ZMQ_LIB}
     ${CURL_LIBRARIES}
     ${GNU_READLINE_LIBRARY}
-    ${EXTRA_LIBRARIES})
+    ${EXTRA_LIBRARIES}
+    ${Blocks})
 set_property(TARGET daemon
   PROPERTY
     OUTPUT_NAME "nervad")

@@ -123,7 +123,7 @@ namespace angrywasp
               {
                 {
                   uint32_t kk;
-                  for (kk = 0; kk < 27; kk++)
+                  for (kk = 0; kk < 20; kk++)
                   {
                       y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
                       mt[kk] = mt[kk + M] ^ (y >> 1) ^ mag01[y & 0x1];
