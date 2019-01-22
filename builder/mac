@@ -26,6 +26,8 @@ function installdeps()
 		brew upgrade -all
 		brew install git
 		brew install zeromq
+		brew install cppzmq
+		brew install libsodium
 		brew install openSSL
 		brew install PkgConfig
 		brew install readline
