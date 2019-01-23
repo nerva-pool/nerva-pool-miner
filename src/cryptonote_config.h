@@ -177,9 +177,14 @@ namespace config
   uint32_t const GENESIS_NONCE = 10000;
 
   std::set<std::string> const seed_nodes = {
-      "206.81.2.15:17565",
-      "206.81.2.16:17565",
-      "206.81.12.28:17565"};
+    "206.81.2.15:17565",
+    "206.81.2.16:17565",
+    "206.81.12.28:17565"};
+
+  std::set<std::string> const seed_node_aliases = {
+    "xnv1.getnerva.org",
+    "xnv2.getnerva.org",
+    "xnv3.getnerva.org"};
 
   namespace testnet
   {
@@ -197,6 +202,11 @@ namespace config
       "204.48.17.173:18565",
       "206.81.2.10:18565",
       "206.81.2.12:18565"};
+
+    std::set<std::string> const seed_node_aliases = {
+      "xnv4.getnerva.org",
+      "xnv5.getnerva.org",
+      "xnv6.getnerva.org"};
   }
 
   namespace stagenet

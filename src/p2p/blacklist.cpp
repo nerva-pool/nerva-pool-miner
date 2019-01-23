@@ -44,17 +44,14 @@ namespace blacklist
 
     void read_blacklist_from_url(const bool testnet)
     {
-        std::set<std::string> seed_nodes = testnet ? 
-            ::config::testnet::seed_nodes : ::config::seed_nodes;
+        std::set<std::string> seed_node_aliases = testnet ? 
+            ::config::testnet::seed_node_aliases : ::config::seed_node_aliases;
 
-        for (const std::string &ip : seed_nodes)
+        for (const std::string &a : seed_node_aliases)
         {
-            size_t found = ip.find_first_of(":");
-            std::string host = ip.substr(0, found);
-
             std::string url;
-            url.append("http://");
-            url.append(host);
+            url.append("https://");
+            url.append(a);
             url.append("/xnv_blacklist.txt");
 
             CURL* curl = curl_easy_init(); 
