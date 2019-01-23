@@ -2372,8 +2372,9 @@ namespace tools
     bool r = wal->invoke_http_json("/getheight", hreq, hres);
     wal->set_refresh_from_block_height(hres.height);
     crypto::secret_key dummy_key;
+    crypto::secret_key recovery_val;
     try {
-      wal->generate(wallet_file, req.password, dummy_key, false, false);
+     recovery_val = wal->generate(wallet_file, req.password, dummy_key, false, false);
     }
     catch (const std::exception& e)
     {
@@ -2386,6 +2387,17 @@ namespace tools
       er.message = "Failed to generate wallet";
       return false;
     }
+
+    // // Convert the secret key back to seed
+    epee::wipeable_string electrum_words;
+    if (!crypto::ElectrumWords::bytes_to_words(recovery_val, electrum_words, req.language))
+    {
+      er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
+      er.message = "Failed to encode seed";
+      return false;
+    }
+    res.seed = electrum_words.data();
+
     if (m_wallet)
     {
       try
@@ -2400,6 +2412,7 @@ namespace tools
       delete m_wallet;
     }
     m_wallet = wal.release();
+    res.address = m_wallet->get_account().get_public_address_str(m_wallet->nettype());
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------

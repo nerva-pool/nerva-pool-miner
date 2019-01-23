@@ -1637,9 +1637,15 @@ namespace wallet_rpc
         KV_SERIALIZE(language)
       END_KV_SERIALIZE_MAP()
     };
+
     struct response
     {
+      std::string address;
+      std::string seed;
+
       BEGIN_KV_SERIALIZE_MAP()
+      KV_SERIALIZE(address)
+      KV_SERIALIZE(seed)
       END_KV_SERIALIZE_MAP()
     };
   };
