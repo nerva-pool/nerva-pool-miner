@@ -131,6 +131,7 @@ namespace tools
         MAP_JON_RPC_WE("close_wallet",       on_close_wallet,       wallet_rpc::COMMAND_RPC_CLOSE_WALLET)
         MAP_JON_RPC_WE("change_wallet_password",        on_change_wallet_password,        wallet_rpc::COMMAND_RPC_CHANGE_WALLET_PASSWORD)
         MAP_JON_RPC_WE("restore_deterministic_wallet",      on_restore_deterministic_wallet,      wallet_rpc::COMMAND_RPC_RESTORE_DETERMINISTIC_WALLET)
+        MAP_JON_RPC_WE("restore_nondeterministic_wallet",      on_restore_nondeterministic_wallet,      wallet_rpc::COMMAND_RPC_RESTORE_NONDETERMINISTIC_WALLET)
         MAP_JON_RPC_WE("is_multisig",        on_is_multisig,        wallet_rpc::COMMAND_RPC_IS_MULTISIG)
         MAP_JON_RPC_WE("prepare_multisig",   on_prepare_multisig,   wallet_rpc::COMMAND_RPC_PREPARE_MULTISIG)
         MAP_JON_RPC_WE("make_multisig",      on_make_multisig,      wallet_rpc::COMMAND_RPC_MAKE_MULTISIG)
@@ -202,6 +203,7 @@ namespace tools
       bool on_close_wallet(const wallet_rpc::COMMAND_RPC_CLOSE_WALLET::request& req, wallet_rpc::COMMAND_RPC_CLOSE_WALLET::response& res, epee::json_rpc::error& er);
       bool on_change_wallet_password(const wallet_rpc::COMMAND_RPC_CHANGE_WALLET_PASSWORD::request& req, wallet_rpc::COMMAND_RPC_CHANGE_WALLET_PASSWORD::response& res, epee::json_rpc::error& er);
       bool on_restore_deterministic_wallet(const wallet_rpc::COMMAND_RPC_RESTORE_DETERMINISTIC_WALLET::request& req, wallet_rpc::COMMAND_RPC_RESTORE_DETERMINISTIC_WALLET::response& res, epee::json_rpc::error& er);
+      bool on_restore_nondeterministic_wallet(const wallet_rpc::COMMAND_RPC_RESTORE_NONDETERMINISTIC_WALLET::request& req, wallet_rpc::COMMAND_RPC_RESTORE_NONDETERMINISTIC_WALLET::response& res, epee::json_rpc::error& er);
       bool on_is_multisig(const wallet_rpc::COMMAND_RPC_IS_MULTISIG::request& req, wallet_rpc::COMMAND_RPC_IS_MULTISIG::response& res, epee::json_rpc::error& er);
       bool on_prepare_multisig(const wallet_rpc::COMMAND_RPC_PREPARE_MULTISIG::request& req, wallet_rpc::COMMAND_RPC_PREPARE_MULTISIG::response& res, epee::json_rpc::error& er);
       bool on_make_multisig(const wallet_rpc::COMMAND_RPC_MAKE_MULTISIG::request& req, wallet_rpc::COMMAND_RPC_MAKE_MULTISIG::response& res, epee::json_rpc::error& er);

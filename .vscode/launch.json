@@ -119,6 +119,28 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "RpcWallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-rpc",
+            "preLaunchTask": "delete-files",
+            "args": [
+                "--testnet", "--rpc-bind-port", "22525", "--daemon-address", "127.0.0.1:18566", "--disable-rpc-login", "--wallet-dir", "./"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         }
     ]
 }

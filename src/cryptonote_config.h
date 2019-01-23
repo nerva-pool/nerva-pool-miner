@@ -188,9 +188,6 @@ namespace config
 
   namespace testnet
   {
-    uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x3800;
-    uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x7081;
-    uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x1080;
     uint16_t const P2P_DEFAULT_PORT = 18565;
     uint16_t const RPC_DEFAULT_PORT = 18566;
     uint16_t const ZMQ_RPC_DEFAULT_PORT = 18567;
@@ -211,9 +208,6 @@ namespace config
 
   namespace stagenet
   {
-    uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x3800;
-    uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x7081;
-    uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x1080;
     uint16_t const P2P_DEFAULT_PORT = 19565;
     uint16_t const RPC_DEFAULT_PORT = 19566;
     uint16_t const ZMQ_RPC_DEFAULT_PORT = 19567;
