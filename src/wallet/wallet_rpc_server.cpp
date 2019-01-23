@@ -2964,6 +2964,8 @@ namespace tools
 
     epee::wipeable_string password = rc.second.password();
 
+    wal->set_seed_language(req.language);
+
     try
     {
       wal->generate(wallet_file, std::move(rc.second).password(), addr, spendkey, viewkey, false);
@@ -2986,6 +2988,15 @@ namespace tools
       return false;
     }
 
+    // // Convert the secret key back to seed
+    epee::wipeable_string electrum_words;
+    if (!crypto::ElectrumWords::bytes_to_words(spendkey, electrum_words, req.language))
+    {
+      er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
+      er.message = "Failed to encode seed";
+      return false;
+    }
+    res.seed = electrum_words.data();
     res.address = tools::base58::encode_addr(prefix, t_serializable_object_to_blob(addr));
     res.info = "Wallet has been restored successfully.";
     return true;
