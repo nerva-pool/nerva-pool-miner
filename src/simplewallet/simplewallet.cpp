@@ -3929,12 +3929,12 @@ void simple_wallet::on_skip_transaction(uint64_t height, const crypto::hash &txi
 boost::optional<epee::wipeable_string> simple_wallet::on_get_password(const char *reason)
 {
   // can't ask for password from a background thread
-  /*if (!m_in_manual_refresh.load(std::memory_order_relaxed))
+  if (!m_in_manual_refresh.load(std::memory_order_relaxed))
   {
     message_writer(console_color_red, false) << boost::format(tr("Password needed (%s) - use the refresh command")) % reason;
     m_cmd_binder.print_prompt();
     return boost::none;
-  }*/
+  }
 
 #ifdef HAVE_READLINE
   rdln::suspend_readline pause_readline;
