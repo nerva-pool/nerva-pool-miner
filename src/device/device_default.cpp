@@ -36,8 +36,8 @@
 #include "cryptonote_basic/subaddress_index.h"
 #include "ringct/rctOps.h"
 
-#define ENCRYPTED_PAYMENT_ID_TAIL 0x8f
-#define CHACHA8_KEY_TAIL 0x8d
+#define ENCRYPTED_PAYMENT_ID_TAIL 0x8d
+#define CHACHA8_KEY_TAIL 0x8c
 
 namespace hw {
 
