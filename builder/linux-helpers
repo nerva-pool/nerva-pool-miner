@@ -4,13 +4,15 @@ function installdeps()
 {
     if [ $NERVA_BUILD_DISTRO == "ubuntu" ] || [ $NERVA_BUILD_DISTRO == "debian" ]; then
 		sudo apt install -y \
-		build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev libunbound-dev libsodium-dev libcurl4-openssl-dev \
-		libminiupnpc-dev libunwind8-dev liblzma-dev libreadline6-dev libldns-dev libexpat1-dev libgtest-dev doxygen graphviz
+		git curl ca-certificates nano zip unzip tar xz-utils cmake g++ make pkg-config \
+		libtool-bin autoconf automake build-essential cmake pkg-config pcsc-tools pcscd \
+		libpcsclite1 libudev-dev libusb-1.0-0-dev python-dev virtualenv libusb-dev libudev-dev
 	elif [ $NERVA_BUILD_DISTRO == "fedora" ]; then
 		sudo dnf install -y \
 		make automake cmake gcc-c++ boost-devel miniupnpc-devel graphviz \
     	doxygen unbound-devel libunwind-devel pkgconfig cppzmq-devel openssl-devel --setopt=install_weak_deps=
 		#todo: what is the fedora package for libcurl4-openssl-dev
+		#todo: fedora package list not complete
 	else
 		echo "This distro is not officially supported"	
 		exit 1

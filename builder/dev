@@ -13,6 +13,5 @@ detectos
 
 mkdir -p ${BUILDER_DIR}/build/dev/$1
 cd ${BUILDER_DIR}/build/dev/$1
-
 cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../../..
 make -j6
