@@ -3009,6 +3009,20 @@ namespace tools
       er.message = "Failed to encode seed";
       return false;
     }
+    if (m_wallet)
+    {
+      try
+      {
+        m_wallet->store();
+      }
+      catch (const std::exception &e)
+      {
+        handle_rpc_exception(std::current_exception(), er, WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR);
+        return false;
+      }
+      delete m_wallet;
+    }
+    m_wallet = wal.release();
     res.seed = electrum_words.data();
     res.address = tools::base58::encode_addr(prefix, t_serializable_object_to_blob(addr));
     res.info = "Wallet has been restored successfully.";

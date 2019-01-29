@@ -61,71 +61,16 @@
             ]
         },
         {
-            "name": "Testnet-Win",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad.exe",
-            "args": [
-                "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                "--mining-threads", "4",
-                "--testnet"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-        },
-        {
-            "name": "Mainnet",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
-            "args": [
-                "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                "--mining-threads", "4",
-                "--block-sync-size", "1",
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Wallet",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
-            "preLaunchTask": "delete-files",
-            "args": [
-                "--hw-device", "Ledger", "--testnet", "--generate-from-device", "hw-tn", "--password", "", "--restore-height", "36400"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
             "name": "RpcWallet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-rpc",
-            "preLaunchTask": "delete-files",
+            "linux": {
+                "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-rpc",
+            },
+            "windows": {
+                "program": "${workspaceFolder}\\builder\\build\\dev\\debug\\bin\\nerva-wallet-rpc.exe",
+                "miDebuggerPath": "C:\\msys64\\mingw64\\bin\\gdb.exe",
+            },
             "args": [
                 "--testnet", "--rpc-bind-port", "22525", "--daemon-address", "127.0.0.1:18566", "--disable-rpc-login", "--wallet-dir", "./"
             ],

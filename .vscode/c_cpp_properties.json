@@ -34,6 +34,42 @@
             "cppStandard": "c++17",
             "intelliSenseMode": "clang-x64",
             "compileCommands": "${workspaceFolder}/compile_commands.json"
+        },
+        {
+            "name": "Win32",
+            "includePath": [
+                "/usr/include",
+                "${workspaceFolder}",
+                "${workspaceFolder}/contrib/epee/include",
+                "${workspaceFolder}/external/easylogging++",
+                "${workspaceFolder}/external/rapidjson",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/common",
+                "${workspaceFolder}/src/crypto",
+                "${workspaceFolder}/src/common/cryptonote_basic",
+                "${workspaceFolder}/src/common/cryptonote_core",
+                "${workspaceFolder}/src/common/cryptonote_protocol",
+                "${workspaceFolder}/src/common/daemon",
+                "${workspaceFolder}/src/common/daemonizer",
+                "${workspaceFolder}/src/common/device",
+                "${workspaceFolder}/src/p2p",
+                "${workspaceFolder}/src/platform",
+                "${workspaceFolder}/src/rpc",
+                "${workspaceFolder}/src/serialization"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE"
+            ],
+            "compilerPath": "D:\\msys64\\mingw64\\bin\\gcc.exe",
+            "intelliSenseMode": "clang-x64",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true,
+                "databaseFilename": ""
+            }
         }
     ],
     "version": 4

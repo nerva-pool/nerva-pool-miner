@@ -4,22 +4,22 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "build-linux-debug",
             "type": "shell",
-            "command": "mkdir ${workspaceFolder}/build && cd ${workspaceFolder}/build && cmake -D CMAKE_BUILD_TYPE=debug -D BUILD_SHARED_LIBS=OFF .. && make -j2",
+            "command": "${workspaceFolder}/builder/dev linux debug",
             "group": {
                 "kind": "build",
                 "isDefault": true
             }
         },
         {
-            "label": "delete-files",
+            "label": "build-windows-debug",
             "type": "shell",
-            "command": "rm -rf ${workspaceFolder}/hw-tn.cache ${workspaceFolder}/hw-tn.keys",
+            "command": "${workspaceFolder}/builder/dev windows debug",
             "group": {
                 "kind": "build",
                 "isDefault": true
             }
-        }
+        },
     ]
 }

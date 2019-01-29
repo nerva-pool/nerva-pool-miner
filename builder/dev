@@ -6,12 +6,27 @@ BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
 source ${BUILDER_DIR}/env
 source ${BUILDER_DIR}/helpers
-source ${BUILDER_DIR}/linux-helpers
 
-detectversion
 detectos
+detectversion
 
-mkdir -p ${BUILDER_DIR}/build/dev/$1
-cd ${BUILDER_DIR}/build/dev/$1
-cmake -D CMAKE_BUILD_TYPE=$1 -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../../..
-make -j6
+platform=$1
+build_type=$2
+
+function windows()
+{
+    cmake -D CMAKE_BUILD_TYPE=${build_type} -D STATIC=ON -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} \
+    -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
+}
+
+function linux()
+{
+    cmake -D CMAKE_BUILD_TYPE=${build_type} -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../../..
+}
+
+mkdir -p ${BUILDER_DIR}/build/dev/${build_type}
+cd ${BUILDER_DIR}/build/dev/${build_type}
+
+${platform} ${build_type}
+
+make -j4
