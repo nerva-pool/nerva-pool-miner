@@ -86,6 +86,33 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "Import",
+            "type": "cppdbg",
+            "request": "launch",
+            "linux": {
+                "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-blockchain-import",
+            },
+            "windows": {
+                "program": "${workspaceFolder}\\builder\\build\\dev\\debug\\bin\\nerva-wallet-rpc.exe",
+                "miDebuggerPath": "C:\\msys64\\mingw64\\bin\\gdb.exe",
+            },
+            "args": [
+                "--log-level", "1"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         }
     ]
 }

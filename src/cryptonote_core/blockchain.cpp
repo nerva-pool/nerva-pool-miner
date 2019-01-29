@@ -1529,7 +1529,7 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
   uint64_t max_block_reward = max_miner_reward + max_uncle_reward;
   uint64_t money_in_use = get_outs_money_amount(b.miner_tx);
 
-  if(max_block_reward != money_in_use)
+  if(max_block_reward != money_in_use && already_generated_coins > 0)
   {
     MERROR_VER("coinbase transaction doesn't use full amount of block reward:  spent: " << money_in_use << ",  max block reward " << max_block_reward << "(" << base_reward << "+" << fee << "+" << max_nephew_reward << "+" << max_uncle_reward << ")");
     return false;
