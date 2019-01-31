@@ -2,7 +2,145 @@
 
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
-source ${BUILDER_DIR}/env
+
+if [ -z ${REPO_NAME_FULL} ]; then
+	export REPO_NAME_FULL=NERVA
+fi
+
+if [ -z ${REPO_NAME} ]; then
+	export REPO_NAME=nerva
+fi
+
+if [ $(uname) == "Linux" ]; then
+
+	function installdeps()
+	{
+		if [ $NERVA_BUILD_DISTRO == "ubuntu" ] || [ $NERVA_BUILD_DISTRO == "debian" ]; then
+			sudo apt install -y \
+			git curl ca-certificates nano zip unzip tar xz-utils cmake g++ make pkg-config \
+			libtool-bin autoconf automake build-essential cmake pkg-config pcsc-tools pcscd \
+			libpcsclite1 libusb-1.0-0-dev python-dev virtualenv libusb-dev libudev-dev
+		elif [ $NERVA_BUILD_DISTRO == "fedora" ]; then
+			sudo dnf install -y \
+			make automake cmake gcc-c++ boost-devel miniupnpc-devel graphviz \
+			doxygen unbound-devel libunwind-devel pkgconfig cppzmq-devel openssl-devel --setopt=install_weak_deps=
+			#todo: what is the fedora package for libcurl4-openssl-dev
+			#todo: fedora package list not complete
+		else
+			echo "This distro is not officially supported"	
+			exit 1
+		fi
+	}
+
+	function install()
+	{
+		cp ${dir}/${REPO_NAME}* ~/.local/bin
+		bdir=$(realpath ~/.local/bin)
+		sdir=$(realpath ~/.local/share)
+
+		dfile=${sdir}/applications/${REPO_NAME}d.desktop
+
+		#Construct daemon .desktop file
+		echo "[Desktop Entry]" > $dfile
+		echo "Name=${REPO_NAME_FULL} Daemon" >> $dfile
+		echo "Exec=${REPO_NAME}d" >> $dfile
+		echo "Terminal=true" >> $dfile
+		echo "Type=Application" >> $dfile
+		echo "Icon=${bdir}/${REPO_NAME}-logo-white.png" >> $dfile
+
+		chmod +x $dfile
+
+		wfile=${sdir}/applications/${REPO_NAME}-wallet-cli.desktop
+
+		#Construct wallet .desktop file
+		echo "[Desktop Entry]" > $wfile
+		echo "Name=${REPO_NAME_FULL} CLI Wallet" >> $wfile
+		echo "Exec=${REPO_NAME}-wallet-cli" >> $wfile
+		echo "Terminal=true" >> $wfile
+		echo "Type=Application" >> $wfile
+		echo "Icon=${bdir}/${REPO_NAME}-logo-black.png" >> $wfile
+
+		chmod +x $wfile
+
+		ufile=${bdir}/${REPO_NAME}-uninstall
+
+		#Construct installer script
+		echo "#!/bin/bash" > $ufile
+		echo "rm ${bdir}/${REPO_NAME}d" >> $ufile
+		echo "rm ${bdir}/${REPO_NAME}-wallet-cli" >> $ufile
+		echo "rm ${bdir}/${REPO_NAME}-wallet-rpc" >> $ufile
+		echo "rm ${bdir}/${REPO_NAME}-blockchain-*" >> $ufile
+		echo "rm ${bdir}/${REPO_NAME}-gen-trusted-multisig" >> $ufile
+		echo "rm ${bdir}/${REPO_NAME}-logo-*" >> $ufile
+		echo "rm ${sdir}/applications/${REPO_NAME}d.desktop" >> $ufile
+		echo "rm ${sdir}/applications/${REPO_NAME}-wallet-cli.desktop" >> $ufile
+		echo "rm ${bdir}/${REPO_NAME}-uninstall" >> $ufile
+
+		chmod +x $ufile
+	}
+
+elif [ $(uname) == "Darwin" ]; then
+
+	function installdeps()
+	{
+		xcode-select --install
+
+		if ! [ -x "$(command -v brew)" ]; then
+			ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+		fi
+
+		if ! [ -f "/usr/local/lib/libcurl.a" ]; then
+			#build libcurl if not already built
+			if ! [ -d ${BUILDER_DIR}/curl ]; then
+				cd ${NERVA_DIR}/external/curl
+				./configure --prefix="${BUILDER_DIR}/curl" --without-ssl --without-zlib \
+				--disable-ftp --disable-gopher --disable-file --disable-imap --disable-ldap --disable-ldaps \
+				--disable-pop3 --disable-proxy --disable-rtsp --disable-smtp --disable-telnet --disable-tftp \
+				--without-gnutls --without-libidn --without-librtmp --disable-dict
+				make -j4
+				make install
+			fi
+
+			#copy to /usr/local
+			cp ${BUILDER_DIR}/curl/lib/libcurl.a /usr/local/lib/libcurl.a
+			cp -r ${BUILDER_DIR}/curl/include/curl /usr/local/include
+		fi
+
+		brew update
+		brew upgrade -all
+		brew install git
+		brew install zeromq
+		brew install cppzmq
+		brew install libsodium
+		brew install openSSL
+		brew install PkgConfig
+		brew install readline
+		brew install boost
+		brew install miniupnpc
+		brew  tap jmuncaster/homebrew-header-only
+		brew install jmuncaster/header-only/cppzmq
+		brew install cmake
+	}
+
+	function install()
+	{
+		cp ${dir}/${REPO_NAME}* /usr/local/bin
+
+		ufile=/usr/local/bin/${REPO_NAME}-uninstall
+
+		#Construct installer script
+		echo "#!/bin/bash" > $ufile
+		echo "rm /usr/local/bin/${REPO_NAME}d" >> $ufile
+		echo "rm /usr/local/bin/${REPO_NAME}-wallet-cli" >> $ufile
+		echo "rm /usr/local/bin/${REPO_NAME}-wallet-rpc" >> $ufile
+		echo "rm /usr/local/bin/${REPO_NAME}-blockchain-*" >> $ufile
+		echo "rm /usr/local/bin/${REPO_NAME}-gen-trusted-multisig" >> $ufile
+		echo "rm /usr/local/bin/${REPO_NAME}-uninstall" >> $ufile
+
+		chmod +x $ufile
+	}
+
+fi
 
 function detectos()
 {
@@ -62,29 +200,4 @@ function detectversion()
     export NERVA_VERSION=$(echo ${ver} | tr -d '"')
 	export NERVA_CODENAME=$(echo ${name} | tr -d '"')
     echo Version detected as ${REPO_NAME_FULL} ${NERVA_VERSION}: ${NERVA_CODENAME}
-}
-
-function buildstaticlibcurl()
-{
-	if ! [ -d ${BUILDER_DIR}/curl ]; then
-		cd ${NERVA_DIR}/external/curl
-		./configure --prefix="${BUILDER_DIR}/curl" --without-ssl --without-zlib \
-		--disable-ftp --disable-gopher --disable-file --disable-imap --disable-ldap --disable-ldaps \
-		--disable-pop3 --disable-proxy --disable-rtsp --disable-smtp --disable-telnet --disable-tftp \
-		--without-gnutls --without-libidn --without-librtmp --disable-dict
-		make -j4
-		make install
-
-		# It appears (on mac) if we simply set the make prefix to /usr/local when calling curl from the terminal
-		# our custom executable is found first. This is undesirable as it does not support all protocols
-		# so we build curl in a seperate location and just copy over what we need
-
-		if [ $(uname) == "Darwin" ]; then
-			cp ${BUILDER_DIR}/curl/lib/libcurl.a /usr/local/lib/libcurl.a
-			cp -r ${BUILDER_DIR}/curl/include/curl /usr/local/include
-		elif [ $(uname) == "Linux" ]; then
-			sudo cp ${BUILDER_DIR}/curl/lib/libcurl.a /usr/local/lib/libcurl.a
-			sudo cp -r ${BUILDER_DIR}/curl/include/curl /usr/local/include
-		fi
-	fi
 }

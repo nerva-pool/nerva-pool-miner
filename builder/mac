@@ -5,61 +5,7 @@
 
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
-source ${BUILDER_DIR}/env
 source ${BUILDER_DIR}/helpers
-
-function installdeps()
-{
-    if [ $(uname) == "Darwin" ]; then
-
-		xcode-select --install
-
-		if ! [ -x "$(command -v brew)" ]; then
-			ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-		fi
-
-		if ! [ -f "/usr/local/lib/libcurl.a" ]; then
-			buildstaticlibcurl
-		fi
-
-		brew update
-		brew upgrade -all
-		brew install git
-		brew install zeromq
-		brew install cppzmq
-		brew install libsodium
-		brew install openSSL
-		brew install PkgConfig
-		brew install readline
-		brew install boost
-		brew install miniupnpc
-		brew  tap jmuncaster/homebrew-header-only
-		brew install jmuncaster/header-only/cppzmq
-		brew install cmake
-		
-	else 
-		echo "This distro is not officially supported"	
-		exit 1
-	fi
-}
-
-function install()
-{
-	cp ${dir}/${REPO_NAME}* /usr/local/bin
-
-	ufile=/usr/local/bin/${REPO_NAME}-uninstall
-
-	#Construct installer script
-	echo "#!/bin/bash" > $ufile
-	echo "rm /usr/local/bin/${REPO_NAME}d" >> $ufile
-	echo "rm /usr/local/bin/${REPO_NAME}-wallet-cli" >> $ufile
-	echo "rm /usr/local/bin/${REPO_NAME}-wallet-rpc" >> $ufile
-	echo "rm /usr/local/bin/${REPO_NAME}-blockchain-*" >> $ufile
-	echo "rm /usr/local/bin/${REPO_NAME}-gen-trusted-multisig" >> $ufile
-	echo "rm /usr/local/bin/${REPO_NAME}-uninstall" >> $ufile
-
-	chmod +x $ufile
-}
 
 installdeps
 detectos
@@ -68,7 +14,7 @@ detectversion
 #build nerva
 mkdir -p ${BUILDER_DIR}/build/release
 cd ${BUILDER_DIR}/build/release
-cmake -D CMAKE_BUILD_TYPE=release -D STATIC=ON -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../..
+cmake -D CMAKE_BUILD_TYPE=release -D STATIC=ON -D BUILD_TAG="osx-x64" ../../..
 make -j4
 
 lscript=${BUILDER_DIR}/build/release/bin/install
@@ -83,5 +29,3 @@ echo "install" >> $lscript
 chmod +x $lscript
 
 zip -rj ${NERVA_DIR}/${REPO_NAME}-v${NERVA_VERSION}_osx-x64.zip ${BUILDER_DIR}/build/release/bin/*
-
-clean

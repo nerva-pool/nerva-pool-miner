@@ -4,7 +4,6 @@ reset
 
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
-source ${BUILDER_DIR}/env
 source ${BUILDER_DIR}/helpers
 
 detectos
@@ -15,13 +14,13 @@ build_type=$2
 
 function windows()
 {
-    cmake -D CMAKE_BUILD_TYPE=${build_type} -D STATIC=ON -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} \
+    cmake -D CMAKE_BUILD_TYPE=${build_type} -D STATIC=ON -D BUILD_TAG="windows-dev" \
     -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
 }
 
 function linux()
 {
-    cmake -D CMAKE_BUILD_TYPE=${build_type} -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../../..
+    cmake -D CMAKE_BUILD_TYPE=${build_type} -D BUILD_TAG="linux-dev" ../../../..
 }
 
 mkdir -p ${BUILDER_DIR}/build/dev/${build_type}

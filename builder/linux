@@ -2,18 +2,29 @@
 
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
-source ${BUILDER_DIR}/env
 source ${BUILDER_DIR}/helpers
-source ${BUILDER_DIR}/linux-helpers
+
+if [ -z ${STATIC} ]; then
+	export STATIC=OFF
+fi
+
+if [ ${STATIC} = "OFF" ]; then
+	echo "Dynamic build initialized"
+else
+	echo "Static build initialized"
+fi
 
 detectversion
 detectos
-installdeps
+
+if [ ${STATIC} = "OFF" ]; then
+	installdeps
+fi
 
 mkdir -p ${BUILDER_DIR}/build/release
 cd ${BUILDER_DIR}/build/release
-cmake -D CMAKE_BUILD_TYPE=release -D BUILD_TAG=${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION} ../../..
-make -j4
+cmake -D CMAKE_BUILD_TYPE=release -D STATIC=${STATIC} -D BUILD_TAG="linux-x64" ../../..
+make -j6
 
 #Construct installer script
 lscript=${BUILDER_DIR}/build/release/bin/install
@@ -22,10 +33,12 @@ echo "dir=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"" >> $lscript
 echo "REPO_NAME="${REPO_NAME} >> $lscript
 echo "REPO_NAME_FULL="${REPO_NAME_FULL} >> $lscript
 echo "function $(declare -f detectos)" >> $lscript
-echo "function $(declare -f installdeps)" >> $lscript
-echo "function $(declare -f install)" >> $lscript
 echo "detectos" >> $lscript
-echo "installdeps" >> $lscript
+if [ ${STATIC} = "OFF" ]; then
+	echo "function $(declare -f installdeps)" >> $lscript
+	echo "installdeps" >> $lscript
+fi
+echo "function $(declare -f install)" >> $lscript
 echo "install" >> $lscript
 chmod +x $lscript
 
@@ -33,4 +46,4 @@ chmod +x $lscript
 cp ${BUILDER_DIR}/${REPO_NAME}-logo-white.png ${BUILDER_DIR}/build/release/bin/${REPO_NAME}-logo-white.png
 cp ${BUILDER_DIR}/${REPO_NAME}-logo-black.png ${BUILDER_DIR}/build/release/bin/${REPO_NAME}-logo-black.png
 
-zip -rj ${NERVA_DIR}/${REPO_NAME}-v${NERVA_VERSION}_${NERVA_BUILD_DISTRO}-${NERVA_BUILD_DISTRO_VERSION}.zip ${BUILDER_DIR}/build/release/bin/*
+zip -rj ${NERVA_DIR}/${REPO_NAME}-v${NERVA_VERSION}_linux-x64.zip ${BUILDER_DIR}/build/release/bin/*
