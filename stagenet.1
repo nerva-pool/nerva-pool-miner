@@ -1,0 +1,74 @@
+#!/bin/bash
+
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+bindir=${dir}/builder/build/$1/bin
+
+nd=${bindir}/nervad
+nw=${bindir}/nerva-wallet-cli
+nr=${bindir}/nerva-wallet-rpc
+datadir=~/.nerva/stagenet/
+
+addressA="NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW"
+addressB="NV3QRL7PwFZWs6Xw9ERf4E5GgjCZgRf3JNmCvyXAV2GAKpKHMmDK8cPTwBqwQjVLMA2G9M5iwh3AJM1e4LzWjuXH2UngCq4hV"
+
+# Creates a couple of wallets to use for the stagenet
+function createwallets()
+{
+	echo "exit" | ${nw} --stagenet --generate-new-wallet ${datadir}/wallet1.bin --restore-deterministic-wallet \
+	--electrum-seed="seq atl unv sum peb tue bee rud sna roc dif fus wov tag bes den veg hov rap faw obv mup ran sea ran" \
+	--password "" --log-file ${datadir}/wallet1.log
+
+	echo "exit" | ${nw} --stagenet --generate-new-wallet ${datadir}/wallet2.bin --restore-deterministic-wallet \
+	--electrum-seed="def lar tir gum and lee sid ope igu voi gel foc poa itc net esp muc jai vau win oat ele sci sir win" \
+	--password "" --log-file ${datadir}/wallet2.log
+}
+
+function startcliwallet()
+{
+	${nw} --stagenet --wallet-file ${datadir}/wallet1.bin --password "" --daemon-address 127.0.0.1:28081
+}
+
+function startcliwallet2()
+{
+	${nw} --stagenet --wallet-file ${datadir}/wallet2.bin --password "" --daemon-address 127.0.0.1:28081
+}
+
+function start1()
+{
+	${nd} --stagenet --no-igd --hide-my-port --data-dir ${datadir}/node1 --p2p-bind-port 28080 --rpc-bind-port 28081 --zmq-rpc-bind-port 28082 --rpc-restricted-bind-port 28083 \
+	--add-exclusive-node 192.168.0.10:38080 --add-exclusive-node 192.168.0.121:48080 --add-exclusive-node 192.168.0.150:58080 
+	#--start-mining NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW --mining-threads 1
+}
+
+function start2()
+{
+	${nd} --stagenet --no-igd --hide-my-port --data-dir ${datadir}/node2 --p2p-bind-port 38080 --rpc-bind-port 38081 --zmq-rpc-bind-port 38082 --rpc-restricted-bind-port 38083 \
+	--add-exclusive-node 192.168.0.10:28080 --add-exclusive-node 192.168.0.121:48080 --add-exclusive-node 192.168.0.150:58080 --block-sync-size 1 \
+	--start-mining NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW --mining-threads 6
+}
+
+function startwin()
+{
+	${nd} --stagenet --no-igd --hide-my-port --data-dir ${datadir}/node --p2p-bind-port 48080 --rpc-bind-port 48081 --zmq-rpc-bind-port 48082 --rpc-restricted-bind-port 48083 \
+	--add-exclusive-node 192.168.0.10:28080 --add-exclusive-node 192.168.0.10:38080 --add-exclusive-node 192.168.0.150:58080 --block-sync-size 1 \
+	--start-mining NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW --mining-threads 1
+}
+
+function startmac()
+{
+	${nd} --stagenet --no-igd --hide-my-port --data-dir ${datadir}/node --p2p-bind-port 58080 --rpc-bind-port 58081 --zmq-rpc-bind-port 58082 --rpc-restricted-bind-port 58083 \
+	--add-exclusive-node 192.168.0.10:28080 --add-exclusive-node 192.168.0.10:38080 --add-exclusive-node 192.168.0.121:48080 --block-sync-size 1 \
+	--start-mining NV1uKzZ6tjA6xhJ5zKRu2TGpvNvsmznNZgnJuhwHRv1jKzoCABvtDUgBdguJxWq1TSjDg9ge9zZ2c5r2CQZ4LTQD1dxntAmGW --mining-threads 1
+}
+
+function pop()
+{
+	killall nervad
+	rm -rf ${datadir}/node2
+	rm -rf ${datadir}/node3
+	rm -rf ${datadir}/node4
+	${bindir}/nerva-blockchain-import --stagenet --data-dir ${datadir}/node1 --pop-blocks $1
+}
+
+$2 $3

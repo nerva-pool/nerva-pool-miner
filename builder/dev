@@ -9,23 +9,20 @@ source ${BUILDER_DIR}/helpers
 detectos
 detectversion
 
-platform=$1
-build_type=$2
+if [ -z ${BUILD_TYPE} ]; then
+	export BUILD_TYPE=debug
+fi
 
-function windows()
-{
-    cmake -D CMAKE_BUILD_TYPE=${build_type} -D STATIC=ON -D BUILD_TAG="windows-dev" \
-    -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
-}
+mkdir -p ${BUILDER_DIR}/build/dev/${BUILD_TYPE}
+cd ${BUILDER_DIR}/build/dev/${BUILD_TYPE}
 
-function linux()
-{
-    cmake -D CMAKE_BUILD_TYPE=${build_type} -D BUILD_TAG="linux-dev" ../../../..
-}
-
-mkdir -p ${BUILDER_DIR}/build/dev/${build_type}
-cd ${BUILDER_DIR}/build/dev/${build_type}
-
-${platform} ${build_type}
+if [ ${NERVA_BUILD_OS} = "linux" ]; then
+    cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D BUILD_TAG="linux-dev" ../../../..
+elif [ ${NERVA_BUILD_OS} = "windows" ]; then
+    cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D BUILD_TAG="windows-dev" -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
+else
+    echo "Development builds not supported"
+    exit 0
+fi
 
 make -j4
