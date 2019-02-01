@@ -808,9 +808,11 @@ namespace wallet_rpc
   {
     struct request
     {
+      std::string standard_address;
       std::string payment_id;
 
       BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(standard_address)
         KV_SERIALIZE(payment_id)
       END_KV_SERIALIZE_MAP()
     };
@@ -1646,6 +1648,31 @@ namespace wallet_rpc
       BEGIN_KV_SERIALIZE_MAP()
       KV_SERIALIZE(address)
       KV_SERIALIZE(seed)
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+
+  struct COMMAND_RPC_CREATE_HW_WALLET
+  {
+    struct request
+    {
+      std::string filename;
+      std::string password;
+      std::string device_name;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(filename)
+        KV_SERIALIZE(password)
+        KV_SERIALIZE(device_name)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::string address;
+
+      BEGIN_KV_SERIALIZE_MAP()
+      KV_SERIALIZE(address)
       END_KV_SERIALIZE_MAP()
     };
   };

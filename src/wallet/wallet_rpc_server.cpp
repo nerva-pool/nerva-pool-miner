@@ -1056,7 +1056,33 @@ namespace tools
         }
       }
 
-      res.integrated_address = m_wallet->get_integrated_address_as_str(payment_id);
+      if (req.standard_address.empty())
+      {
+        res.integrated_address = m_wallet->get_integrated_address_as_str(payment_id);
+      }
+      else
+      {
+        cryptonote::address_parse_info info;
+        if(!get_account_address_from_str(info, m_wallet->nettype(), req.standard_address))
+        {
+          er.code = WALLET_RPC_ERROR_CODE_WRONG_ADDRESS;
+          er.message = "Invalid address";
+          return false;
+        }
+        if (info.is_subaddress)
+        {
+          er.code = WALLET_RPC_ERROR_CODE_WRONG_ADDRESS;
+          er.message = "Subaddress shouldn't be used";
+          return false;
+        }
+        if (info.has_payment_id)
+        {
+          er.code = WALLET_RPC_ERROR_CODE_WRONG_ADDRESS;
+          er.message = "Already integrated address";
+          return false;
+        }
+        res.integrated_address = get_account_integrated_address_as_str(m_wallet->nettype(), info.address, payment_id);
+      }
       res.payment_id = epee::string_tools::pod_to_hex(payment_id);
       return true;
     }
@@ -2397,6 +2423,104 @@ namespace tools
       return false;
     }
     res.seed = electrum_words.data();
+
+    if (m_wallet)
+    {
+      try
+      {
+        m_wallet->store();
+      }
+      catch (const std::exception& e)
+      {
+        handle_rpc_exception(std::current_exception(), er, WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR);
+        return false;
+      }
+      delete m_wallet;
+    }
+    m_wallet = wal.release();
+    res.address = m_wallet->get_account().get_public_address_str(m_wallet->nettype());
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
+  bool wallet_rpc_server::on_create_hw_wallet(const wallet_rpc::COMMAND_RPC_CREATE_HW_WALLET::request& req, wallet_rpc::COMMAND_RPC_CREATE_HW_WALLET::response& res, epee::json_rpc::error& er)
+  {
+    if (m_wallet_dir.empty())
+    {
+      er.code = WALLET_RPC_ERROR_CODE_NO_WALLET_DIR;
+      er.message = "No wallet dir configured";
+      return false;
+    }
+    // early check for mandatory fields
+    if (req.filename.empty())
+    {
+      er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
+      er.message = "field 'filename' is mandatory. Please provide a filename to save the restored wallet to.";
+      return false;
+    }
+
+    namespace po = boost::program_options;
+    po::variables_map vm2;
+    const char *ptr = strchr(req.filename.c_str(), '/');
+#ifdef _WIN32
+    if (!ptr)
+      ptr = strchr(req.filename.c_str(), '\\');
+    if (!ptr)
+      ptr = strchr(req.filename.c_str(), ':');
+#endif
+    if (ptr)
+    {
+      er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
+      er.message = "Invalid filename";
+      return false;
+    }
+    std::string wallet_file = m_wallet_dir + "/" + req.filename;
+    {
+      po::options_description desc("dummy");
+      const command_line::arg_descriptor<std::string, true> arg_password = {"password", "password"};
+      const char *argv[4];
+      int argc = 3;
+      argv[0] = "wallet-rpc";
+      argv[1] = "--password";
+      argv[2] = req.password.c_str();
+      argv[3] = NULL;
+      vm2 = *m_vm;
+      command_line::add_arg(desc, arg_password);
+      po::store(po::parse_command_line(argc, argv, desc), vm2);
+    }
+    auto rc = tools::wallet2::make_new(vm2, true, nullptr);
+    std::unique_ptr<wallet2> wal;
+    wal = std::move(rc.first);
+    if (!wal)
+    {
+      er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
+      er.message = "Failed to create wallet";
+      return false;
+    }
+
+    try
+    {
+      wal->restore(wallet_file, std::move(rc.second).password(), req.device_name, false);
+      MINFO("Wallet has been restored.\n");
+    }
+    catch (const std::exception &e)
+    {
+      handle_rpc_exception(std::current_exception(), er, WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR);
+      return false;
+    }
+
+    try
+    {
+      cryptonote::COMMAND_RPC_GET_HEIGHT::request hreq;
+      cryptonote::COMMAND_RPC_GET_HEIGHT::response hres;
+      hres.height = 0;
+      bool r = wal->invoke_http_json("/getheight", hreq, hres);
+      wal->set_refresh_from_block_height(hres.height);
+    }
+    catch (const std::exception &e)
+    {
+      handle_rpc_exception(std::current_exception(), er, WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR);
+      return false;
+    }
 
     if (m_wallet)
     {
