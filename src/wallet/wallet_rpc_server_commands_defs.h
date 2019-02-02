@@ -1659,11 +1659,13 @@ namespace wallet_rpc
       std::string filename;
       std::string password;
       std::string device_name;
+      uint64_t restore_height;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(filename)
         KV_SERIALIZE(password)
         KV_SERIALIZE(device_name)
+        KV_SERIALIZE(restore_height)
       END_KV_SERIALIZE_MAP()
     };
 

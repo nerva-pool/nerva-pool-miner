@@ -2510,11 +2510,16 @@ namespace tools
 
     try
     {
-      cryptonote::COMMAND_RPC_GET_HEIGHT::request hreq;
-      cryptonote::COMMAND_RPC_GET_HEIGHT::response hres;
-      hres.height = 0;
-      bool r = wal->invoke_http_json("/getheight", hreq, hres);
-      wal->set_refresh_from_block_height(hres.height);
+      if (req.restore_height == 0)
+      {
+        cryptonote::COMMAND_RPC_GET_HEIGHT::request hreq;
+        cryptonote::COMMAND_RPC_GET_HEIGHT::response hres;
+        hres.height = 0;
+        bool r = wal->invoke_http_json("/getheight", hreq, hres);
+        wal->set_refresh_from_block_height(hres.height);
+      }
+      else
+        wal->set_refresh_from_block_height(req.restore_height);
     }
     catch (const std::exception &e)
     {
