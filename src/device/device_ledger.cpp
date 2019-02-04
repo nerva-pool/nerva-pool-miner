@@ -54,7 +54,18 @@ namespace hw {
     }
 
     #define TRACKD MTRACE("hw")
-    #define ASSERT_SW(sw,ok,msk) CHECK_AND_ASSERT_THROW_MES(((sw)&(mask))==(ok), "Wrong Device Status : SW=" << std::hex << (sw) << " (EXPECT=" << std::hex << (ok) << ", MASK=" << std::hex << (mask) << ")") ;
+    #define ASSERT_SW(sw,ok,msk) \
+    std::stringstream msg; \
+    switch (sw) { \
+      case 0x6400: msg << "The TX Fee was rejected."; \
+      break; \
+      case 0x6410: msg << "The transaction was rejected."; \
+      break; \
+      default: msg << "Wrong Device Status : SW=" << std::hex << (sw) << " (EXPECT=" << std::hex << (ok) << ", MASK=" << std::hex << (mask) << ")"; \
+      break; \
+    } \
+    CHECK_AND_ASSERT_THROW_MES(((sw)&(mask))==(ok), msg.str());
+    
     #define ASSERT_T0(exp)       CHECK_AND_ASSERT_THROW_MES(exp, "Protocol assert failure: "#exp ) ;
     #define ASSERT_X(exp,msg)    CHECK_AND_ASSERT_THROW_MES(exp, msg); 
 
