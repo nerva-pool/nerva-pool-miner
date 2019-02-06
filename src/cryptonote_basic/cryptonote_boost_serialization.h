@@ -186,7 +186,7 @@ namespace boost
     //------------------
     a & b.miner_tx;
     a & b.tx_hashes;
-    if(b.major_version >= 11)
+    if(b.major_version >= UNCLE_MINING_FORK_HEIGHT )
       a & b.uncle;
   }
 

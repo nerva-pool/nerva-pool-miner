@@ -52,6 +52,7 @@
 #define CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE             10
 
 #define BULLETPROOF_MAX_OUTPUTS                         16
+#define BULLETPROOF_FORK_HEIGHT                         8
 
 #define BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW               60
 
@@ -87,6 +88,7 @@
 #define UNCLE_DIFFICULTY_TARGET                         DIFFICULTY_TARGET/4
 #define UNCLE_REWARD_RATIO                              2
 #define NEPHEW_REWARD_RATIO                             20
+#define UNCLE_MINING_FORK_HEIGHT                        11
 
 #define DIFFICULTY_BLOCKS_ESTIMATE_TIMESPAN             DIFFICULTY_TARGET //just alias; used by tests
 #define DIFFICULTY_WINDOW_V2                            17

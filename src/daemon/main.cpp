@@ -166,7 +166,7 @@ int main(int argc, char const * argv[])
     const bool stagenet = command_line::get_arg(vm, cryptonote::arg_stagenet_on);
     if (testnet && stagenet)
     {
-      std::cerr << "Can't specify more than one of --tesnet and --stagenet" << ENDL;
+      std::cerr << "Can't specify more than one of --testnet and --stagenet" << ENDL;
       return 1;
     }
 

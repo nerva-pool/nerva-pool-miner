@@ -334,7 +334,7 @@ uint64_t Blockchain::get_current_blockchain_height() const
 //------------------------------------------------------------------
 //FIXME: possibly move this into the constructor, to avoid accidentally
 //       dereferencing a null BlockchainDB pointer
-bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline, const cryptonote::test_options *test_options)
+bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline, const cryptonote::test_options *test_options, difficulty_type fixed_difficulty)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
   CRITICAL_REGION_LOCAL(m_tx_pool);
@@ -356,6 +356,7 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
 
   m_nettype = test_options != NULL ? FAKECHAIN : nettype;
   m_offline = offline;
+  m_fixed_difficulty = fixed_difficulty;
   if (m_hardfork == nullptr)
   {
     if (m_nettype ==  FAKECHAIN || m_nettype == STAGENET)
@@ -994,6 +995,11 @@ bool Blockchain::get_block_by_hash(const crypto::hash &h, block &blk, bool *orph
 // less blocks than desired if there aren't enough.
 difficulty_type Blockchain::get_difficulty_for_next_block()
 {
+  if (m_fixed_difficulty)
+  {
+    return m_db->height() ? m_fixed_difficulty : 1;
+  }
+
   LOG_PRINT_L3("Blockchain::" << __func__);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
   std::vector<uint64_t> timestamps;
@@ -1233,6 +1239,11 @@ bool Blockchain::switch_to_alternative_blockchain(std::list<blocks_ext_by_hash::
 // an alternate chain.
 difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std::list<blocks_ext_by_hash::iterator>& alt_chain, const uint64_t b_height) const
 {
+  if (m_fixed_difficulty)
+  {
+    return m_db->height() ? m_fixed_difficulty : 1;
+  }
+
   LOG_PRINT_L3("Blockchain::" << __func__);
   std::vector<uint64_t> timestamps;
   std::vector<difficulty_type> cumulative_difficulties;
@@ -1518,9 +1529,9 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
   }
 
   bool uncle_included = is_uncle_block_included(b);
-  if (uncle_included && b.major_version < 11)
+  if (uncle_included && b.major_version < UNCLE_MINING_FORK_HEIGHT )
   {
-    MERROR_VER("Uncle transactions aren't allowed when hf < 11");
+    MERROR_VER("Uncle transactions are not yet activated");
     return false;
   }
   uint64_t max_uncle_reward = uncle_included ? base_reward / UNCLE_REWARD_RATIO : 0;
@@ -1667,7 +1678,7 @@ bool Blockchain::create_block_template(block& b, std::string miner_address, diff
 
   cryptonote::block uncle;
   bool uncle_included = false;
-  if(m_hardfork->get_current_version() >= 11)
+  if(m_hardfork->get_current_version() >= UNCLE_MINING_FORK_HEIGHT)
   {
     MDEBUG("Iterating through alt chains to find a candidate uncle block");
     block top_block = m_db->get_block(m_db->top_block_hash());
@@ -1930,9 +1941,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     difficulty_type uncle_cumulative_weight = 0;
     if (uncle_included)
     {
-      if (b.major_version < 11)
+      if (b.major_version < UNCLE_MINING_FORK_HEIGHT)
       {
-        MERROR_VER("Uncle mining detected with hf < v11");
+        MERROR_VER("Uncle mining detected too early");
         bvc.m_verifivation_failed = true;
         return false;
       }
@@ -2628,7 +2639,7 @@ bool Blockchain::get_blocks(const t_ids_container& block_ids, t_blocks_container
           LOG_ERROR("Invalid block");
           return false;
         }
-      if (is_uncle_block_included(blocks.back().second) && blocks.back().second.major_version >= 11)
+      if (is_uncle_block_included(blocks.back().second) && blocks.back().second.major_version >= UNCLE_MINING_FORK_HEIGHT )
       {
         MTRACE("Fetching uncle " << blocks.back().second.uncle);
         uncles.push_back(std::make_pair(m_db->get_uncle_blob(blocks.back().second.uncle), block()));
@@ -3051,7 +3062,7 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
   }
 
   // from v8, allow bulletproofs
-  if (hf_version < 8) {
+  if (hf_version < BULLETPROOF_FORK_HEIGHT) {
     const bool bulletproof = tx.rct_signatures.type == rct::RCTTypeFullBulletproof || tx.rct_signatures.type == rct::RCTTypeSimpleBulletproof;
     if (bulletproof || !tx.rct_signatures.p.bulletproofs.empty())
     {
@@ -4051,9 +4062,9 @@ leave:
   difficulty_type uncle_cumulative_weight = 0;
   if (uncle_included)
   {
-    if (bl.major_version < 11)
+    if (bl.major_version < UNCLE_MINING_FORK_HEIGHT )
     {
-      MERROR_VER("Uncle mining detected with hf < v11");
+      MERROR_VER("Uncle mining detected too early");
       bvc.m_verifivation_failed = true;
       goto leave;
     }
