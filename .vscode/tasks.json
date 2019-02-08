@@ -4,22 +4,13 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build-linux-debug",
+            "label": "build-debug",
             "type": "shell",
-            "command": "${workspaceFolder}/builder/dev linux debug",
+            "command": "${workspaceFolder}/builder/dev",
             "group": {
                 "kind": "build",
                 "isDefault": true
             }
-        },
-        {
-            "label": "build-windows-debug",
-            "type": "shell",
-            "command": "${workspaceFolder}/builder/dev windows debug",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
-        },
+        }
     ]
 }

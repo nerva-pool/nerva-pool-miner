@@ -11,20 +11,16 @@
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
                 "--stagenet",
-                "--data-dir", "~/.nerva/stagenet/node2",
-                "--no-igd",
-                "--hide-my-port",
-                "--p2p-bind-port", "58080",
-                "--rpc-bind-port", "58081",
-                "--zmq-rpc-bind-port", "58082",
-                "--rpc-restricted-bind-port", "58083",
+                "--data-dir", "${workspaceFolder}/db/n0",
+                //"--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
+                //"--mining-threads", "1",
+                "--fixed-difficulty", "50",
                 "--add-exclusive-node", "127.0.0.1:28080",
                 "--add-exclusive-node", "127.0.0.1:38080",
-                "--add-exclusive-node", "127.0.0.1:48080",
-                "--start-mining", "NV1tXu3czVbaBWYcKg28X4P2mHrJZMnS8R3TshtYgJVrfA9XLrKRKzVcjaPLgjNiwzH3DNTeywRTURDJUY59a5Lb2vWSG9s5q",
-                "--mining-threads", "1"
+                "--add-exclusive-node", "127.0.0.1:48080"
             ],
             "stopAtEntry": false,
+            
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
@@ -33,7 +29,7 @@
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
+                    "ignoreFailures": true,
                 }
             ]
         },
@@ -44,7 +40,7 @@
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
                 "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                "--mining-threads", "4",
+                "--mining-threads", "1",
                 "--testnet"
             ],
             "stopAtEntry": false,
@@ -115,31 +111,6 @@
             ]
         },
         {
-            "name": "Wallet",
-            "type": "cppdbg",
-            "request": "launch",
-            "linux": {
-                "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
-            },
-            "windows": {
-                "program": "${workspaceFolder}\\builder\\build\\dev\\debug\\bin\\nerva-wallet-cli.exe",
-                "miDebuggerPath": "C:\\msys64\\mingw64\\bin\\gdb.exe",
-            },
-            "args": [ "--hw-device", "Ledger" ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
             "name": "HwWallet",
             "type": "cppdbg",
             "request": "launch",
@@ -151,12 +122,13 @@
                 "miDebuggerPath": "C:\\msys64\\mingw64\\bin\\gdb.exe",
             },
             "args": [
-                "--generate-from-device", "test-hw-wallet",
-                "--password", "\"\"",
-                "--log-level", "1"
+                "--hw-device", "Ledger",
+                "--wallet-file", "test-ledger",
+                "--log-level", "2",
+                "--testnet"
             ],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/builder/build/dev/debug/bin",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
