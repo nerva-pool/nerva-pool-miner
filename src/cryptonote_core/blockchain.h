@@ -185,7 +185,7 @@ namespace cryptonote
      *
      * @return true
      */
-    bool get_alternative_blocks(std::list<block>& blocks) const;
+    bool get_alternative_blocks(std::vector<block>& blocks) const;
 
     /**
      * @brief returns the number of alternative blocks stored
@@ -340,7 +340,7 @@ namespace cryptonote
      *
      * @return true if block template filled in successfully, else false
      */
-    bool create_block_template(block& b, std::string miner_address, difficulty_type& di, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce);
+    bool create_block_template(block& b, const account_public_address& miner_address, difficulty_type& di, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce);
 
     /**
      * @brief checks if a block is known about with a given hash
@@ -1370,7 +1370,8 @@ namespace cryptonote
      * @param amount the output amount
      * @param i the output index (indexed to amount)
      */
-    void add_out_to_get_random_outs(COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& result_outs, uint64_t amount, size_t i) const;
+    //todo: delete
+    //void add_out_to_get_random_outs(COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& result_outs, uint64_t amount, size_t i) const;
 
     /**
      * @brief adds the given output to the requested set of random ringct outputs

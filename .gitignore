@@ -116,3 +116,5 @@ local.properties
 deploy-nerva
 /testwallets
 /db
+*.keys
+

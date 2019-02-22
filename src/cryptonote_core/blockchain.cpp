@@ -137,6 +137,7 @@ static const struct {
   { 8, 560, 0, 1521670000 },
   { 9, 570, 0, 1521770000 },
   { 10, 580, 0, 1521870000 },
+  { 11, 800, 0, 1521970000 }
 };
 
 //------------------------------------------------------------------
@@ -258,7 +259,10 @@ bool Blockchain::scan_outputkeys_for_indexes(size_t tx_version, const txin_to_ke
         if (count < outputs.size())
           output_index = outputs.at(count);
         else
-          output_index = m_db->get_output_key(tx_in_to_key.amount, i);
+        {
+          const uint8_t hf_version = m_hardfork->get_current_version();
+          output_index = m_db->get_output_key(tx_in_to_key.amount, i, hf_version >= BULLETPROOF_FULL_FORK_HEIGHT);
+        }
 
         // call to the passed boost visitor to grab the public key for the output
         if (!vis.handle_output(output_index.unlock_time, output_index.pubkey, output_index.commitment))
@@ -397,7 +401,7 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
   if(!m_db->height())
   {
     MINFO("Blockchain not loaded, generating genesis block.");
-    block bl = boost::value_initialized<block>();
+    block bl;
     block_verification_context bvc = boost::value_initialized<block_verification_context>();
     generate_genesis_block(bl);
     add_new_block(bl, bvc);
@@ -1599,7 +1603,7 @@ uint64_t Blockchain::get_current_cumulative_blocksize_median() const
 // in a lot of places.  That flag is not referenced in any of the code
 // nor any of the makefiles, howeve.  Need to look into whether or not it's
 // necessary at all.
-bool Blockchain::create_block_template(block& b, std::string miner_address, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce)
+bool Blockchain::create_block_template(block& b, const account_public_address& miner_address, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
   size_t median_size;
@@ -2134,11 +2138,12 @@ bool Blockchain::handle_get_objects(NOTIFY_REQUEST_GET_OBJECTS::request& arg, NO
   return true;
 }
 //------------------------------------------------------------------
-bool Blockchain::get_alternative_blocks(std::list<block>& blocks) const
+bool Blockchain::get_alternative_blocks(std::vector<block>& blocks) const
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
 
+  blocks.reserve(m_alternative_chains.size());
   for (const auto& alt_bl: m_alternative_chains)
   {
     blocks.push_back(alt_bl.second.bl);
@@ -2155,7 +2160,8 @@ size_t Blockchain::get_alternative_blocks_count() const
 //------------------------------------------------------------------
 // This function adds the output specified by <amount, i> to the result_outs container
 // unlocked and other such checks should be done by here.
-void Blockchain::add_out_to_get_random_outs(COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& result_outs, uint64_t amount, size_t i) const
+//todo: delete
+/*void Blockchain::add_out_to_get_random_outs(COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& result_outs, uint64_t amount, size_t i) const
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
@@ -2164,7 +2170,7 @@ void Blockchain::add_out_to_get_random_outs(COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_A
   oen.global_amount_index = i;
   output_data_t data = m_db->get_output_key(amount, i);
   oen.out_key = data.pubkey;
-}
+}*/
 
 uint64_t Blockchain::get_num_mature_outputs(uint64_t amount) const
 {
@@ -2259,7 +2265,9 @@ crypto::public_key Blockchain::get_output_key(uint64_t amount, uint64_t global_i
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
 
-  output_data_t data = m_db->get_output_key(amount, global_index);
+  const uint8_t hf_version = m_hardfork->get_current_version();
+  const bool v2 = hf_version >= BULLETPROOF_FULL_FORK_HEIGHT;
+  output_data_t data = m_db->get_output_key(amount, global_index, v2);
   return data.pubkey;
 }
 
@@ -2272,6 +2280,9 @@ bool Blockchain::get_random_outs_for_amounts(const COMMAND_RPC_GET_RANDOM_OUTPUT
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
+
+  const uint8_t hf_version = m_hardfork->get_current_version();
+  const bool v2 = hf_version >= BULLETPROOF_FULL_FORK_HEIGHT;
 
   // for each amount that we need to get mixins for, get <n> random outputs
   // from BlockchainDB where <n> is req.outs_count (number of mixins).
@@ -2301,10 +2312,13 @@ void Blockchain::add_out_to_get_rct_random_outs(std::list<COMMAND_RPC_GET_RANDOM
   LOG_PRINT_L3("Blockchain::" << __func__);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
 
+  const uint8_t hf_version = m_hardfork->get_current_version();
+  const bool v2 = hf_version >= BULLETPROOF_FULL_FORK_HEIGHT;
+
   COMMAND_RPC_GET_RANDOM_RCT_OUTPUTS::out_entry& oen = *outs.insert(outs.end(), COMMAND_RPC_GET_RANDOM_RCT_OUTPUTS::out_entry());
   oen.amount = amount;
   oen.global_amount_index = i;
-  output_data_t data = m_db->get_output_key(amount, i);
+  output_data_t data = m_db->get_output_key(amount, i, v2);
   oen.out_key = data.pubkey;
   oen.commitment = data.commitment;
 }
@@ -2404,10 +2418,14 @@ bool Blockchain::get_outs(const COMMAND_RPC_GET_OUTPUTS_BIN::request& req, COMMA
 
   res.outs.clear();
   res.outs.reserve(req.outputs.size());
+
+  const uint8_t hf_version = m_hardfork->get_current_version();
+  const bool v2 = hf_version >= BULLETPROOF_FULL_FORK_HEIGHT;
+
   for (const auto &i: req.outputs)
   {
     // get tx_hash, tx_out_index from DB
-    const output_data_t od = m_db->get_output_key(i.amount, i.index);
+    const output_data_t od = m_db->get_output_key(i.amount, i.index, v2);
     tx_out_index toi = m_db->get_output_tx_and_index(i.amount, i.index);
     bool unlocked = is_tx_spendtime_unlocked(m_db->get_tx_unlock_time(toi.first));
 
@@ -2420,7 +2438,9 @@ void Blockchain::get_output_key_mask_unlocked(const uint64_t& amount, const uint
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
 
-  const auto o_data = m_db->get_output_key(amount, index);
+  const uint8_t hf_version = m_hardfork->get_current_version();
+  const bool v2 = hf_version >= BULLETPROOF_FULL_FORK_HEIGHT;
+  const auto o_data = m_db->get_output_key(amount, index, v2);
   key = o_data.pubkey;
   mask = o_data.commitment;
   tx_out_index toi = m_db->get_output_tx_and_index(amount, index);
@@ -3062,13 +3082,36 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
   }
 
   // from v8, allow bulletproofs
-  if (hf_version < BULLETPROOF_FORK_HEIGHT) {
-    const bool bulletproof = tx.rct_signatures.type == rct::RCTTypeFullBulletproof || tx.rct_signatures.type == rct::RCTTypeSimpleBulletproof;
+  if (hf_version < BULLETPROOF_SIMPLE_FORK_HEIGHT) {
+    const bool bulletproof = rct::is_rct_bulletproof(tx.rct_signatures.type);
     if (bulletproof || !tx.rct_signatures.p.bulletproofs.empty())
     {
-      MERROR("Bulletproofs are not allowed before v8");
+      MERROR("Bulletproofs are not allowed before v" << BULLETPROOF_SIMPLE_FORK_HEIGHT);
       tvc.m_invalid_output = true;
       return false;
+    }
+  }
+
+  if (hf_version >= BULLETPROOF_FULL_FORK_HEIGHT) {
+    if (tx.version >= 1) {
+      const bool borromean = rct::is_rct_borromean(tx.rct_signatures.type);
+      if (borromean)
+      {
+        MERROR_VER("Borromean range proofs are not allowed on or after v" << BULLETPROOF_FULL_FORK_HEIGHT);
+        tvc.m_invalid_output = true;
+        return false;
+      }
+    }
+  }
+
+  if (hf_version < BULLETPROOF_FULL_FORK_HEIGHT) {
+    if (tx.version >= 1) {
+      if (tx.rct_signatures.type == rct::RCTTypeBulletproof2)
+      {
+        MERROR_VER("Full Bulletproofs are not allowed before v" << BULLETPROOF_FULL_FORK_HEIGHT);
+        tvc.m_invalid_output = true;
+        return false;
+      }
     }
   }
 
@@ -3098,7 +3141,7 @@ bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_pr
   rv.message = rct::hash2rct(tx_prefix_hash);
 
   // mixRing - full and simple store it in opposite ways
-  if (rv.type == rct::RCTTypeFull || rv.type == rct::RCTTypeFullBulletproof)
+  if (rv.type == rct::RCTTypeFull)
   {
     CHECK_AND_ASSERT_MES(!pubkeys.empty() && !pubkeys[0].empty(), false, "empty pubkeys");
     rv.mixRing.resize(pubkeys[0].size());
@@ -3113,7 +3156,7 @@ bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_pr
       }
     }
   }
-  else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeSimpleBulletproof)
+  else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeBulletproof || rv.type == rct::RCTTypeBulletproof2)
   {
     CHECK_AND_ASSERT_MES(!pubkeys.empty() && !pubkeys[0].empty(), false, "empty pubkeys");
     rv.mixRing.resize(pubkeys.size());
@@ -3132,14 +3175,14 @@ bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_pr
   }
 
   // II
-  if (rv.type == rct::RCTTypeFull || rv.type == rct::RCTTypeFullBulletproof)
+  if (rv.type == rct::RCTTypeFull)
   {
     rv.p.MGs.resize(1);
     rv.p.MGs[0].II.resize(tx.vin.size());
     for (size_t n = 0; n < tx.vin.size(); ++n)
       rv.p.MGs[0].II[n] = rct::ki2rct(boost::get<txin_to_key>(tx.vin[n]).k_image);
   }
-  else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeSimpleBulletproof)
+  else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeBulletproof || rv.type == rct::RCTTypeBulletproof2)
   {
     CHECK_AND_ASSERT_MES(rv.p.MGs.size() == tx.vin.size(), false, "Bad MGs size");
     for (size_t n = 0; n < tx.vin.size(); ++n)
@@ -3295,7 +3338,8 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
       return false;
     }
     case rct::RCTTypeSimple:
-    case rct::RCTTypeSimpleBulletproof:
+    case rct::RCTTypeBulletproof:
+    case rct::RCTTypeBulletproof2:
     {
       // check all this, either reconstructed (so should really pass), or not
       {
@@ -3345,7 +3389,7 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
         }
       }
 
-      if (!rct::verRctSimple(rv, false))
+      if (!rct::verRctSimple(rv, false, rv.type == rct::RCTTypeBulletproof2))
       {
         MERROR_VER("Failed to check ringct signatures!");
         return false;
@@ -3353,7 +3397,6 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
       break;
     }
     case rct::RCTTypeFull:
-    case rct::RCTTypeFullBulletproof:
     {
       // check all this, either reconstructed (so should really pass), or not
       {
@@ -3415,6 +3458,22 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
     default:
       MERROR_VER("Unsupported rct type: " << rv.type);
       return false;
+    }
+
+    // for bulletproofs, check they're only multi-output after v8
+    if (rct::is_rct_bulletproof(rv.type))
+    {
+      if (hf_version < BULLETPROOF_SIMPLE_FORK_HEIGHT)
+      {
+        for (const rct::Bulletproof &proof: rv.p.bulletproofs)
+        {
+          if (proof.V.size() > 1)
+          {
+            MERROR_VER("Multi output bulletproofs are invalid before v" << BULLETPROOF_SIMPLE_FORK_HEIGHT);
+            return false;
+          }
+        }
+      }
     }
   }
   return true;

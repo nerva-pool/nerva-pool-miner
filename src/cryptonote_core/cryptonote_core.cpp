@@ -362,7 +362,7 @@ namespace cryptonote
     return m_blockchain_storage.get_transactions(txs_ids, txs, missed_txs);
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::get_alternative_blocks(std::list<block>& blocks) const
+  bool core::get_alternative_blocks(std::vector<block>& blocks) const
   {
     return m_blockchain_storage.get_alternative_blocks(blocks);
   }
@@ -646,6 +646,16 @@ namespace cryptonote
     return true;
   }
   //-----------------------------------------------------------------------------------------------
+  static bool is_canonical_bulletproof_layout(const std::vector<rct::Bulletproof> &proofs)
+  {
+    if (proofs.size() != 1)
+      return false;
+    const size_t sz = proofs[0].V.size();
+    if (sz == 0 || sz > BULLETPROOF_MAX_OUTPUTS)
+      return false;
+    return true;
+  }
+  //-----------------------------------------------------------------------------------------------
   bool core::handle_incoming_tx_post(const blobdata& tx_blob, tx_verification_context& tvc, cryptonote::transaction &tx, crypto::hash &tx_hash, crypto::hash &tx_prefixt_hash, bool keeped_by_block, bool relayed, bool do_not_relay)
   {
     if(!check_tx_syntax(tx))
@@ -669,10 +679,16 @@ namespace cryptonote
         return false;
       }
       for (size_t n = 0; n < tx.rct_signatures.outPk.size(); ++n)
+      {
+        if (tx.vout[n].target.type() != typeid(txout_to_key))
+        {
+          LOG_PRINT_L1("Unsupported output type in tx " << get_transaction_hash(tx));
+          return false;
+        }
         rv.outPk[n].dest = rct::pk2rct(boost::get<txout_to_key>(tx.vout[n].target).key);
+      }
 
-      const bool bulletproof = rv.type == rct::RCTTypeFullBulletproof || rv.type == rct::RCTTypeSimpleBulletproof;
-      if (bulletproof)
+      if (rv.type == rct::RCTTypeBulletproof)
       {
         if (rv.p.bulletproofs.size() != tx.vout.size())
         {
@@ -685,6 +701,30 @@ namespace cryptonote
           rv.p.bulletproofs[n].V.resize(1);
           rv.p.bulletproofs[n].V[0] = rv.outPk[n].mask;
         }
+      }
+      else if (rv.type == rct::RCTTypeBulletproof2)
+      {
+        if (rv.p.bulletproofs.size() != 1)
+        {
+          LOG_PRINT_L1("WRONG TRANSACTION BLOB, Bad bulletproofs size in tx " << tx_hash << ", rejected");
+          return false;
+        }
+        if (rv.p.bulletproofs[0].L.size() < 6)
+        {
+          LOG_PRINT_L1("WRONG TRANSACTION BLOB, Bad bulletproofs L size in tx " << tx_hash << ", rejected");
+          return false;
+        }
+        const size_t max_outputs = 1 << (rv.p.bulletproofs[0].L.size() - 6);
+        if (max_outputs < tx.vout.size())
+        {
+          LOG_PRINT_L1("WRONG TRANSACTION BLOB, Bad bulletproofs max outputs in tx " << tx_hash << ", rejected");
+          return false;
+        }
+        const size_t n_amounts = tx.vout.size();
+        CHECK_AND_ASSERT_MES(n_amounts == rv.outPk.size(), false, "Internal error filling out V");
+        rv.p.bulletproofs[0].V.resize(n_amounts);
+        for (size_t i = 0; i < n_amounts; ++i)
+          rv.p.bulletproofs[0].V[i] = rct::scalarmultKey(rv.outPk[i].mask, rct::INV_EIGHT);
       }
     }
 
@@ -715,7 +755,7 @@ namespace cryptonote
     TRY_ENTRY();
     CRITICAL_REGION_LOCAL(m_incoming_tx_lock);
 
-    struct result { bool res; cryptonote::transaction tx; crypto::hash hash; crypto::hash prefix_hash; bool in_txpool; bool in_blockchain; };
+    struct result { bool res; cryptonote::transaction tx; crypto::hash hash; crypto::hash prefix_hash; };
     std::vector<result> results(tx_blobs.size());
 
     tvc.resize(tx_blobs.size());
@@ -880,15 +920,26 @@ namespace cryptonote
           MERROR_VER("Unexpected Null rctSig type");
           return false;
         case rct::RCTTypeSimple:
-        case rct::RCTTypeSimpleBulletproof:
-          if (!rct::verRctSimple(rv, true))
+        case rct::RCTTypeBulletproof:
+          if (!rct::verRctSimple(rv, true, false))
           {
             MERROR_VER("rct signature semantics check failed");
             return false;
           }
           break;
+        case rct::RCTTypeBulletproof2:
+          if (!is_canonical_bulletproof_layout(rv.p.bulletproofs))
+          {
+            MERROR_VER("Bulletproof does not have canonical form");
+            return false;
+          }
+          if (!rct::verRctSemanticsSimple(rv))
+          {
+            MERROR_VER("Failed to check ringct signatures!");
+            return false;
+          }
+          break;
         case rct::RCTTypeFull:
-        case rct::RCTTypeFullBulletproof:
           if (!rct::verRct(rv, true))
           {
             MERROR_VER("rct signature semantics check failed");
@@ -1094,7 +1145,7 @@ namespace cryptonote
   bool core::relay_txpool_transactions()
   {
     // we attempt to relay txes that should be relayed, but were not
-    std::list<std::pair<crypto::hash, cryptonote::blobdata>> txs;
+    std::vector<std::pair<crypto::hash, cryptonote::blobdata>> txs;
     if (m_mempool.get_relayable_transactions(txs) && !txs.empty())
     {
       cryptonote_connection_context fake_context = AUTO_VAL_INIT(fake_context);
@@ -1112,7 +1163,7 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------
   void core::on_transaction_relayed(const cryptonote::blobdata& tx_blob)
   {
-    std::list<std::pair<crypto::hash, cryptonote::blobdata>> txs;
+    std::vector<std::pair<crypto::hash, cryptonote::blobdata>> txs;
     cryptonote::transaction tx;
     crypto::hash tx_hash, tx_prefix_hash;
     if (!parse_and_validate_tx_from_blob(tx_blob, tx, tx_hash, tx_prefix_hash))
@@ -1124,7 +1175,7 @@ namespace cryptonote
     m_mempool.set_relayed(txs);
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::get_block_template(block& b, std::string adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce)
+  bool core::get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce)
   {
     return m_blockchain_storage.create_block_template(b, adr, diffic, height, expected_reward, ex_nonce);
   }

@@ -52,7 +52,8 @@
 #define CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE             10
 
 #define BULLETPROOF_MAX_OUTPUTS                         16
-#define BULLETPROOF_FORK_HEIGHT                         8
+#define BULLETPROOF_SIMPLE_FORK_HEIGHT                  8
+#define BULLETPROOF_FULL_FORK_HEIGHT                    11
 
 #define BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW               60
 

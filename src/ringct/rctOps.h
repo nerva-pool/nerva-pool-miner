@@ -62,6 +62,9 @@ namespace rct {
     static const key Z = { {0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00  } };
     static const key I = { {0x01, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00  } };
     static const key L = { {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10 } };
+    static const key G = { {0x58, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66 } };
+    static const key EIGHT = { {0x08, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00  } };
+    static const key INV_EIGHT = { { 0x79, 0x2f, 0xdc, 0xe2, 0x29, 0xe5, 0x06, 0x61, 0xd0, 0xda, 0x1c, 0x7d, 0xb3, 0x9d, 0xd3, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06 } };
 
     //Creates a zero scalar
     inline key zero() { return Z; }
@@ -82,6 +85,7 @@ namespace rct {
     keyM keyMInit(size_t rows, size_t cols);
 
     //Various key generation functions        
+    bool toPointCheckOrder(ge_p3 *P, const unsigned char *data);
 
     //generates a random scalar which can be used as a secret key or mask
     key skGen();
@@ -96,15 +100,18 @@ namespace rct {
     void skpkGen(key &sk, key &pk);
     std::tuple<key, key> skpkGen();
     //generates a <secret , public> / Pedersen commitment to the amount
-    std::tuple<ctkey, ctkey> ctskpkGen(xmr_amount amount);
+    //std::tuple<ctkey, ctkey> ctskpkGen(xmr_amount amount);
     //generates C =aG + bH from b, a is random
-    void genC(key & C, const key & a, xmr_amount amount);
-    //this one is mainly for testing, can take arbitrary amounts..
-    std::tuple<ctkey, ctkey> ctskpkGen(const key &bH);
+	void genC_v1(key & C, const key & a, xmr_amount amount);
+	void genC_v2(key & C, const key & a, xmr_amount amount);
     // make a pedersen commitment with given key
-    key commit(xmr_amount amount, const key &mask);
+    key commit(xmr_amount amount, const key &mask, bool v2);
+	key commit_v1(xmr_amount amount, const key &mask);
+	key commit_v2(xmr_amount amount, const key &mask);
     // make a pedersen commitment with zero key
-    key zeroCommit(xmr_amount amount);
+    key zeroCommit(xmr_amount amount, bool v2);
+	key zeroCommit_v1(xmr_amount amount);
+	key zeroCommit_v2(xmr_amount amount);
     //generates a random uint long long
     xmr_amount randXmrAmount(xmr_amount upperlimit);
 
@@ -117,13 +124,19 @@ namespace rct {
     void scalarmultKey(key &aP, const key &P, const key &a);
     key scalarmultKey(const key &P, const key &a);
     //Computes aH where H= toPoint(cn_fast_hash(G)), G the basepoint
-    key scalarmultH(const key & a);
+    key scalarmultH(const key & a, bool v2);
+	key scalarmultH_v1(const key & a);
+	key scalarmultH_v2(const key & a);
+
+	key scalarmult8(const key & P);
+    bool isInMainSubgroup(const key & a);
 
     //Curve addition / subtractions
 
     //for curve points: AB = A + B
     void addKeys(key &AB, const key &A, const key &B);
     rct::key addKeys(const key &A, const key &B);
+    rct::key addKeys(const keyV &A);
     //aGB = aG + B where a is a scalar, G is the basepoint, and B is a point
     void addKeys1(key &aGB, const key &a, const key & B);
     //aGbB = aG + bB where a, b are scalars, G is the basepoint and B is a point
@@ -173,7 +186,8 @@ namespace rct {
 
     //Elliptic Curve Diffie Helman: encodes and decodes the amount b and mask a
     // where C= aG + bH
-    void ecdhEncode(ecdhTuple & unmasked, const key & sharedSec);
-    void ecdhDecode(ecdhTuple & masked, const key & sharedSec);
+    key genCommitmentMask(const key &sk);
+    void ecdhEncode(ecdhTuple & unmasked, const key & sharedSec, bool v2);
+    void ecdhDecode(ecdhTuple & masked, const key & sharedSec, bool v2);
 }
 #endif  /* RCTOPS_H */

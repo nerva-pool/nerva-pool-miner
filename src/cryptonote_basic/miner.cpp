@@ -34,8 +34,6 @@
 #include <boost/utility/value_init.hpp>
 #include <boost/interprocess/detail/atomic.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/limits.hpp>
-#include "include_base_utils.h"
 #include "misc_language.h"
 #include "syncobj.h"
 #include "cryptonote_basic_impl.h"
@@ -55,9 +53,12 @@
   #include <mach/mach_host.h>
   #include <AvailabilityMacros.h>
   #include <TargetConditionals.h>
-#endif
-
-#ifdef __FreeBSD__
+#elif defined(__linux__)
+  #include <unistd.h>
+  #include <sys/resource.h>
+  #include <sys/times.h>
+  #include <time.h>
+#elif defined(__FreeBSD__)
 #include <devstat.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -124,7 +125,8 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------------
   miner::~miner()
   {
-    stop();
+    try { stop(); }
+    catch (...) { /* ignore */ }
   }
   //-----------------------------------------------------------------------------------------------------
   bool miner::set_block_template(const block& bl, const difficulty_type& di, uint64_t height)
@@ -148,7 +150,7 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------------
   bool miner::request_block_template()
   {
-    block bl = AUTO_VAL_INIT(bl);
+    block bl;
     difficulty_type di = AUTO_VAL_INIT(di);
     uint64_t height = AUTO_VAL_INIT(height);
     uint64_t expected_reward; //only used for RPC calls - could possibly be useful here too?
@@ -201,8 +203,9 @@ namespace cryptonote
       {
         uint64_t total_hr = std::accumulate(m_last_hash_rates.begin(), m_last_hash_rates.end(), 0);
         float hr = static_cast<float>(total_hr)/static_cast<float>(m_last_hash_rates.size());
+        const auto flags = std::cout.flags();
         const auto precision = std::cout.precision();
-        std::cout << "hashrate: " << std::setprecision(4) << std::fixed << hr << precision << ENDL;
+        std::cout << "hashrate: " << std::setprecision(4) << std::fixed << hr << std::setiosflags(flags) << std::setprecision(precision) << ENDL;
       }
     }
     m_last_hr_merge_time = misc_utils::get_tick_count();
@@ -255,7 +258,7 @@ namespace cryptonote
         LOG_ERROR("Target account address " << command_line::get_arg(vm, arg_start_mining) << " has wrong format, starting daemon canceled");
         return false;
       }
-      m_mine_address = command_line::get_arg(vm, arg_start_mining);
+      m_mine_address = info.address;
       m_threads_total = 1;
       m_do_mining = true;
       if(command_line::has_arg(vm, arg_mining_threads))
@@ -289,7 +292,7 @@ namespace cryptonote
     return !m_stop;
   }
   //-----------------------------------------------------------------------------------------------------
-  std::string miner::get_mining_address() const
+  const account_public_address& miner::get_mining_address() const
   {
     return m_mine_address;
   }
@@ -298,7 +301,7 @@ namespace cryptonote
     return m_threads_total;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::start(std::string adr, size_t threads_count, const boost::thread::attributes& attrs, bool do_background, bool ignore_battery)
+  bool miner::start(const account_public_address& adr, size_t threads_count, const boost::thread::attributes& attrs, bool do_background, bool ignore_battery)
   {
     m_mine_address = adr;
     m_threads_total = static_cast<uint32_t>(threads_count);

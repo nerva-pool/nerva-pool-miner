@@ -2789,7 +2789,7 @@ output_data_t BlockchainLMDB::get_output_key(const uint64_t &global_index) const
   return od;
 }
 
-output_data_t BlockchainLMDB::get_output_key(const uint64_t& amount, const uint64_t& index)
+output_data_t BlockchainLMDB::get_output_key(const uint64_t& amount, const uint64_t& index, bool v2)
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
   check_open();
@@ -2814,8 +2814,8 @@ output_data_t BlockchainLMDB::get_output_key(const uint64_t& amount, const uint6
   else
   {
     const pre_rct_outkey *okp = (const pre_rct_outkey *)v.mv_data;
-    memcpy(&ret, &okp->data, sizeof(pre_rct_output_data_t));;
-    ret.commitment = rct::zeroCommit(amount);
+    memcpy(&ret, &okp->data, sizeof(pre_rct_output_data_t));
+    ret.commitment = rct::zeroCommit(amount, v2);
   }
   TXN_POSTFIX_RDONLY();
   return ret;
@@ -3482,7 +3482,7 @@ void BlockchainLMDB::get_output_tx_and_index_from_global(const std::vector<uint6
   TXN_POSTFIX_RDONLY();
 }
 
-void BlockchainLMDB::get_output_key(const uint64_t &amount, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool allow_partial)
+void BlockchainLMDB::get_output_key(const uint64_t &amount, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool v2, bool allow_partial)
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
   TIME_MEASURE_START(db3);
@@ -3521,7 +3521,7 @@ void BlockchainLMDB::get_output_key(const uint64_t &amount, const std::vector<ui
     {
       const pre_rct_outkey *okp = (const pre_rct_outkey *)v.mv_data;
       memcpy(&data, &okp->data, sizeof(pre_rct_output_data_t));
-      data.commitment = rct::zeroCommit(amount);
+      data.commitment = rct::zeroCommit(amount, v2);
     }
     outputs.push_back(data);
   }

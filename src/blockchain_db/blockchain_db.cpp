@@ -160,7 +160,7 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const transacti
 
   uint64_t tx_id = add_transaction_data(blk_hash, tx, tx_hash);
 
-  std::vector<uint64_t> amount_output_indices;
+  std::vector<uint64_t> amount_output_indices(tx.vout.size());
 
   // iterate tx.vout using indices instead of C++11 foreach syntax because
   // we need the index
@@ -171,14 +171,14 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const transacti
     if (miner_tx)
     {
       cryptonote::tx_out vout = tx.vout[i];
-      rct::key commitment = rct::zeroCommit(vout.amount);
+      rct::key commitment = rct::zeroCommit_v1(vout.amount);
       vout.amount = 0;
-      amount_output_indices.push_back(add_output(tx_hash, vout, i, tx.unlock_time,
-        &commitment));
+      amount_output_indices[i] = add_output(tx_hash, vout, i, tx.unlock_time,
+        &commitment);
     }
     else
     {
-      amount_output_indices.push_back(add_output(tx_hash, tx.vout[i], i, tx.unlock_time, &tx.rct_signatures.outPk[i].mask));
+      amount_output_indices[i] = add_output(tx_hash, tx.vout[i], i, tx.unlock_time, &tx.rct_signatures.outPk[i].mask);
     }
   }
   add_tx_amount_output_indices(tx_id, amount_output_indices);
@@ -248,12 +248,13 @@ void BlockchainDB::pop_block(block& blk, std::vector<transaction>& txs)
 
   for (const auto& h : boost::adaptors::reverse(blk.tx_hashes))
   {
-    txs.push_back(get_tx(h));
+    cryptonote::transaction tx;
+    if (!get_tx(h, tx))
+      throw DB_ERROR("Failed to get transaction from the db");
+    txs.push_back(std::move(tx));
     remove_transaction(h);
   }
-  crypto::hash tx_hash = get_transaction_hash(blk.miner_tx);
-  MDEBUG("Removing miner tx" << tx_hash);
-  remove_transaction(tx_hash);
+  remove_transaction(get_transaction_hash(blk.miner_tx));
 }
 
 bool BlockchainDB::is_open() const
@@ -281,7 +282,7 @@ static block get_block_from_blob(const blobdata& bd, const std::string& type)
 {
   block b;
   if (!parse_and_validate_block_from_blob(bd, b))
-    throw DB_ERROR(("Failed to parse " + type + " from blob retrieved from the db").c_str());
+    throw DB_ERROR("Failed to parse block from blob retrieved from the db");
 
   return b;
 }
