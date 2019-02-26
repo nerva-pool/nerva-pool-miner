@@ -41,7 +41,6 @@
 #include "serialization/binary_utils.h" // dump_binary(), parse_binary()
 #include "serialization/json_utils.h" // dump_json()
 #include "include_base_utils.h"
-#include "blockchain_db/db_types.h"
 #include "cryptonote_core/cryptonote_core.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
@@ -72,8 +71,6 @@ uint64_t db_batch_size_verify = 5000;
 std::string refresh_string = "\r                                    \r";
 }
 
-
-
 namespace po = boost::program_options;
 
 using namespace cryptonote;
@@ -91,44 +88,6 @@ int get_db_flags_from_mode(const std::string& db_mode)
     db_flags = DBF_FASTEST;
   return db_flags;
 }
-
-int parse_db_arguments(const std::string& db_arg_str, std::string& db_type, int& db_flags)
-{
-  std::vector<std::string> db_args;
-  boost::split(db_args, db_arg_str, boost::is_any_of("#"));
-  db_type = db_args.front();
-  boost::algorithm::trim(db_type);
-
-  if (db_args.size() == 1)
-  {
-    return 0;
-  }
-  else if (db_args.size() > 2)
-  {
-    std::cerr << "unrecognized database argument format: " << db_arg_str << ENDL;
-    return 1;
-  }
-
-  std::string db_arg_str2 = db_args[1];
-  boost::split(db_args, db_arg_str2, boost::is_any_of(","));
-
-  // optionally use a composite mode instead of individual flags
-  const std::unordered_set<std::string> db_modes {"safe", "fast", "fastest"};
-  std::string db_mode;
-  if (db_args.size() == 1)
-  {
-    if (db_modes.count(db_args[0]) > 0)
-    {
-      db_mode = db_args[0];
-    }
-  }
-  if (! db_mode.empty())
-  {
-    db_flags = get_db_flags_from_mode(db_mode);
-  }
-  return 0;
-}
-
 
 int pop_blocks(cryptonote::core& core, int num_blocks)
 {
@@ -565,16 +524,10 @@ int main(int argc, char* argv[])
 
   epee::string_tools::set_module_name_and_folder(argv[0]);
 
-  std::string default_db_type = "lmdb";
-
-  std::string available_dbs = cryptonote::blockchain_db_types(", ");
-  available_dbs = "available: " + available_dbs;
-
   uint32_t log_level = 0;
   uint64_t num_blocks = 0;
   uint64_t block_stop = 0;
   std::string m_config_folder;
-  std::string db_arg_str;
 
   tools::on_startup();
 
@@ -593,9 +546,6 @@ int main(int argc, char* argv[])
       , "Count blocks in bootstrap file and exit"
       , false
   };
-  const command_line::arg_descriptor<std::string> arg_database = {
-    "database", available_dbs.c_str(), default_db_type
-  };
   const command_line::arg_descriptor<bool> arg_verify =  {"verify",
     "Verify blocks and transactions during import (only disable if you exported the file yourself)", true};
   const command_line::arg_descriptor<bool> arg_batch  =  {"batch",
@@ -605,7 +555,6 @@ int main(int argc, char* argv[])
 
   command_line::add_arg(desc_cmd_sett, arg_input_file);
   command_line::add_arg(desc_cmd_sett, arg_log_level);
-  command_line::add_arg(desc_cmd_sett, arg_database);
   command_line::add_arg(desc_cmd_sett, arg_batch_size);
   command_line::add_arg(desc_cmd_sett, arg_block_stop);
 
@@ -680,7 +629,6 @@ int main(int argc, char* argv[])
     return 1;
   }
   m_config_folder = command_line::get_arg(vm, cryptonote::arg_data_dir);
-  db_arg_str = command_line::get_arg(vm, arg_database);
 
   mlog_configure(mlog_get_default_log_path("nerva-blockchain-import.log"), true);
   if (!command_line::is_arg_defaulted(vm, arg_log_level))
@@ -706,25 +654,9 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-
   std::string db_type;
   int db_flags = 0;
-  int res = 0;
-  res = parse_db_arguments(db_arg_str, db_type, db_flags);
-  if (res)
-  {
-    std::cerr << "Error parsing database argument(s)" << ENDL;
-    return 1;
-  }
 
-  if (!cryptonote::blockchain_valid_db_type(db_type))
-  {
-    std::cerr << "Invalid database type: " << db_type << std::endl;
-    return 1;
-  }
-
-  MINFO("database: " << db_type);
-  MINFO("database flags: " << db_flags);
   MINFO("verify:  " << std::boolalpha << opt_verify << std::noboolalpha);
   if (opt_batch)
   {

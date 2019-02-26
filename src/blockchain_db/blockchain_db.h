@@ -104,7 +104,6 @@ namespace cryptonote
 /** a pair of <transaction hash, output index>, typedef for convenience */
 typedef std::pair<crypto::hash, uint64_t> tx_out_index;
 
-extern const command_line::arg_descriptor<std::string> arg_db_type;
 extern const command_line::arg_descriptor<std::string> arg_db_sync_mode;
 extern const command_line::arg_descriptor<bool, false> arg_db_salvage;
 extern const command_line::arg_descriptor<uint32_t> arg_db_readers;
@@ -1736,7 +1735,7 @@ public:
 
 };  // class BlockchainDB
 
-BlockchainDB *new_db(const std::string& db_type);
+BlockchainDB *new_db( );
 
 }  // namespace cryptonote
 

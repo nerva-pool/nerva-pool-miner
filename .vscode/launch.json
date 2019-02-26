@@ -95,9 +95,31 @@
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
-                "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                "--mining-threads", "1",
-                "--testnet"
+                //"--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
+                //"--mining-threads", "1",
+                "--log-level", "0", "--block-sync-size", "50",
+                "--testnet", "--quicksync", "~/.nerva/testnet/export/quicksync.raw"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Mainnet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
+            "args": [
+                "--quicksync", "~/.nerva/export/quicksync.raw", "--block-sync-size", "100"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

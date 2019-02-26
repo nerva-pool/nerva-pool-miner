@@ -426,7 +426,9 @@ namespace rct {
       hashes.push_back(hash2rct(h));
 
       keyV kv;
-      if (rv.type == RCTTypeBulletproof || rv.type == RCTTypeBulletproof2)
+      if (rv.type == RCTTypeBulletproof1Simple || 
+          rv.type == RCTTypeBulletproof1Full ||
+          rv.type == RCTTypeBulletproof2)
       {
         kv.reserve((6*2+9) * rv.p.bulletproofs.size());
         for (const auto &p: rv.p.bulletproofs)
@@ -668,10 +670,14 @@ namespace rct {
         }
         CHECK_AND_ASSERT_THROW_MES((kLRki && msout) || (!kLRki && !msout), "Only one of kLRki/msout is present");
 
+        bool bulletproof = rct_config.range_proof_type != RangeProofBorromean;
         rctSig rv;
-        rv.type = RCTTypeFull;
+        rv.type = bulletproof ? RCTTypeBulletproof1Full : RCTTypeFull;
         rv.message = message;
         rv.outPk.resize(destinations.size());
+        if (bulletproof)
+          rv.p.bulletproofs.resize(destinations.size());
+        else
           rv.p.rangeSigs.resize(destinations.size());
         rv.ecdhInfo.resize(destinations.size());
 
@@ -682,8 +688,14 @@ namespace rct {
             //add destination to sig
             rv.outPk[i].dest = copy(destinations[i]);
             //compute range proof
+            if (bulletproof)
+                rv.p.bulletproofs[i] = proveRangeBulletproof(rv.outPk[i].mask, outSk[i].mask, amounts[i]);
+            else
                 rv.p.rangeSigs[i] = proveRange(rv.outPk[i].mask, outSk[i].mask, amounts[i]);
             #ifdef DBG
+            if (bulletproof)
+                CHECK_AND_ASSERT_THROW_MES(verBulletproof(rv.p.bulletproofs[i]), "verBulletproof failed on newly created proof");
+            else
                 CHECK_AND_ASSERT_THROW_MES(verRange(rv.outPk[i].mask, rv.p.rangeSigs[i]), "verRange failed on newly created proof");
             #endif
 
@@ -725,7 +737,7 @@ namespace rct {
       xmr_amount txnFee, const ctkeyM & mixRing, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, 
       const std::vector<unsigned int> & index, ctkeyV &outSk, const RCTConfig &rct_config, hw::device &hwdev)
     {
-      const bool v2 = (rct_config.range_proof_type != RangeProofBorromean && (rct_config.bp_version == 0 || rct_config.bp_version >= 2));
+      const bool v2 = (rct_config.range_proof_type != RangeProofBorromean && rct_config.is_v2);
 
       if (v2)
         return genRctSimple_v2(message, inSk, destinations, inamounts, outamounts, txnFee, mixRing, amount_keys, kLRki, msout, index, outSk, rct_config, hwdev);
@@ -737,7 +749,6 @@ namespace rct {
       xmr_amount txnFee, const ctkeyM & mixRing, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, const std::vector<unsigned int> & index, 
       ctkeyV &outSk, const RCTConfig &rct_config, hw::device &hwdev)
     {
-        const bool bulletproof = rct_config.range_proof_type != RangeProofBorromean;
         CHECK_AND_ASSERT_THROW_MES(inamounts.size() > 0, "Empty inamounts");
         CHECK_AND_ASSERT_THROW_MES(inamounts.size() == inSk.size(), "Different number of inamounts/inSk");
         CHECK_AND_ASSERT_THROW_MES(outamounts.size() == destinations.size(), "Different number of amounts/destinations");
@@ -754,9 +765,9 @@ namespace rct {
 
         rctSig rv;
 
-        //todo: get rid of bp v2 assignment once we know it isn't called erroneously
-        rv.type = bulletproof ? (rct_config.bp_version == 0 || rct_config.bp_version >= 2 ? RCTTypeBulletproof2 : RCTTypeBulletproof) : RCTTypeSimple;
-        CHECK_AND_ASSERT_THROW_MES(rv.type == RCTTypeBulletproof || rv.type == RCTTypeSimple, "genRctSimple_v1: Wrong Tx type");
+        const bool bulletproof = rct_config.range_proof_type != RangeProofBorromean;
+        rv.type = bulletproof ? RCTTypeBulletproof1Simple : RCTTypeSimple;
+        CHECK_AND_ASSERT_THROW_MES(rv.type == RCTTypeBulletproof1Simple || rv.type == RCTTypeSimple, "genRctSimple_v1: Wrong Tx type");
         rv.message = message;
         rv.outPk.resize(destinations.size());
         if (bulletproof)
@@ -824,7 +835,6 @@ namespace rct {
       xmr_amount txnFee, const ctkeyM & mixRing, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, const std::vector<unsigned int> & index, 
       ctkeyV &outSk, const RCTConfig &rct_config, hw::device &hwdev)
     {
-        const bool bulletproof = rct_config.range_proof_type != RangeProofBorromean;
         CHECK_AND_ASSERT_THROW_MES(inamounts.size() > 0, "Empty inamounts");
         CHECK_AND_ASSERT_THROW_MES(inamounts.size() == inSk.size(), "Different number of inamounts/inSk");
         CHECK_AND_ASSERT_THROW_MES(outamounts.size() == destinations.size(), "Different number of amounts/destinations");
@@ -840,9 +850,8 @@ namespace rct {
         }
 
         rctSig rv;
-        //todo: should never be bp v1
-        //todo: get rid of bp v1 assignment when we know the code is called correctly
-        rv.type = bulletproof ? (rct_config.bp_version == 0 || rct_config.bp_version >= 2 ? RCTTypeBulletproof2 : RCTTypeBulletproof) : RCTTypeSimple;
+        const bool bulletproof = rct_config.range_proof_type != RangeProofBorromean;
+        rv.type = bulletproof ? RCTTypeBulletproof2 : RCTTypeSimple;
         CHECK_AND_ASSERT_THROW_MES(rv.type == RCTTypeBulletproof2 || rv.type == RCTTypeSimple, "genRctSimple_v2: Wrong Tx type");
         rv.message = message;
         rv.outPk.resize(destinations.size());
@@ -965,10 +974,13 @@ namespace rct {
 
     bool verRct(const rctSig & rv, bool semantics) {
         PERF_TIMER(verRct);
-        CHECK_AND_ASSERT_MES(rv.type == RCTTypeFull, false, "verRct called on non-full rctSig");
+        CHECK_AND_ASSERT_MES(rv.type == RCTTypeFull || rv.type == RCTTypeBulletproof1Full, false, "verRct called on non-full rctSig");
         if (semantics)
         {
-          CHECK_AND_ASSERT_MES(rv.outPk.size() == rv.p.rangeSigs.size(), false, "Mismatched sizes of outPk and rv.p.rangeSigs");
+          if (rv.type == RCTTypeBulletproof1Full)
+            CHECK_AND_ASSERT_MES(rv.outPk.size() == rv.p.bulletproofs.size(), false, "Mismatched sizes of outPk and rv.p.bulletproofs");
+          else
+            CHECK_AND_ASSERT_MES(rv.outPk.size() == rv.p.rangeSigs.size(), false, "Mismatched sizes of outPk and rv.p.rangeSigs");
           CHECK_AND_ASSERT_MES(rv.outPk.size() == rv.ecdhInfo.size(), false, "Mismatched sizes of outPk and rv.ecdhInfo");
           CHECK_AND_ASSERT_MES(rv.p.MGs.size() == 1, false, "full rctSig has not one MG");
         }
@@ -985,8 +997,14 @@ namespace rct {
             tools::threadpool::waiter waiter;
             std::deque<bool> results(rv.outPk.size(), false);
             DP("range proofs verified?");
-            for (size_t i = 0; i < rv.outPk.size(); i++)
-              tpool.submit(&waiter, [&, i] { results[i] = verRange(rv.outPk[i].mask, rv.p.rangeSigs[i]); });
+            for (size_t i = 0; i < rv.outPk.size(); i++) {
+              tpool.submit(&waiter, [&, i] {
+                if (rv.p.rangeSigs.empty())
+                  results[i] = verBulletproof(rv.p.bulletproofs[i], false);
+                else
+                  results[i] = verRange(rv.outPk[i].mask, rv.p.rangeSigs[i]);
+              });
+            }
             waiter.wait(&tpool);
 
             for (size_t i = 0; i < results.size(); ++i) {
@@ -1041,10 +1059,10 @@ namespace rct {
       {
         PERF_TIMER(verRctSimple);
 
-        CHECK_AND_ASSERT_MES(rv.type == RCTTypeSimple || rv.type == RCTTypeBulletproof, false, "verRctSimple called on non simple rctSig");
+        CHECK_AND_ASSERT_MES(rv.type == RCTTypeSimple || rv.type == RCTTypeBulletproof1Simple, false, "verRctSimple called on non simple rctSig");
         if (semantics)
         {
-          if (rv.type == RCTTypeBulletproof)
+          if (rv.type == RCTTypeBulletproof1Simple)
           {
             CHECK_AND_ASSERT_MES(rv.outPk.size() == rv.p.bulletproofs.size(), false, "Mismatched sizes of outPk and rv.p.bulletproofs");
             CHECK_AND_ASSERT_MES(rv.p.pseudoOuts.size() == rv.p.MGs.size(), false, "Mismatched sizes of rv.p.pseudoOuts and rv.p.MGs");
@@ -1061,7 +1079,7 @@ namespace rct {
         else
         {
           // semantics check is early, and mixRing/MGs aren't resolved yet
-          if (rv.type == RCTTypeBulletproof)
+          if (rv.type == RCTTypeBulletproof1Simple)
             CHECK_AND_ASSERT_MES(rv.p.pseudoOuts.size() == rv.mixRing.size(), false, "Mismatched sizes of rv.p.pseudoOuts and mixRing");
           else
             CHECK_AND_ASSERT_MES(rv.pseudoOuts.size() == rv.mixRing.size(), false, "Mismatched sizes of rv.pseudoOuts and mixRing");
@@ -1313,7 +1331,7 @@ namespace rct {
     }
 
     xmr_amount decodeRct(const rctSig & rv, const key & sk, unsigned int i, key & mask, hw::device &hwdev) {
-        CHECK_AND_ASSERT_MES(rv.type == RCTTypeFull, false, "decodeRct called on non-full rctSig");
+        CHECK_AND_ASSERT_MES(rv.type == RCTTypeFull || rv.type == RCTTypeBulletproof1Full, false, "decodeRct called on non-full rctSig");
         CHECK_AND_ASSERT_THROW_MES(i < rv.ecdhInfo.size(), "Bad index");
         CHECK_AND_ASSERT_THROW_MES(rv.outPk.size() == rv.ecdhInfo.size(), "Mismatched sizes of rv.outPk and rv.ecdhInfo");
 
@@ -1341,7 +1359,7 @@ namespace rct {
     }
 
     xmr_amount decodeRctSimple(const rctSig & rv, const key & sk, unsigned int i, key &mask, hw::device &hwdev) {
-        CHECK_AND_ASSERT_MES(rv.type == RCTTypeSimple || rv.type == RCTTypeBulletproof || rv.type == RCTTypeBulletproof2, false, "decodeRct called on non simple rctSig");
+        CHECK_AND_ASSERT_MES(rv.type == RCTTypeSimple || rv.type == RCTTypeBulletproof1Simple || rv.type == RCTTypeBulletproof2, false, "decodeRct called on non simple rctSig");
         CHECK_AND_ASSERT_THROW_MES(i < rv.ecdhInfo.size(), "Bad index");
         CHECK_AND_ASSERT_THROW_MES(rv.outPk.size() == rv.ecdhInfo.size(), "Mismatched sizes of rv.outPk and rv.ecdhInfo");
 
@@ -1369,12 +1387,13 @@ namespace rct {
     }
 
     bool signMultisig(rctSig &rv, const std::vector<unsigned int> &indices, const keyV &k, const multisig_out &msout, const key &secret_key) {
-        CHECK_AND_ASSERT_MES(rv.type == RCTTypeFull || rv.type == RCTTypeSimple || rv.type == RCTTypeBulletproof || rv.type == RCTTypeBulletproof2,
+        CHECK_AND_ASSERT_MES(rv.type == RCTTypeFull || rv.type == RCTTypeSimple || 
+        rv.type == RCTTypeBulletproof1Full || rv.type == RCTTypeBulletproof1Simple || rv.type == RCTTypeBulletproof2,
             false, "unsupported rct type");
         CHECK_AND_ASSERT_MES(indices.size() == k.size(), false, "Mismatched k/indices sizes");
         CHECK_AND_ASSERT_MES(k.size() == rv.p.MGs.size(), false, "Mismatched k/MGs size");
         CHECK_AND_ASSERT_MES(k.size() == msout.c.size(), false, "Mismatched k/msout.c size");
-        if (rv.type == RCTTypeFull)
+        if (rv.type == RCTTypeFull || rv.type == RCTTypeBulletproof1Full)
         {
           CHECK_AND_ASSERT_MES(rv.p.MGs.size() == 1, false, "MGs not a single element");
         }

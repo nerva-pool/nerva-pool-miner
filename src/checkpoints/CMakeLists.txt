@@ -37,12 +37,14 @@ if(APPLE)
 endif()
 
 set(checkpoints_sources
-  checkpoints.cpp)
+  checkpoints.cpp
+  quicksync.cpp)
 
 set(checkpoints_headers)
 
 set(checkpoints_private_headers
-  checkpoints.h)
+  checkpoints.h
+  quicksync.h)
 
 monero_private_headers(checkpoints
   ${checkpoints_private_headers})

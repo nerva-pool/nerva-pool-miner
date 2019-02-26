@@ -51,6 +51,7 @@ using namespace epee;
 #include "file_io_utils.h"
 #include <csignal>
 #include "checkpoints/checkpoints.h"
+#include "checkpoints/quicksync.h"
 #include "ringct/rctTypes.h"
 #include "blockchain_db/blockchain_db.h"
 #include "ringct/rctSigs.h"
@@ -104,6 +105,7 @@ namespace cryptonote
   const command_line::arg_descriptor<bool> arg_disable_dns_checkpoints = {
     "disable-dns-checkpoints"
   , "Do not retrieve checkpoints from DNS"
+  , true
   };
 
   static const command_line::arg_descriptor<bool> arg_test_drop_download = {
@@ -145,15 +147,15 @@ namespace cryptonote
   , "How many blocks to sync at once during chain synchronization (0 = adaptive)."
   , 0
   };
+  static const command_line::arg_descriptor<std::string> arg_quicksync  = {
+    "quicksync"
+  , "Load quicksync data from external file"
+  , "quicksync.raw"
+  };
   static const command_line::arg_descriptor<std::string> arg_check_updates = {
     "check-updates"
   , "Check for new versions of nerva: [disabled|notify|download|update]"
   , "notify"
-  };
-  static const command_line::arg_descriptor<bool> arg_no_fluffy_blocks  = {
-    "no-fluffy-blocks"
-  , "Relay blocks as normal blocks"
-  , false
   };
   static const command_line::arg_descriptor<size_t> arg_max_txpool_size  = {
     "max-txpool-size"
@@ -172,7 +174,7 @@ namespace cryptonote
               m_checkpoints_path(""),
               m_last_dns_checkpoints_update(0),
               m_last_json_checkpoints_update(0),
-              m_disable_dns_checkpoints(false),
+              m_disable_dns_checkpoints(true),
               m_threadpool(tools::threadpool::getInstance()),
               m_update_download(0),
               m_nettype(UNDEFINED)
@@ -193,6 +195,11 @@ namespace cryptonote
     m_blockchain_storage.set_checkpoints(std::move(chk_pts));
   }
   //-----------------------------------------------------------------------------------
+  void core::set_quicksync(quicksync&& qs_pts)
+  {
+    m_blockchain_storage.set_quicksync(std::move(qs_pts));
+  }
+  //-----------------------------------------------------------------------------------
   void core::set_checkpoints_file_path(const std::string& path)
   {
     m_checkpoints_path = path;
@@ -208,7 +215,7 @@ namespace cryptonote
     if (m_nettype != MAINNET || m_disable_dns_checkpoints) return true;
 
     if (m_checkpoints_updating.test_and_set()) return true;
-
+    
     bool res = true;
     if (time(NULL) - m_last_dns_checkpoints_update >= 3600)
     {
@@ -262,8 +269,8 @@ namespace cryptonote
     command_line::add_arg(desc, arg_fast_block_sync);
     command_line::add_arg(desc, arg_show_time_stats);
     command_line::add_arg(desc, arg_block_sync_size);
+    command_line::add_arg(desc, arg_quicksync);
     command_line::add_arg(desc, arg_check_updates);
-    command_line::add_arg(desc, arg_no_fluffy_blocks);
     command_line::add_arg(desc, arg_test_dbg_lock_sleep);
     command_line::add_arg(desc, arg_offline);
     command_line::add_arg(desc, arg_disable_dns_checkpoints);
@@ -301,10 +308,26 @@ namespace cryptonote
       set_checkpoints_file_path(checkpoint_json_hashfile_fullpath.string());
     }
 
+    std::string qs = command_line::get_arg(vm, arg_quicksync);
+    if (!qs.empty())
+    {
+      
+      auto qs_file = boost::filesystem::path(qs);
+      boost::system::error_code ignore;
+      if (boost::filesystem::exists(qs_file, ignore))
+      {
+        cryptonote::quicksync quicksync;
+        if (quicksync.load(qs))
+          set_quicksync(std::move(quicksync));
+        else
+          MWARNING("Quick sync file " << qs << " could not be loaded. Ignoring");
+      }
+      else
+        MWARNING("Quick sync file " << qs << " does not exist. Ignoring");
+    }
 
     set_enforce_dns_checkpoints(command_line::get_arg(vm, arg_dns_checkpoints));
     test_drop_download_height(command_line::get_arg(vm, arg_test_drop_download_height));
-    m_fluffy_blocks_enabled = !get_arg(vm, arg_no_fluffy_blocks);
     m_offline = get_arg(vm, arg_offline);
     m_disable_dns_checkpoints = get_arg(vm, arg_disable_dns_checkpoints);
 
@@ -386,7 +409,6 @@ namespace cryptonote
     if (config_subdir)
       m_config_folder_mempool = m_config_folder_mempool + "/" + config_subdir;
 
-    std::string db_type = command_line::get_arg(vm, cryptonote::arg_db_type);
     std::string db_sync_mode = command_line::get_arg(vm, cryptonote::arg_db_sync_mode);
     bool db_salvage = command_line::get_arg(vm, cryptonote::arg_db_salvage) != 0;
     bool fast_sync = command_line::get_arg(vm, arg_fast_block_sync) != 0;
@@ -419,7 +441,7 @@ namespace cryptonote
     // folder might not be a directory, etc, etc
     catch (...) { }
 
-    std::unique_ptr<BlockchainDB> db(new_db(db_type));
+    std::unique_ptr<BlockchainDB> db(new_db());
     if (db == NULL)
     {
       LOG_ERROR("Attempted to use non-existent database type");
@@ -665,10 +687,6 @@ namespace cryptonote
       return false;
     }
 
-    // resolve outPk references in rct txes
-    // outPk aren't the only thing that need resolving for a fully resolved tx,
-    // but outPk (1) are needed now to check range proof semantics, and
-    // (2) do not need access to the blockchain to find data
     if (tx.version >= 1)
     {
       rct::rctSig &rv = tx.rct_signatures;
@@ -688,7 +706,8 @@ namespace cryptonote
         rv.outPk[n].dest = rct::pk2rct(boost::get<txout_to_key>(tx.vout[n].target).key);
       }
 
-      if (rv.type == rct::RCTTypeBulletproof)
+      if (rv.type == rct::RCTTypeBulletproof1Simple ||
+          rv.type == rct::RCTTypeBulletproof1Full)
       {
         if (rv.p.bulletproofs.size() != tx.vout.size())
         {
@@ -920,7 +939,7 @@ namespace cryptonote
           MERROR_VER("Unexpected Null rctSig type");
           return false;
         case rct::RCTTypeSimple:
-        case rct::RCTTypeBulletproof:
+        case rct::RCTTypeBulletproof1Simple:
           if (!rct::verRctSimple(rv, true, false))
           {
             MERROR_VER("rct signature semantics check failed");
@@ -940,6 +959,7 @@ namespace cryptonote
           }
           break;
         case rct::RCTTypeFull:
+        case rct::RCTTypeBulletproof1Full:
           if (!rct::verRct(rv, true))
           {
             MERROR_VER("rct signature semantics check failed");
@@ -971,11 +991,10 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------
   size_t core::get_block_sync_size(uint64_t height) const
   {
-    //HF v7 (CN-Adaptive-v2) MUST be synced one block at a time.
-    //We therefore enforce it regardless of any defaults or user defined values
-    size_t default_value = block_sync_size == 0 ? BLOCKS_SYNCHRONIZING_DEFAULT_COUNT : block_sync_size;
-    uint64_t fork_height = get_blockchain_storage().get_hardfork()->get_earliest_ideal_height_for_version(7);
-    return (height + default_value + 1) > fork_height ? 1 : default_value;
+    if (block_sync_size == 0)
+      return BLOCKS_SYNCHRONIZING_DEFAULT_COUNT;
+
+    return block_sync_size;
   }
   //-----------------------------------------------------------------------------------------------
   bool core::are_key_images_spent_in_pool(const std::vector<crypto::key_image>& key_im, std::vector<bool> &spent) const

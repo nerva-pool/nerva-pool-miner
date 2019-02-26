@@ -405,6 +405,8 @@ namespace cryptonote
       */
      void set_checkpoints(checkpoints&& chk_pts);
 
+     void set_quicksync(quicksync&& qs_pts);
+
      /**
       * @brief set the file path to read from when loading checkpoints
       *
@@ -784,13 +786,6 @@ namespace cryptonote
      network_type get_nettype() const { return m_nettype; };
 
      /**
-      * @brief get whether fluffy blocks are enabled
-      *
-      * @return whether fluffy blocks are enabled
-      */
-     bool fluffy_blocks_enabled() const { return m_fluffy_blocks_enabled; }
-
-     /**
       * @brief check a set of hashes against the precompiled hash set
       *
       * @return number of usable blocks
@@ -1038,7 +1033,6 @@ namespace cryptonote
      size_t m_last_update_length;
      boost::mutex m_update_mutex;
 
-     bool m_fluffy_blocks_enabled;
      bool m_offline;
    };
 }

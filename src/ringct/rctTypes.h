@@ -228,13 +228,14 @@ namespace rct {
       RCTTypeNull = 0,
       RCTTypeFull = 1,
       RCTTypeSimple = 2,
-      RCTTypeBulletproof = 4,
-      RCTTypeBulletproof2 = 5 //renamed from FullBulletproof
+      RCTTypeBulletproof1Full = 3,
+      RCTTypeBulletproof1Simple = 4,
+      RCTTypeBulletproof2 = 5
     };
     enum RangeProofType { RangeProofBorromean, RangeProofBulletproof, RangeProofMultiOutputBulletproof, RangeProofPaddedBulletproof };
     struct RCTConfig {
       RangeProofType range_proof_type;
-      int bp_version;
+      bool is_v2;
     };
     struct rctSigBase {
         uint8_t type;
@@ -252,7 +253,9 @@ namespace rct {
           FIELD(type)
           if (type == RCTTypeNull)
             return true;
-          if (type != RCTTypeFull && type != RCTTypeSimple && type != RCTTypeBulletproof && type != RCTTypeBulletproof2)
+          if (type != RCTTypeFull && type != RCTTypeSimple && 
+              type != RCTTypeBulletproof1Full && type != RCTTypeBulletproof1Simple && 
+              type != RCTTypeBulletproof2)
             return false;
           VARINT_FIELD(txnFee)
           // inputs/outputs not saved, only here for serialization help
@@ -325,7 +328,9 @@ namespace rct {
         {
           if (type == RCTTypeNull)
             return true;
-          if (type != RCTTypeFull && type != RCTTypeSimple && type != RCTTypeBulletproof && type != RCTTypeBulletproof2)
+          if (type != RCTTypeFull && type != RCTTypeSimple && 
+              type != RCTTypeBulletproof1Full && type != RCTTypeBulletproof1Simple &&
+              type != RCTTypeBulletproof2)
             return false;
           if (type == RCTTypeBulletproof2)
           {
@@ -346,7 +351,7 @@ namespace rct {
               return false;
             ar.end_array();
           }
-          else if (type == RCTTypeBulletproof)
+          else if (type == RCTTypeBulletproof1Full || type == RCTTypeBulletproof1Simple)
           {
             ar.tag("bp");
             ar.begin_array();
@@ -381,7 +386,7 @@ namespace rct {
           ar.begin_array();
           // we keep a byte for size of MGs, because we don't know whether this is
           // a simple or full rct signature, and it's starting to annoy the hell out of me
-          size_t mg_elements = (type == RCTTypeSimple || type == RCTTypeBulletproof || type == RCTTypeBulletproof2) ? inputs : 1;
+          size_t mg_elements = (type == RCTTypeSimple || type == RCTTypeBulletproof1Simple || type == RCTTypeBulletproof2) ? inputs : 1;
           PREPARE_CUSTOM_VECTOR_SERIALIZATION(mg_elements, MGs);
           if (MGs.size() != mg_elements)
             return false;
@@ -399,7 +404,7 @@ namespace rct {
             for (size_t j = 0; j < mixin + 1; ++j)
             {
               ar.begin_array();
-              size_t mg_ss2_elements = ((type == RCTTypeSimple || type == RCTTypeBulletproof || type == RCTTypeBulletproof2) ? 1 : inputs) + 1;
+              size_t mg_ss2_elements = ((type == RCTTypeSimple || type == RCTTypeBulletproof1Simple || type == RCTTypeBulletproof2) ? 1 : inputs) + 1;
               PREPARE_CUSTOM_VECTOR_SERIALIZATION(mg_ss2_elements, MGs[i].ss[j]);
               if (MGs[i].ss[j].size() != mg_ss2_elements)
                 return false;
@@ -425,7 +430,7 @@ namespace rct {
                ar.delimit_array();
           }
           ar.end_array();
-          if (type == RCTTypeBulletproof || type == RCTTypeBulletproof2)
+          if (type == RCTTypeBulletproof1Simple || type == RCTTypeBulletproof2)
           {
             ar.tag("pseudoOuts");
             ar.begin_array();
@@ -448,12 +453,12 @@ namespace rct {
         rctSigPrunable p;
         keyV& get_pseudo_outs()
         {
-          return type == RCTTypeBulletproof || type == RCTTypeBulletproof2 ? p.pseudoOuts : pseudoOuts;
+          return type == RCTTypeBulletproof1Full || type == RCTTypeBulletproof1Simple || type == RCTTypeBulletproof2 ? p.pseudoOuts : pseudoOuts;
         }
 
         keyV const& get_pseudo_outs() const
         {
-          return type == RCTTypeBulletproof || type == RCTTypeBulletproof2 ? p.pseudoOuts : pseudoOuts;
+          return type == RCTTypeBulletproof1Full || type == RCTTypeBulletproof1Simple || type == RCTTypeBulletproof2 ? p.pseudoOuts : pseudoOuts;
         }
     };
 

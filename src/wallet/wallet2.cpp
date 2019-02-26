@@ -1222,10 +1222,11 @@ static uint64_t decodeRct(const rct::rctSig & rv, const crypto::key_derivation &
     switch (rv.type)
     {
     case rct::RCTTypeSimple:
-    case rct::RCTTypeBulletproof:
+    case rct::RCTTypeBulletproof1Simple:
     case rct::RCTTypeBulletproof2:
       return rct::decodeRctSimple(rv, rct::sk2rct(scalar1), i, mask, hwdev);
     case rct::RCTTypeFull:
+    case rct::RCTTypeBulletproof1Full:
       return rct::decodeRct(rv, rct::sk2rct(scalar1), i, mask, hwdev);
     default:
       LOG_ERROR("Unsupported rct type: " << rv.type);
@@ -5321,7 +5322,7 @@ bool wallet2::sign_tx(unsigned_tx_set &exported_txs, const std::string &signed_f
     if (sd.use_bulletproofs)
     {
       rct_config.range_proof_type = rct::RangeProofPaddedBulletproof;
-      rct_config.bp_version = use_fork_rules(BULLETPROOF_FULL_FORK_HEIGHT, -10) ? 2 : 1;
+      rct_config.is_v2 = use_fork_rules(BULLETPROOF_FULL_FORK_HEIGHT, 0);
     }
     crypto::secret_key tx_key;
     std::vector<crypto::secret_key> additional_tx_keys;
@@ -5710,7 +5711,7 @@ bool wallet2::sign_multisig_tx(multisig_tx_set &exported_txs, std::vector<crypto
     if (sd.use_bulletproofs)
     {
       rct_config.range_proof_type = rct::RangeProofPaddedBulletproof;
-      rct_config.bp_version = use_fork_rules(BULLETPROOF_FULL_FORK_HEIGHT, -10) ? 2 : 1;
+      rct_config.is_v2 = use_fork_rules(BULLETPROOF_FULL_FORK_HEIGHT, 0);
     }
     bool r = cryptonote::construct_tx_with_tx_key(m_account.get_keys(), m_subaddresses, sources, sd.splitted_dsts, ptx.change_dts.addr, sd.extra, tx, sd.unlock_time, ptx.tx_key, ptx.additional_tx_keys, sd.use_rct, rct_config, &msout);
     THROW_WALLET_EXCEPTION_IF(!r, error::tx_not_constructed, sd.sources, sd.splitted_dsts, sd.unlock_time, m_nettype);
@@ -6207,7 +6208,7 @@ void wallet2::light_wallet_get_outs(std::vector<std::vector<tools::wallet2::get_
   cryptonote::COMMAND_RPC_GET_RANDOM_OUTS::response ores;
   
   size_t light_wallet_requested_outputs_count = (size_t)((fake_outputs_count + 1) * 1.5 + 1);
-  const bool v2 = (rct_config.range_proof_type != rct::RangeProofBorromean && (rct_config.bp_version == 0 || rct_config.bp_version >= 2));
+  const bool v2 = (rct_config.range_proof_type != rct::RangeProofBorromean && rct_config.is_v2);
   
   // Amounts to ask for
   // MyMonero api handle amounts and fees as strings
@@ -6317,7 +6318,7 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
   crypto::chacha_key key;
   generate_chacha_key_from_secret_keys(key);
 
-  const bool v2 = (rct_config.range_proof_type != rct::RangeProofBorromean && (rct_config.bp_version == 0 || rct_config.bp_version >= 2));
+  const bool v2 = (rct_config.range_proof_type != rct::RangeProofBorromean && rct_config.is_v2);
 
   if (fake_outputs_count > 0)
   {
@@ -7022,7 +7023,7 @@ void wallet2::transfer_selected_rct(std::vector<cryptonote::tx_destination_entry
     THROW_WALLET_EXCEPTION_IF(it_to_replace == src.outputs.end(), error::wallet_internal_error,
         "real output not found");
 
-    const bool v2 = (rct_config.range_proof_type != rct::RangeProofBorromean && (rct_config.bp_version == 0 || rct_config.bp_version >= 2));
+    const bool v2 = (rct_config.range_proof_type != rct::RangeProofBorromean && rct_config.is_v2);
 
     tx_output_entry real_oe;
     real_oe.first = td.m_global_output_index;

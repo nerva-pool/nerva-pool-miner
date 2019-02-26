@@ -37,11 +37,6 @@
 
 #include "lmdb/db_lmdb.h"
 
-static const char *db_types[] = {
-  "lmdb",
-  NULL
-};
-
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "blockchain.db"
 
@@ -50,36 +45,6 @@ using epee::string_tools::pod_to_hex;
 namespace cryptonote
 {
 
-bool blockchain_valid_db_type(const std::string& db_type)
-{
-  int i;
-  for (i=0; db_types[i]; i++)
-  {
-    if (db_types[i] == db_type)
-      return true;
-  }
-  return false;
-}
-
-std::string blockchain_db_types(const std::string& sep)
-{
-  int i;
-  std::string ret = "";
-  for (i=0; db_types[i]; i++)
-  {
-    if (i)
-      ret += sep;
-    ret += db_types[i];
-  }
-  return ret;
-}
-
-std::string arg_db_type_description = "Specify database type, available: " + cryptonote::blockchain_db_types(", ");
-const command_line::arg_descriptor<std::string> arg_db_type = {
-  "db-type"
-, arg_db_type_description.c_str()
-, DEFAULT_DB_TYPE
-};
 const command_line::arg_descriptor<std::string> arg_db_sync_mode = {
   "db-sync-mode"
 , "Specify sync option, using format [safe|fast|fastest]:[sync|async]:[nblocks_per_sync]." 
@@ -96,16 +61,13 @@ const command_line::arg_descriptor<uint32_t> arg_db_readers  = {
 , 126U
 };
 
-BlockchainDB *new_db(const std::string& db_type)
+BlockchainDB *new_db()
 {
-  if (db_type == "lmdb")
-    return new BlockchainLMDB();
-  return NULL;
+  return new BlockchainLMDB();
 }
 
 void BlockchainDB::init_options(boost::program_options::options_description& desc)
 {
-  command_line::add_arg(desc, arg_db_type);
   command_line::add_arg(desc, arg_db_sync_mode);
   command_line::add_arg(desc, arg_db_salvage);
   command_line::add_arg(desc, arg_db_readers);

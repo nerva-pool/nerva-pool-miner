@@ -21,7 +21,7 @@ function wallet1()
 function wallet2()
 {
 	rm -f ${dir}/t2.cache
-	${dir}/builder/build/dev/debug/bin/nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:28081 --wallet-file ${dir}/t2 --password ""
+	${dir}/builder/build/dev/debug/bin/nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:38081 --wallet-file ${dir}/t2 --password ""
 }
 
 function n0()

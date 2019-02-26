@@ -3141,7 +3141,7 @@ bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_pr
   rv.message = rct::hash2rct(tx_prefix_hash);
 
   // mixRing - full and simple store it in opposite ways
-  if (rv.type == rct::RCTTypeFull)
+  if (rv.type == rct::RCTTypeFull || rv.type == rct::RCTTypeBulletproof1Full)
   {
     CHECK_AND_ASSERT_MES(!pubkeys.empty() && !pubkeys[0].empty(), false, "empty pubkeys");
     rv.mixRing.resize(pubkeys[0].size());
@@ -3151,12 +3151,10 @@ bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_pr
     {
       CHECK_AND_ASSERT_MES(pubkeys[n].size() <= pubkeys[0].size(), false, "More inputs that first ring");
       for (size_t m = 0; m < pubkeys[n].size(); ++m)
-      {
         rv.mixRing[m].push_back(pubkeys[n][m]);
-      }
     }
   }
-  else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeBulletproof || rv.type == rct::RCTTypeBulletproof2)
+  else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeBulletproof1Simple || rv.type == rct::RCTTypeBulletproof2)
   {
     CHECK_AND_ASSERT_MES(!pubkeys.empty() && !pubkeys[0].empty(), false, "empty pubkeys");
     rv.mixRing.resize(pubkeys.size());
@@ -3164,9 +3162,7 @@ bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_pr
     {
       rv.mixRing[n].clear();
       for (size_t m = 0; m < pubkeys[n].size(); ++m)
-      {
         rv.mixRing[n].push_back(pubkeys[n][m]);
-      }
     }
   }
   else
@@ -3175,14 +3171,14 @@ bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_pr
   }
 
   // II
-  if (rv.type == rct::RCTTypeFull)
+  if (rv.type == rct::RCTTypeFull || rv.type == rct::RCTTypeBulletproof1Full)
   {
     rv.p.MGs.resize(1);
     rv.p.MGs[0].II.resize(tx.vin.size());
     for (size_t n = 0; n < tx.vin.size(); ++n)
       rv.p.MGs[0].II[n] = rct::ki2rct(boost::get<txin_to_key>(tx.vin[n]).k_image);
   }
-  else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeBulletproof || rv.type == rct::RCTTypeBulletproof2)
+  else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeBulletproof1Simple || rv.type == rct::RCTTypeBulletproof2)
   {
     CHECK_AND_ASSERT_MES(rv.p.MGs.size() == tx.vin.size(), false, "Bad MGs size");
     for (size_t n = 0; n < tx.vin.size(); ++n)
@@ -3338,7 +3334,7 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
       return false;
     }
     case rct::RCTTypeSimple:
-    case rct::RCTTypeBulletproof:
+    case rct::RCTTypeBulletproof1Simple:
     case rct::RCTTypeBulletproof2:
     {
       // check all this, either reconstructed (so should really pass), or not
@@ -3397,6 +3393,7 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
       break;
     }
     case rct::RCTTypeFull:
+    case rct::RCTTypeBulletproof1Full:
     {
       // check all this, either reconstructed (so should really pass), or not
       {
@@ -3834,7 +3831,6 @@ bool Blockchain::handle_block_to_main_chain(const block& bl, const crypto::hash&
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
 
-  TIME_MEASURE_START(block_processing_time);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
   TIME_MEASURE_START(t1);
 
@@ -3883,8 +3879,6 @@ leave:
   }
 
   TIME_MEASURE_FINISH(t2);
-  //check proof of work
-  TIME_MEASURE_START(target_calculating_time);
 
   // get the target difficulty for the block.
   // the calculation can overflow, among other failure cases,
@@ -3893,10 +3887,6 @@ leave:
   // changing this to throwing exceptions instead so we can clean up.
   difficulty_type current_diffic = get_difficulty_for_next_block();
   CHECK_AND_ASSERT_MES(current_diffic, false, "!!!!!!!!! difficulty overhead !!!!!!!!!");
-
-  TIME_MEASURE_FINISH(target_calculating_time);
-
-  TIME_MEASURE_START(longhash_calculating_time);
 
   crypto::hash proof_of_work = null_hash;
 
@@ -3909,7 +3899,6 @@ leave:
   // FIXME: height parameter is not used...should it be used or should it not
   // be a parameter?
   // validate proof_of_work versus difficulty target
-  bool precomputed = false;
   bool fast_check = false;
 #if defined(PER_BLOCK_CHECKPOINT)
   if (m_db->height() < m_blocks_hash_check.size())
@@ -3933,16 +3922,21 @@ leave:
   }
   else
 #endif
-  {
-    auto it = m_blocks_longhash_table.find(id);
-    if (it != m_blocks_longhash_table.end())
-    {
-      precomputed = true;
-      proof_of_work = it->second;
-    }
-    else
-      proof_of_work = get_block_longhash(bl, m_db->height(), this);
 
+  /*bool quicksync_verified = false;
+  auto it = m_blocks_longhash_table.find(id);
+  if (it != m_blocks_longhash_table.end())
+  {
+      if (it->second == crypto::null_hash)
+        quicksync_verified = m_quicksync.check_block(m_db->height(), bl.hash);
+  }*/
+
+  bool quicksync_verified = m_quicksync.check_block(m_db->height(), bl.hash);
+
+  if (!quicksync_verified)
+  {
+    proof_of_work = get_block_longhash(bl, m_db->height(), this);
+    
     // validate proof_of_work versus difficulty target
     if(!check_hash(proof_of_work, current_diffic))
     {
@@ -3963,10 +3957,6 @@ leave:
       goto leave;
     }
   }
-
-  TIME_MEASURE_FINISH(longhash_calculating_time);
-  if (precomputed)
-    longhash_calculating_time += m_fake_pow_calc_time;
 
   TIME_MEASURE_START(t3);
 
@@ -4177,10 +4167,6 @@ leave:
     cumulative_weight += prev_cumulative_weight;
   }
 
-  TIME_MEASURE_FINISH(block_processing_time);
-  if(precomputed)
-    block_processing_time += m_fake_pow_calc_time;
-
   m_db->block_txn_stop();
   TIME_MEASURE_START(addblock);
   uint64_t new_height = 0;
@@ -4221,15 +4207,13 @@ leave:
 
   uint64_t uncle_reward = uncle_included ? bl.miner_tx.vout[1].amount : 0;
 
-  MINFO("+++++ BLOCK SUCCESSFULLY ADDED" << std::endl << "id:\t" << id << std::endl << "prev:\t" << bl.prev_id << std::endl << "PoW:\t" << proof_of_work << std::endl << "height:\t" << new_height-1 << std::endl << "version:\t" << std::to_string(bl.major_version) << std::endl << "difficulty:\t" << current_diffic << std::endl << "weight:\t" << current_diffic + uncle_diffic << std::endl << "cumulative_difficulty:\t" << cumulative_difficulty << std::endl << "cumulative_weight:\t" << cumulative_weight << std::endl << "block reward:\t" << print_money(get_outs_money_amount(bl.miner_tx)) << "(" << print_money(base_reward) << " + " << print_money(fee_summary) << " + " << print_money(bl.miner_tx.vout[0].amount - base_reward - fee_summary) /* nephew reward */ << " + " << print_money(uncle_reward) /* uncle reward */ << ")" << std::endl << "coinbase_blob_size: " << coinbase_blob_size << ", cumulative size: " << cumulative_block_size << ", " << block_processing_time << "(" << target_calculating_time << "/" << longhash_calculating_time << ")ms" << std::endl << "uncle:\t" << bl.uncle);
-  if(m_show_time_stats)
-  {
-    MINFO("Height: " << new_height << " blob: " << coinbase_blob_size << " cumm: "
-        << cumulative_block_size << " p/t: " << block_processing_time << " ("
-        << target_calculating_time << "/" << longhash_calculating_time << "/"
-        << t1 << "/" << t2 << "/" << t3 << "/" << t_exists << "/" << t_pool
-        << "/" << t_checktx << "/" << t_dblspnd << "/" << vmt << "/" << addblock << ")ms");
-  }
+  MINFO("+++++ BLOCK SUCCESSFULLY ADDED" << std::endl << "id:\t" << id << std::endl << "prev:\t" << bl.prev_id << std::endl 
+  << "PoW:\t" << proof_of_work << std::endl << "height:\t" << new_height-1 << std::endl << "version:\t" << std::to_string(bl.major_version) << std::endl 
+  << "difficulty:\t" << current_diffic << std::endl << "weight:\t" << current_diffic + uncle_diffic << std::endl 
+  << "cumulative_difficulty:\t" << cumulative_difficulty << std::endl << "cumulative_weight:\t" << cumulative_weight << std::endl 
+  << "block reward:\t" << print_money(get_outs_money_amount(bl.miner_tx)) << "(" << print_money(base_reward) << " + " << print_money(fee_summary) << " + " << print_money(bl.miner_tx.vout[0].amount - base_reward - fee_summary) /* nephew reward */ << " + " << print_money(uncle_reward) /* uncle reward */ << ")" << std::endl 
+  << "coinbase_blob_size: " << coinbase_blob_size << ", cumulative size: " << cumulative_block_size << std::endl 
+  << "uncle:\t" << bl.uncle);
 
   bvc.m_added_to_main_chain = true;
   ++m_sync_counter;
@@ -4340,7 +4324,7 @@ bool Blockchain::update_checkpoints(const std::string& file_path, bool check_dns
 
   if (!m_checkpoints.load_checkpoints_from_json(file_path))
   {
-      return false;
+    return false;
   }
 
   // if we're checking both dns and json, load checkpoints from dns.
@@ -4390,9 +4374,13 @@ void Blockchain::block_longhash_worker(uint64_t height, const std::vector<block>
   {
     if (m_cancel)
        break;
+
     crypto::hash id = get_block_hash(block);
-    crypto::hash pow = get_block_longhash(block, height++, this);
-    map.emplace(id, pow);
+
+    if (get_quicksync().is_loaded())
+      map.emplace(id, crypto::null_hash);
+    else
+      map.emplace(id, get_block_longhash(block, height++, this));
   }
 
   slow_hash_free_state();
@@ -4447,7 +4435,7 @@ bool Blockchain::cleanup_handle_incoming_blocks(bool force_sync)
   }
 
   TIME_MEASURE_FINISH(t1);
-  m_blocks_longhash_table.clear();
+  //m_blocks_longhash_table.clear();
   m_scan_table.clear();
   m_blocks_txs_check.clear();
   m_check_txin_table.clear();
@@ -4710,7 +4698,7 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
       std::advance(it, 1);
     }
 
-    if (!blocks_exist)
+    /*if (!blocks_exist)
     {
       m_blocks_longhash_table.clear();
       uint64_t thread_height = height;
@@ -4730,7 +4718,7 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
       {
         m_blocks_longhash_table.insert(map.begin(), map.end());
       }
-    }
+    }*/
   }
 
   if (m_cancel)
@@ -4742,19 +4730,13 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
     return true;
   }
 
-  m_fake_scan_time = 0;
-  m_fake_pow_calc_time = 0;
-
   m_scan_table.clear();
   m_check_txin_table.clear();
 
   TIME_MEASURE_FINISH(prepare);
-  m_fake_pow_calc_time = prepare / blocks_entry.size();
 
   if (blocks_entry.size() > 1 && threads > 1 && m_show_time_stats)
     MDEBUG("Prepare blocks took: " << prepare << " ms");
-
-  TIME_MEASURE_START(scantable);
 
   // [input] stores all unique amounts found
   std::vector < uint64_t > amounts;
@@ -4925,14 +4907,6 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
         its->second.emplace(in_to_key.k_image, outputs);
       }
     }
-  }
-
-  TIME_MEASURE_FINISH(scantable);
-  if (total_txs > 0)
-  {
-    m_fake_scan_time = scantable / total_txs;
-    if(m_show_time_stats)
-      MDEBUG("Prepare scantable took: " << scantable << " ms");
   }
 
   return true;

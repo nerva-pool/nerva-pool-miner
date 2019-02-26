@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2019, The NERVA Project
 //
 // All rights reserved.
 //
@@ -27,10 +27,29 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
+
 #pragma once
+#include "misc_log_ex.h"
+#include "crypto/hash.h"
+#include "cryptonote_config.h"
+#include <vector>
 
 namespace cryptonote
 {
-  bool blockchain_valid_db_type(const std::string& db_type);
-  std::string blockchain_db_types(const std::string& sep);
-} // namespace cryptonote
+  class quicksync
+  {
+  public:
+    quicksync();
+    bool check_block(uint32_t height, const crypto::hash h) const;
+    bool load(const std::string &qs_file);
+    bool is_loaded() { return m_is_loaded; }
+    uint32_t min() { return m_min; }
+    uint32_t max() { return m_max; }
+
+  private:
+    std::map<uint64_t, crypto::hash> m_data;
+    bool m_is_loaded = false;
+    uint32_t m_min = 0;
+    uint32_t m_max = 0;
+  };
+}

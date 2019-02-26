@@ -53,6 +53,7 @@
 #include "cryptonote_basic/verification_context.h"
 #include "crypto/hash.h"
 #include "checkpoints/checkpoints.h"
+#include "checkpoints/quicksync.h"
 #include "cryptonote_basic/hardfork.h"
 #include "blockchain_db/blockchain_db.h"
 
@@ -762,6 +763,8 @@ namespace cryptonote
      */
     bool update_checkpoints(const std::string& file_path, bool check_dns);
 
+    quicksync get_quicksync() const { return m_quicksync; }
+    void set_quicksync(quicksync&& qs) { m_quicksync = qs; }
 
     // user options, must be called before calling init()
 
@@ -1078,6 +1081,7 @@ namespace cryptonote
     blocks_ext_by_hash m_invalid_blocks;     // crypto::hash -> block_extended_info
 
     checkpoints m_checkpoints;
+    quicksync m_quicksync;
     bool m_enforce_dns_checkpoints;
 
     HardFork *m_hardfork;

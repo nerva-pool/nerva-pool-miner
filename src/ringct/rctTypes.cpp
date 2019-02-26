@@ -216,7 +216,7 @@ namespace rct {
         switch (type)
         {
             case RCTTypeSimple:
-            case RCTTypeBulletproof:
+            case RCTTypeBulletproof1Simple:
             case RCTTypeBulletproof2:
                 return true;
             default:
@@ -228,7 +228,8 @@ namespace rct {
     {
         switch (type)
         {
-            case RCTTypeBulletproof:
+            case RCTTypeBulletproof1Simple:
+            case RCTTypeBulletproof1Full:
             case RCTTypeBulletproof2:
                 return true;
             default:
