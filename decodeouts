@@ -1,0 +1,2 @@
+#!/bin/bash
+curl 127.0.0.1/api/decodeoutputs.php?hash[]=e8c0902ff8d2ba7a73453d9dd04d16340d29313e6d0ccc068b6853ae06102e41&viewkey=644356ae5726db1c983d7c9e96fe78616f218e907b66a2d535d47158a4b5b400&address=NV3Co2jzKSKTm7GM3Y8pnyKxGFZwHJ2wf4UWV7Er3JqNa4Hqj8NcdNiJdTBC3KtBSNdxWc5zWmeeyCEFyisSk18J1XSHoc6GV

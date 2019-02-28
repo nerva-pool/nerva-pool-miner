@@ -1436,7 +1436,7 @@ namespace boost
         }
         if (ver < 10)
         {
-		  x.m_key_image_requested = false;
+		      x.m_key_image_requested = false;
         }
     }
 

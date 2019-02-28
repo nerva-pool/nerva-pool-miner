@@ -45,6 +45,7 @@ using namespace epee;
 #include "misc_language.h"
 #include "storages/http_abstract_invoke.h"
 #include "crypto/hash.h"
+#include "crypto/crypto.h"
 #include "rpc/rpc_args.h"
 #include "core_rpc_server_error_codes.h"
 #include "p2p/net_node.h"
@@ -546,6 +547,165 @@ namespace cryptonote
     }
     res.status = CORE_RPC_STATUS_OK;
     LOG_PRINT_L2("COMMAND_RPC_GET_TX_GLOBAL_OUTPUTS_INDEXES: [" << res.o_indexes.size() << "]");
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
+  bool core_rpc_server::on_decode_outputs(const COMMAND_RPC_DECODE_OUTPUTS::request& req, COMMAND_RPC_DECODE_OUTPUTS::response& res, epee::json_rpc::error& error_resp)
+  {
+    PERF_TIMER(on_decode_outputs);
+
+    std::vector<crypto::hash> vh;
+    for(const auto& tx_hex_str: req.tx_hashes)
+    {
+      blobdata b;
+      if(!string_tools::parse_hexstr_to_binbuff(tx_hex_str, b))
+      {
+        res.status = "Failed to parse hex representation of transaction hash";
+        return false;
+      }
+      if(b.size() != sizeof(crypto::hash))
+      {
+        res.status = "Failed, size of data mismatch";
+        return false;
+      }
+      vh.push_back(*reinterpret_cast<const crypto::hash*>(b.data()));
+    }
+
+    std::vector<crypto::hash> missed_txs;
+    std::vector<transaction> chain_txs;
+    std::vector<transaction> pool_txs;
+    std::vector<transaction> sorted_txs;
+    address_parse_info ai;
+
+    if(!m_core.get_transactions(vh, sorted_txs, missed_txs))
+    {
+      res.status = "Failed. Could not retrieve transactions";
+      return false;
+    }
+
+    if (!missed_txs.empty() && !m_core.get_pool_transactions(pool_txs, false))
+    {
+      res.status = "Failed. Could not retrieve pool transactions";
+      return false;
+    }
+
+    if (!get_account_address_from_str(ai, cryptonote::MAINNET, req.address))
+    {
+      res.status = "Failed. Could not parse address";
+      return false;
+    }
+
+    for(const auto& h: vh)
+    {
+      bool found = false;
+      for(const auto& t: chain_txs)
+      {
+        if (t.hash == h)
+        {
+          sorted_txs.push_back(t);
+          found = true;
+          break;
+        }
+      }
+
+      if (found)
+        continue;
+
+      for(const auto& t: pool_txs)
+      {
+        if (t.hash == h)
+        {
+          sorted_txs.push_back(t);
+          break;
+        }
+      }
+    }
+
+    crypto::public_key spend_pubkey = ai.address.m_spend_public_key;
+    cryptonote::blobdata sec_vk_data;
+    crypto::secret_key view_seckey;
+
+    if(!epee::string_tools::parse_hexstr_to_binbuff(req.sec_view_key, sec_vk_data) || sec_vk_data.size() != sizeof(crypto::secret_key))
+    {
+      res.status = "Failed. Could not parse view key";
+      return false;
+    }
+
+    view_seckey = *reinterpret_cast<const crypto::secret_key*>(sec_vk_data.data());
+
+    for(const auto& tx: sorted_txs)
+    {
+      crypto::public_key tx_pubkey = get_tx_pub_key_from_extra(tx.extra);
+      std::vector<crypto::public_key> additional_keys = get_additional_tx_pub_keys_from_extra(tx.extra);
+
+      crypto::key_derivation tx_kd;
+      std::vector<crypto::key_derivation> additional_kd;
+
+      crypto::generate_key_derivation(tx_pubkey, view_seckey, tx_kd);
+
+      if (!additional_keys.empty())
+      {
+        for(const auto& ak: additional_keys)
+        {
+          crypto::key_derivation kd;
+          crypto::generate_key_derivation(ak, view_seckey, kd);
+
+          additional_kd.push_back(kd);
+        }
+      }
+
+      uint32_t i = 0;
+      //so we now have all the tx pub keys
+      for(const tx_out& o: tx.vout)
+      {
+        crypto::public_key out_key;
+        crypto::derive_public_key(tx_kd, i, spend_pubkey, out_key);
+        crypto::public_key target_key = boost::get<txout_to_key>(o.target).key;
+
+        //todo: check additional
+        if (target_key == out_key)
+        {
+          rct::key mask;
+          hw::device &hwdev = hw::get_device("default");
+          crypto::secret_key scalar1;
+          hwdev.derivation_to_scalar(tx_kd, i, scalar1);
+
+          uint64_t amount = (uint64_t)-1;
+
+          try
+          {
+            switch (tx.rct_signatures.type)
+            {
+              case rct::RCTTypeSimple:
+              case rct::RCTTypeBulletproof1Simple:
+              case rct::RCTTypeBulletproof2:
+                amount = rct::decodeRctSimple(tx.rct_signatures, rct::sk2rct(scalar1), i, mask, hwdev);
+                break;
+              case rct::RCTTypeFull:
+              case rct::RCTTypeBulletproof1Full:
+                amount = rct::decodeRct(tx.rct_signatures, rct::sk2rct(scalar1), i, mask, hwdev);
+                break;
+              default:
+              {
+                res.status = "Failed. Unknown RCT type";
+                return false;
+              }
+            }
+          }
+          catch (const std::exception &e)
+          {
+            res.status = "Failed. Failed to decode input";
+            return false;
+          }
+        }
+
+        res.amounts.push_back(amount);
+        ++i;
+      }
+    }
+
+    res.status = CORE_RPC_STATUS_OK;
+
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------

@@ -159,6 +159,7 @@ namespace cryptonote
         MAP_JON_RPC_WE("get_generated_coins", on_get_generated_coins,        COMMAND_RPC_GET_GENERATED_COINS)
         MAP_JON_RPC_WE("get_min_version", on_get_min_version,        COMMAND_RPC_MIN_VERSION)
         MAP_JON_RPC_WE("get_tx_pubkey", on_get_tx_pubkey,        COMMAND_RPC_GET_TX_PUBKEY)
+        MAP_JON_RPC_WE("decode_outputs", on_decode_outputs,        COMMAND_RPC_DECODE_OUTPUTS)
       END_JSON_RPC_MAP()
     END_URI_MAP2()
 
@@ -228,6 +229,7 @@ namespace cryptonote
     bool on_get_generated_coins(const COMMAND_RPC_GET_GENERATED_COINS::request& req, COMMAND_RPC_GET_GENERATED_COINS::response& res, epee::json_rpc::error& error_resp);
     bool on_get_min_version(const COMMAND_RPC_MIN_VERSION::request& req, COMMAND_RPC_MIN_VERSION::response& res, epee::json_rpc::error& error_resp);
     bool on_get_tx_pubkey(const COMMAND_RPC_GET_TX_PUBKEY::request& req, COMMAND_RPC_GET_TX_PUBKEY::response& res, epee::json_rpc::error& error_resp);
+    bool on_decode_outputs(const COMMAND_RPC_DECODE_OUTPUTS::request& req, COMMAND_RPC_DECODE_OUTPUTS::response& res, epee::json_rpc::error& error_resp);
     //-----------------------
 
 private:
