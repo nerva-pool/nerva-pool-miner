@@ -2510,14 +2510,25 @@ namespace cryptonote
       END_KV_SERIALIZE_MAP()
     };
 
+    struct decoded_out
+    {
+      uint64_t amount;
+      std::string tx_hash;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(tx_hash);
+        KV_SERIALIZE(amount);
+      END_KV_SERIALIZE_MAP()
+    };
+
     struct response
     {
       std::string status;
-      std::vector<uint64_t> amounts;
+      std::vector<decoded_out> decoded_outs;
       
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
-        KV_SERIALIZE(amounts)
+        KV_SERIALIZE(decoded_outs)
       END_KV_SERIALIZE_MAP()
     };
   };

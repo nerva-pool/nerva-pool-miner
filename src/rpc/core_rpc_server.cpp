@@ -572,53 +572,40 @@ namespace cryptonote
     }
 
     std::vector<crypto::hash> missed_txs;
-    std::vector<transaction> chain_txs;
+    std::vector<transaction> txs;
     std::vector<transaction> pool_txs;
-    std::vector<transaction> sorted_txs;
     address_parse_info ai;
 
-    if(!m_core.get_transactions(vh, sorted_txs, missed_txs))
+    if(!m_core.get_transactions(vh, txs, missed_txs))
     {
       res.status = "Failed. Could not retrieve transactions";
       return false;
     }
 
-    if (!missed_txs.empty() && !m_core.get_pool_transactions(pool_txs, false))
+    if (!missed_txs.empty())
     {
-      res.status = "Failed. Could not retrieve pool transactions";
-      return false;
+      m_core.get_pool_transactions(pool_txs, false);
+
+      if (!pool_txs.empty())
+      {
+        for(const auto& h: vh)
+        {
+          for(const auto& t: pool_txs)
+          {
+            if (t.hash == h)
+            {
+              txs.push_back(t);
+              break;
+            }
+          }
+        }
+      }
     }
 
     if (!get_account_address_from_str(ai, cryptonote::MAINNET, req.address))
     {
       res.status = "Failed. Could not parse address";
       return false;
-    }
-
-    for(const auto& h: vh)
-    {
-      bool found = false;
-      for(const auto& t: chain_txs)
-      {
-        if (t.hash == h)
-        {
-          sorted_txs.push_back(t);
-          found = true;
-          break;
-        }
-      }
-
-      if (found)
-        continue;
-
-      for(const auto& t: pool_txs)
-      {
-        if (t.hash == h)
-        {
-          sorted_txs.push_back(t);
-          break;
-        }
-      }
     }
 
     crypto::public_key spend_pubkey = ai.address.m_spend_public_key;
@@ -632,76 +619,85 @@ namespace cryptonote
     }
 
     view_seckey = *reinterpret_cast<const crypto::secret_key*>(sec_vk_data.data());
+    std::vector<crypto::key_derivation> tx_derivations;
 
-    for(const auto& tx: sorted_txs)
+    for(const auto& tx: txs)
     {
       crypto::public_key tx_pubkey = get_tx_pub_key_from_extra(tx.extra);
+      crypto::key_derivation kd;
+
+      crypto::generate_key_derivation(tx_pubkey, view_seckey, kd);
+      tx_derivations.push_back(kd);
+
       std::vector<crypto::public_key> additional_keys = get_additional_tx_pub_keys_from_extra(tx.extra);
-
-      crypto::key_derivation tx_kd;
-      std::vector<crypto::key_derivation> additional_kd;
-
-      crypto::generate_key_derivation(tx_pubkey, view_seckey, tx_kd);
-
       if (!additional_keys.empty())
       {
         for(const auto& ak: additional_keys)
         {
-          crypto::key_derivation kd;
           crypto::generate_key_derivation(ak, view_seckey, kd);
-
-          additional_kd.push_back(kd);
+          tx_derivations.push_back(kd);
         }
       }
 
       uint32_t i = 0;
-      //so we now have all the tx pub keys
+      std::string tx_hash = epee::string_tools::pod_to_hex(cryptonote::get_transaction_hash(tx));
+      uint64_t tx_amount = (uint64_t)-1;
+
       for(const tx_out& o: tx.vout)
       {
-        crypto::public_key out_key;
-        crypto::derive_public_key(tx_kd, i, spend_pubkey, out_key);
-        crypto::public_key target_key = boost::get<txout_to_key>(o.target).key;
-
-        //todo: check additional
-        if (target_key == out_key)
+        bool found = false;
+        for(const crypto::key_derivation& k: tx_derivations)
         {
-          rct::key mask;
-          hw::device &hwdev = hw::get_device("default");
-          crypto::secret_key scalar1;
-          hwdev.derivation_to_scalar(tx_kd, i, scalar1);
+          crypto::public_key out_key;
+          crypto::derive_public_key(k, i, spend_pubkey, out_key);
+          crypto::public_key target_key = boost::get<txout_to_key>(o.target).key;
 
-          uint64_t amount = (uint64_t)-1;
-
-          try
+          if (target_key == out_key)
           {
-            switch (tx.rct_signatures.type)
+            rct::key mask;
+            hw::device &hwdev = hw::get_device("default");
+            crypto::secret_key scalar1;
+            hwdev.derivation_to_scalar(k, i, scalar1);
+
+            try
             {
-              case rct::RCTTypeSimple:
-              case rct::RCTTypeBulletproof1Simple:
-              case rct::RCTTypeBulletproof2:
-                amount = rct::decodeRctSimple(tx.rct_signatures, rct::sk2rct(scalar1), i, mask, hwdev);
-                break;
-              case rct::RCTTypeFull:
-              case rct::RCTTypeBulletproof1Full:
-                amount = rct::decodeRct(tx.rct_signatures, rct::sk2rct(scalar1), i, mask, hwdev);
-                break;
-              default:
+              switch (tx.rct_signatures.type)
               {
-                res.status = "Failed. Unknown RCT type";
-                return false;
+                case rct::RCTTypeSimple:
+                case rct::RCTTypeBulletproof1Simple:
+                case rct::RCTTypeBulletproof2:
+                  tx_amount = rct::decodeRctSimple(tx.rct_signatures, rct::sk2rct(scalar1), i, mask, hwdev);
+                  break;
+                case rct::RCTTypeFull:
+                case rct::RCTTypeBulletproof1Full:
+                  tx_amount = rct::decodeRct(tx.rct_signatures, rct::sk2rct(scalar1), i, mask, hwdev);
+                  break;
+                default:
+                {
+                  res.status = "Failed. Unknown RCT type";
+                  return false;
+                }
               }
             }
-          }
-          catch (const std::exception &e)
-          {
-            res.status = "Failed. Failed to decode input";
-            return false;
+            catch (const std::exception &e)
+            {
+              res.status = "Failed. Failed to decode input";
+              return false;
+            }
+
+            found = true;
+            break;
           }
         }
 
-        res.amounts.push_back(amount);
+        if (found)
+          break;
+
         ++i;
       }
+      //cryptonote::COMMAND_RPC_DECODE_OUTPUTS::decoded_out dec_out = {tx_amount, tx_hash};
+      
+      res.decoded_outs.push_back({tx_amount, tx_hash});
     }
 
     res.status = CORE_RPC_STATUS_OK;
