@@ -612,6 +612,8 @@ namespace cryptonote
     cryptonote::blobdata sec_vk_data;
     crypto::secret_key view_seckey;
 
+    hw::device &hwdev = hw::get_device("default");
+
     if(!epee::string_tools::parse_hexstr_to_binbuff(req.sec_view_key, sec_vk_data) || sec_vk_data.size() != sizeof(crypto::secret_key))
     {
       res.status = "Failed. Could not parse view key";
@@ -642,10 +644,12 @@ namespace cryptonote
       uint32_t i = 0;
       std::string tx_hash = epee::string_tools::pod_to_hex(cryptonote::get_transaction_hash(tx));
       uint64_t tx_amount = (uint64_t)-1;
+      
+      bool found = false;
 
       for(const tx_out& o: tx.vout)
       {
-        bool found = false;
+        found = false;
         for(const crypto::key_derivation& k: tx_derivations)
         {
           crypto::public_key out_key;
@@ -655,7 +659,6 @@ namespace cryptonote
           if (target_key == out_key)
           {
             rct::key mask;
-            hw::device &hwdev = hw::get_device("default");
             crypto::secret_key scalar1;
             hwdev.derivation_to_scalar(k, i, scalar1);
 
@@ -695,9 +698,37 @@ namespace cryptonote
 
         ++i;
       }
-      //cryptonote::COMMAND_RPC_DECODE_OUTPUTS::decoded_out dec_out = {tx_amount, tx_hash};
       
-      res.decoded_outs.push_back({tx_amount, tx_hash});
+      if (!found)
+        continue;
+        
+      std::vector<tx_extra_field> tx_extra_fields;
+      std::string payment_id_string = "";
+
+      if (cryptonote::parse_tx_extra(tx.extra, tx_extra_fields))
+      {
+        tx_extra_nonce extra_nonce;
+
+        if (find_tx_extra_field_by_type(tx_extra_fields, extra_nonce))
+        {
+          crypto::hash payment_id = crypto::null_hash;
+          crypto::hash8 payment_id8 = crypto::null_hash8;
+
+          if(get_encrypted_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id8))
+          {
+            if (hwdev.decrypt_payment_id(payment_id8, tx_pubkey, view_seckey))
+            {
+              payment_id_string = epee::string_tools::pod_to_hex(payment_id8);
+            }
+            else
+              payment_id_string = epee::string_tools::pod_to_hex(payment_id8);
+          }
+          else if (get_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id))
+            payment_id_string = epee::string_tools::pod_to_hex(payment_id);
+        }
+      }
+
+      res.decoded_outs.push_back({tx_amount, tx_hash, payment_id_string});
     }
 
     res.status = CORE_RPC_STATUS_OK;
