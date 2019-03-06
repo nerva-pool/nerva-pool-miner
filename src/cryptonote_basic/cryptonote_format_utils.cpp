@@ -1022,8 +1022,6 @@ namespace cryptonote
   }
 
   uint8_t lookup[3] { 2, 4, 8 };
-
-
   static thread_local char salt[262144] = {0};
 
   bool get_block_longhash_v11(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)

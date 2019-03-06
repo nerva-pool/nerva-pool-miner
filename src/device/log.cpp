@@ -59,13 +59,14 @@ namespace hw {
     #undef MONERO_DEFAULT_LOG_CATEGORY
     #define MONERO_DEFAULT_LOG_CATEGORY "device.ledger"
 
+    
     #ifdef DEBUG_HWDEVICE
     extern crypto::secret_key dbg_viewkey;
     extern crypto::secret_key dbg_spendkey;
 
 
     void decrypt(char* buf, size_t len) {
-      #ifdef IODUMMYCRYPT_HWDEVICE
+      #if defined(IODUMMYCRYPT_HWDEVICE) || defined(IONOCRYPT_HWDEVICE)
       size_t i;
       if (len == 32) {
         //view key?
@@ -85,10 +86,12 @@ namespace hw {
           return;
         }
       }
+      #if defined(IODUMMYCRYPT_HWDEVICE)
       //std decrypt: XOR.55h
       for (i = 0; i<len;i++) {
           buf[i] ^= 0x55;
         }
+      #endif
       #endif
     }
 
@@ -163,6 +166,7 @@ namespace hw {
       check(msg, info, h, d, 8, crypted);
     }
     #endif
+
   }
   #endif //WITH_DEVICE_LEDGER    
 
