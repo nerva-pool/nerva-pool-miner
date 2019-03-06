@@ -150,7 +150,7 @@ namespace cryptonote
   static const command_line::arg_descriptor<std::string> arg_quicksync  = {
     "quicksync"
   , "Load quicksync data from external file"
-  , "quicksync.raw"
+  , ""
   };
   static const command_line::arg_descriptor<std::string> arg_check_updates = {
     "check-updates"
