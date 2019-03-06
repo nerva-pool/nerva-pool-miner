@@ -1,10 +1,10 @@
 // Copyright (c) 2018, The NERVA Project
-//Implementation of a Mersenne Twister random number generator
-#ifndef _MERSENNE_TWISTER_
-#define _MERSENNE_TWISTER_
+#ifndef _RANDOM_NUMBERS_
+#define _RANDOM_NUMBERS_
 
 #include <stdint.h>
 #include <limits>
+#include <wmmintrin.h>
 
 namespace angrywasp
 {
@@ -99,18 +99,6 @@ namespace angrywasp
                 uint32_t r = generate_uint();
                 double div = (double)(0xffffffff) / (double)(max - min);
                 return (r / div) + min;
-            }
-
-            void next_bytes(uint8_t* data, uint32_t length)
-            {
-                for (uint32_t i = 0; i < length; i++)
-                    data[i] = (uint8_t)(generate_uint() / (0xffffffff / (uint32_t)0xff));
-            }
-
-            void next_bytes(char* data, uint32_t length)
-            {
-                for (uint32_t i = 0; i < length; i++)
-                    data[i] = (char)(generate_uint() / (0xffffffff / (uint32_t)0xff));
             }
 
             //generate number sequence for v3/4

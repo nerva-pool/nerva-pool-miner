@@ -44,7 +44,7 @@ using namespace epee;
 #include "crypto/hash.h"
 #include "ringct/rctSigs.h"
 #include "cryptonote_core/blockchain.h"
-#include "mersenne_twister.h"
+#include "random_numbers.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -1026,7 +1026,12 @@ namespace cryptonote
 
   static thread_local char salt[262144] = {0};
 
-  bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc, bool optimized)
+  bool get_block_longhash_v11(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
+  {
+
+  }
+
+  bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {
     blobdata bd = get_block_hashing_blob(b);
     uint64_t ht = height - 256;
@@ -1047,10 +1052,7 @@ namespace cryptonote
     for (int i = 0; i < 32; i += 4)
       seed ^= *(uint32_t*)&h.data[i];
 
-    if (optimized)
-      bc->get_db().get_v3_data_opt(salt, (uint32_t)ht, 4, seed);
-    else
-      bc->get_db().get_v3_data(salt, (uint32_t)ht, 4, seed);
+    bc->get_db().get_v3_data(salt, (uint32_t)ht, 4, seed);
 
     uint32_t m = seed % 3;
 
@@ -1136,12 +1138,13 @@ namespace cryptonote
     return true;
   }
 
-  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc, bool optimized)
+  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {
     switch (b.major_version)
     {
+      case 11: //todo: implement v11 PoW changes
       case 10:
-        return get_block_longhash_v10(b, res, height, bc, optimized);
+        return get_block_longhash_v10(b, res, height, bc);
       case 9:
         return get_block_longhash_v9(b, res, height, bc);
       case 8:
@@ -1176,7 +1179,7 @@ namespace cryptonote
   crypto::hash get_block_longhash(const block& b, uint64_t height, const cryptonote::Blockchain* bc)
   {
     crypto::hash p = null_hash;
-    get_block_longhash(b, p, height, bc, false);
+    get_block_longhash(b, p, height, bc);
     return p;
   }
   //---------------------------------------------------------------

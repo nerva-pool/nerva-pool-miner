@@ -38,7 +38,7 @@
 #include "string_tools.h"
 #include "common/util.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
-#include "cryptonote_basic/mersenne_twister.h"
+#include "cryptonote_basic/random_numbers.h"
 #include "crypto/crypto.h"
 #include "profile_tools.h"
 #include "ringct/rctOps.h"
@@ -2014,7 +2014,7 @@ void BlockchainLMDB::build_cache(uint64_t height) const
 
   mdb_block_info* bi;
   
-  for(uint64_t index = 0; index < height; ++index)
+  for(uint64_t index = last_height; index < height; ++index)
   {
     MDB_val_set(query, index);
     err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &query, MDB_GET_BOTH); check_error(err);
@@ -2028,7 +2028,7 @@ void BlockchainLMDB::build_cache(uint64_t height) const
   last_height = height;
 }
 
-void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const
+/*void BlockchainLMDB::get_v3_data_non_opt(char* salt, uint64_t height, const int variant, uint32_t seed) const
 {
   MDB_txn *txn;
   MDB_cursor *cur;
@@ -2118,9 +2118,9 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
   free(bd);
   mdb_cursor_close(cur);
   mdb_txn_abort(txn); 
-}
+}*/
 
-void BlockchainLMDB::get_v3_data_opt(char* salt, uint64_t height, const int variant, uint32_t seed) const
+void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const
 {
   angrywasp::mersenne_twister mt(seed);
   
@@ -2174,6 +2174,11 @@ void BlockchainLMDB::get_v3_data_opt(char* salt, uint64_t height, const int vari
     bi = &_cache[r];
     std::memcpy(salt + (i * 128) + 96, bi->bi_hash.data, 32);
   }
+}
+
+uint32_t BlockchainLMDB::get_v4_data(char* salt, uint64_t height, const int variant, uint32_t seed) const
+{
+  
 }
 
 cryptonote::blobdata BlockchainLMDB::get_uncle_blob_from_height(const uint64_t& height) const

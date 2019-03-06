@@ -227,7 +227,7 @@ public:
   virtual cryptonote::blobdata get_block_blob_from_height(const uint64_t& height) const;
 
   virtual void get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const;
-  virtual void get_v3_data_opt(char* salt, uint64_t height, const int variant, uint32_t seed) const;
+  virtual uint32_t get_v4_data(char* salt, uint64_t height, const int variant, uint32_t seed) const;
 
   virtual void build_cache(uint64_t height) const;
 

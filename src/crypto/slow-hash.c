@@ -548,119 +548,140 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
 
     if(useAes)
     {
-        if (variant <= 3)
+      switch(variant)
+      {
+        case 5:
         {
-            for(i = 0; i < base_iters; i++)
-            {
-                pre_aes();
-                _c = _mm_aesenc_si128(_c, _a);
-                post_aes();
-            }
+          //todo:
         }
-        else
+        break;
+        case 4:
         {
-            for(k = 1; k < xx; k++)
-            {
-                r2[0] ^= r2[1];
-                r2[1] ^= r2[2];
-                r2[2] ^= r2[3];
-                r2[3] ^= r2[4];
-                r2[4] ^= r2[5];
-                r2[5] ^= r2[0];
+          for(k = 1; k < xx; k++)
+          {
+            r2[0] ^= r2[1];
+            r2[1] ^= r2[2];
+            r2[2] ^= r2[3];
+            r2[3] ^= r2[4];
+            r2[4] ^= r2[5];
+            r2[5] ^= r2[0];
 
-                pre_aes();
-                _c = _mm_aesenc_si128(_c, _a);
-                post_aes();
-                salt_pad(r2[0], r2[3], r2[1], r2[4]);
-                r2[0] ^= (r2[1] ^ r2[3]);
-                r2[1] ^= (r2[0] ^ r2[2]);
-
-                for(l = 1; l < yy; l++)
-                {
-                    pre_aes();
-                    _c = _mm_aesenc_si128(_c, _a);
-                    post_aes();
-                    salt_pad(r2[1], r2[4], r2[2], r2[5]);
-                    r2[2] ^= (r2[3] ^ r2[5]);
-                    r2[3] ^= (r2[2] ^ r2[4]);
-
-                    for(m = 1; m < zz; m++)
-                    {
-                        pre_aes();
-                        _c = _mm_aesenc_si128(_c, _a);
-                        post_aes();
-                        salt_pad(r2[2], r2[5], r2[3], r2[0]);
-                        r2[4] ^= (r2[5] ^ r2[1]);
-                        r2[5] ^= (r2[4] ^ r2[0]);
-                    }
-                }
-            }
-        }
-        
-        for(i = 0; i < rand_iters; i++)
-        {
             pre_aes();
             _c = _mm_aesenc_si128(_c, _a);
             post_aes();
+            salt_pad(r2[0], r2[3], r2[1], r2[4]);
+            r2[0] ^= (r2[1] ^ r2[3]);
+            r2[1] ^= (r2[0] ^ r2[2]);
+
+            for(l = 1; l < yy; l++)
+            {
+              pre_aes();
+              _c = _mm_aesenc_si128(_c, _a);
+              post_aes();
+              salt_pad(r2[1], r2[4], r2[2], r2[5]);
+              r2[2] ^= (r2[3] ^ r2[5]);
+              r2[3] ^= (r2[2] ^ r2[4]);
+
+              for(m = 1; m < zz; m++)
+              {
+                pre_aes();
+                _c = _mm_aesenc_si128(_c, _a);
+                post_aes();
+                salt_pad(r2[2], r2[5], r2[3], r2[0]);
+                r2[4] ^= (r2[5] ^ r2[1]);
+                r2[5] ^= (r2[4] ^ r2[0]);
+              }
+            }
+          }
         }
+        break;
+        default:
+        {
+          for(i = 0; i < base_iters; i++)
+          {
+            pre_aes();
+            _c = _mm_aesenc_si128(_c, _a);
+            post_aes();
+          }
+        }
+        break;
+      }
+        
+      for(i = 0; i < rand_iters; i++)
+      {
+        pre_aes();
+        _c = _mm_aesenc_si128(_c, _a);
+        post_aes();
+      }
     }
     else
     {
-        if (variant <= 3)
+
+      switch(variant)
+      {
+        case 5:
         {
-            for(i = 0; i < base_iters; i++)
-            {
-                pre_aes();
-                aesb_single_round((uint8_t *) &_c, (uint8_t *) &_c, (uint8_t *) &_a);
-                post_aes();
-            }
+          //todo:
         }
-        else
+        break;
+        case 4:
         {
-            for(k = 1; k < xx; k++)
-            {
-                r2[0] ^= r2[1];
-                r2[1] ^= r2[2];
-                r2[2] ^= r2[3];
-                r2[3] ^= r2[4];
-                r2[4] ^= r2[5];
-                r2[5] ^= r2[0];
+          for(k = 1; k < xx; k++)
+          {
+            r2[0] ^= r2[1];
+            r2[1] ^= r2[2];
+            r2[2] ^= r2[3];
+            r2[3] ^= r2[4];
+            r2[4] ^= r2[5];
+            r2[5] ^= r2[0];
 
-                pre_aes();
-                aesb_single_round((uint8_t *) &_c, (uint8_t *) &_c, (uint8_t *) &_a);
-                post_aes();
-                salt_pad(r2[0], r2[3], r2[1], r2[4]);
-                r2[0] ^= (r2[1] ^ r2[3]);
-                r2[1] ^= (r2[0] ^ r2[2]);
-
-                for(l = 1; l < yy; l++)
-                {
-                    pre_aes();
-                    aesb_single_round((uint8_t *) &_c, (uint8_t *) &_c, (uint8_t *) &_a);
-                    post_aes();
-                    salt_pad(r2[1], r2[4], r2[2], r2[5]);
-                    r2[2] ^= (r2[3] ^ r2[5]);
-                    r2[3] ^= (r2[2] ^ r2[4]);
-
-                    for(m = 1; m < zz; m++)
-                    {
-                        pre_aes();
-                        aesb_single_round((uint8_t *) &_c, (uint8_t *) &_c, (uint8_t *) &_a);
-                        post_aes();
-                        salt_pad(r2[2], r2[5], r2[3], r2[0]);
-                        r2[4] ^= (r2[5] ^ r2[1]);
-                        r2[5] ^= (r2[4] ^ r2[0]);
-                    }
-                }
-            }
-        }
-
-        for(i = 0; i < rand_iters; i++)
-        {
             pre_aes();
             aesb_single_round((uint8_t *) &_c, (uint8_t *) &_c, (uint8_t *) &_a);
             post_aes();
+            salt_pad(r2[0], r2[3], r2[1], r2[4]);
+            r2[0] ^= (r2[1] ^ r2[3]);
+            r2[1] ^= (r2[0] ^ r2[2]);
+
+            for(l = 1; l < yy; l++)
+            {
+              pre_aes();
+              aesb_single_round((uint8_t *) &_c, (uint8_t *) &_c, (uint8_t *) &_a);
+              post_aes();
+              salt_pad(r2[1], r2[4], r2[2], r2[5]);
+              r2[2] ^= (r2[3] ^ r2[5]);
+              r2[3] ^= (r2[2] ^ r2[4]);
+
+              for(m = 1; m < zz; m++)
+              {
+                pre_aes();
+                aesb_single_round((uint8_t *) &_c, (uint8_t *) &_c, (uint8_t *) &_a);
+                post_aes();
+                salt_pad(r2[2], r2[5], r2[3], r2[0]);
+                r2[4] ^= (r2[5] ^ r2[1]);
+                r2[5] ^= (r2[4] ^ r2[0]);
+              }
+            }
+          }
         }
+        break;
+        default:
+        {
+          for(i = 0; i < base_iters; i++)
+          {
+            pre_aes();
+            aesb_single_round((uint8_t *) &_c, (uint8_t *) &_c, (uint8_t *) &_a);
+            post_aes();
+          }
+        }
+        break;
+      }
+
+      for(i = 0; i < rand_iters; i++)
+      {
+        pre_aes();
+        aesb_single_round((uint8_t *) &_c, (uint8_t *) &_c, (uint8_t *) &_a);
+        post_aes();
+      }
     }
 
     memcpy(text, state.init, init_size_byte);
