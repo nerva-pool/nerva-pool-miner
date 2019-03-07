@@ -2134,7 +2134,9 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
   uint32_t i_config = 0;
   mdb_block_info* bi;
 
-  for (uint32_t i = 0; i < 2048; i++)
+  uint32_t count = (variant == 3) ? 32 : 2048;
+
+  for (uint32_t i = 0; i < count; i++)
   {
     r = rand_seq[i_config++];
     bi = &_cache[r];

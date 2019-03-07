@@ -7834,9 +7834,10 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
   uint64_t upper_transaction_size_limit = get_upper_transaction_size_limit();
   const bool use_rct = true;
   const bool bulletproof = use_fork_rules(BULLETPROOF_SIMPLE_FORK_HEIGHT, 0);
-  const rct::RCTConfig rct_config {
+  const rct::RCTConfig rct_config
+  {
     bulletproof ? rct::RangeProofPaddedBulletproof : rct::RangeProofBorromean,
-    bulletproof ? (use_fork_rules(BULLETPROOF_FULL_FORK_HEIGHT, -10) ? 2 : 1) : 0
+    bulletproof && use_fork_rules(BULLETPROOF_FULL_FORK_HEIGHT, 0)
   };
 
   const uint64_t fee_per_kb  = get_per_kb_fee();
@@ -8398,10 +8399,12 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_from(const crypton
   const uint64_t fee_multiplier = get_fee_multiplier(priority, get_fee_algorithm());
 
   const bool bulletproof = use_fork_rules(BULLETPROOF_SIMPLE_FORK_HEIGHT, 0);
-  const rct::RCTConfig rct_config {
+  const rct::RCTConfig rct_config
+  {
     bulletproof ? rct::RangeProofPaddedBulletproof : rct::RangeProofBorromean,
-    bulletproof ? (use_fork_rules(BULLETPROOF_FULL_FORK_HEIGHT, -10) ? 2 : 1) : 0,
+    bulletproof && use_fork_rules(BULLETPROOF_FULL_FORK_HEIGHT, 0)
   };
+
   LOG_PRINT_L2("Starting with " << unused_transfers_indices.size() << " non-dust outputs and " << unused_dust_indices.size() << " dust outputs");
 
   if (unused_dust_indices.empty() && unused_transfers_indices.empty())
@@ -8745,8 +8748,7 @@ std::vector<size_t> wallet2::select_available_mixable_outputs()
 std::vector<wallet2::pending_tx> wallet2::create_unmixable_sweep_transactions()
 {
   // From hard fork 1, we don't consider small amounts to be dust anymore
-  const bool hf1_rules = use_fork_rules(2, 10); // first hard fork has version 2
-  tx_dust_policy dust_policy(hf1_rules ? 0 : ::config::DEFAULT_DUST_THRESHOLD);
+  tx_dust_policy dust_policy(::config::DEFAULT_DUST_THRESHOLD);
 
   const uint64_t fee_per_kb  = get_per_kb_fee();
 

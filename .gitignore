@@ -117,4 +117,5 @@ deploy-nerva
 /testwallets
 /db
 *.keys
+*.cache
 
