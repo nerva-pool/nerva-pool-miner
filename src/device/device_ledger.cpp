@@ -1203,6 +1203,7 @@ namespace hw {
 
       //compute derivation, out_eph_public_key, and amount key in one shot on device, to ensure checkable link
       const crypto::secret_key *sec;
+      const crypto::public_key *pub = &txkey_pub;
       bool is_change;
 
       if (change_addr && dst_entr.addr == *change_addr)
@@ -1232,6 +1233,8 @@ namespace hw {
       memmove(&this->buffer_send[offset], sec->data, 32);
       offset += 32;
       //Aout
+      memmove(&this->buffer_send[offset], pub->data, 32);
+      offset += 32;
       memmove(&this->buffer_send[offset], dst_entr.addr.m_view_public_key.data, 32);
       offset += 32;
       //Bout
