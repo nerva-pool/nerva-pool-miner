@@ -24,32 +24,35 @@ function wallet2()
 	${dir}/builder/build/dev/debug/bin/nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:38081 --wallet-file ${dir}/t2 --password ""
 }
 
-function n0()
+function createhwwallet()
 {
-	${dir}/builder/build/dev/debug/bin/nervad --stagenet --data-dir ${datadir}/n0 \
-	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:38080 --add-exclusive-node 127.0.0.1:48080 \
-	--fixed-difficulty ${DIFF} --block-sync-size 1
+	rm -f ${dir}/hw.cache
+	rm -f ${dir}/hw.keys
+	${dir}/builder/build/dev/debug/bin/nerva-wallet-cli --restore-height 1 --stagenet --daemon-address 127.0.0.1:28081 --generate-from-device ${dir}/hw --password "" --log-level 2
+}
+
+function hwwallet()
+{
+	${dir}/builder/build/dev/debug/bin/nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:28081 --hw-device "Ledger" --wallet-file ${dir}/hw --password ""
+}
+
+function hwrwallet()
+{
+	${dir}/builder/build/dev/debug/bin/nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:28081 --wallet-file ${dir}/hwr --password ""
 }
 
 function n1()
 {
 	${dir}/builder/build/dev/debug/bin/nervad --stagenet --data-dir ${datadir}/n1 --p2p-bind-port 28080 --rpc-bind-port 28081 --zmq-rpc-bind-port 28082 --rpc-restricted-bind-port 28083 \
-	--add-exclusive-node 127.0.0.1:38080 --add-exclusive-node 127.0.0.1:48080 --add-exclusive-node 127.0.0.1:19565 \
-	--fixed-difficulty ${DIFF} --block-sync-size 1
+	--add-exclusive-node 127.0.0.1:38080 \
+	--fixed-difficulty ${DIFF}
 }
 
 function n2()
 {
 	${dir}/builder/build/dev/debug/bin/nervad --stagenet --data-dir ${datadir}/n2 --p2p-bind-port 38080 --rpc-bind-port 38081 --zmq-rpc-bind-port 38082 --rpc-restricted-bind-port 38083 \
-	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:48080 --add-exclusive-node 127.0.0.1:19565 \
-	--fixed-difficulty ${DIFF} --block-sync-size 1
-}
-
-function n3()
-{
-	${dir}/builder/build/dev/debug/bin/nervad --stagenet --data-dir ${datadir}/n3 --p2p-bind-port 48080 --rpc-bind-port 48081 --zmq-rpc-bind-port 48082 --rpc-restricted-bind-port 48083 \
-	--add-exclusive-node 127.0.0.1:28080 --add-exclusive-node 127.0.0.1:38080 --add-exclusive-node 127.0.0.1:19565 \
-	--fixed-difficulty ${DIFF} --block-sync-size 1
+	--add-exclusive-node 127.0.0.1:28080 \
+	--fixed-difficulty ${DIFF}
 }
 
 $1

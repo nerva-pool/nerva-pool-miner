@@ -11,6 +11,17 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "delete-hw-wallet",
+            "type": "shell",
+            "command": "rm -f ${workspaceFolder}/hw.cache && rm -f ${workspaceFolder}/hw.keys",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         }
     ]
 }
+
+
