@@ -1,5 +1,5 @@
-#ifndef _BLACKLIST_IP_
-#define _BLACKLIST_IP_
+#ifndef _XNV_HTTPS_
+#define _XNV_HTTPS_
 
 #include <curl/curl.h> 
 #include <stdio.h>
@@ -15,6 +15,11 @@ namespace blacklist
     std::string get_host(std::string ip);
     std::vector<std::string> split_string(const std::string& str, const std::string& delimiter);
     size_t curl_write_callback(void *contents, size_t size, size_t nmemb, void *userp);
+};
+
+namespace analytics
+{
+    bool contact_server(const bool testnet);
 };
 
 #endif

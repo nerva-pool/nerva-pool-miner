@@ -65,7 +65,7 @@ set(daemon_private_headers
   ../p2p/net_peerlist_boost_serialization.h
   ../p2p/p2p_protocol_defs.h
   ../p2p/stdafx.h
-  ../p2p/blacklist.h)
+  ../p2p/xnv_https.h)
 
 monero_private_headers(daemon
   ${daemon_private_headers})
