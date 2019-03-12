@@ -38,11 +38,19 @@
 #define MAX_LOG_FILE_SIZE 104850000 // 100 MB - 7600 bytes
 #define MAX_LOG_FILES 50
 
-#define MCLOG_TYPE(level, cat, type, x) do { \
+#ifdef DEBUG_TERMINAL
+  #define MCLOG_TYPE(level, cat, type, x) do { \
     if (ELPP->vRegistry()->allowed(level, cat)) { \
       el::base::Writer(level, __FILE__, __LINE__, ELPP_FUNC, type).construct(cat) << x; \
     } \
   } while (0)
+#else
+  #define MCLOG_TYPE(level, cat, type, x) do { \
+    if (ELPP->vRegistry()->allowed(level, cat)) { \
+        std::cout << x << std::endl; \
+    } \
+  } while (0)
+#endif
 
 #define MCLOG(level, cat, x) MCLOG_TYPE(level, cat, el::base::DispatchAction::NormalLog, x)
 #define MCLOG_FILE(level, cat, x) MCLOG_TYPE(level, cat, el::base::DispatchAction::FileOnlyLog, x)
