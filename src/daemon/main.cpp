@@ -45,7 +45,7 @@
 #include "rpc/rpc_args.h"
 #include "daemon/command_line_args.h"
 #include "version.h"
-#include "p2p/blacklist.h"
+#include "p2p/xnv_https.h"
 
 #ifdef STACK_TRACE
 #include "common/stack_trace.h"
@@ -59,6 +59,8 @@ namespace bf = boost::filesystem;
 
 int main(int argc, char const * argv[])
 {
+  const command_line::arg_descriptor<bool> arg_noanalytics = {"no-analytics", "Do not submit any information to the node map", false};
+
   try {
 
     // TODO parse the debug options like set log level right here at start
@@ -80,6 +82,7 @@ int main(int argc, char const * argv[])
       command_line::add_arg(visible_options, command_line::arg_version);
       command_line::add_arg(visible_options, daemon_args::arg_os_version);
       command_line::add_arg(visible_options, daemon_args::arg_config_file);
+      command_line::add_arg(visible_options, arg_noanalytics);
 
       // Settings
       command_line::add_arg(core_settings, daemon_args::arg_log_file);
@@ -163,6 +166,8 @@ int main(int argc, char const * argv[])
     }
     const bool testnet = command_line::get_arg(vm, cryptonote::arg_testnet_on);
     const bool stagenet = command_line::get_arg(vm, cryptonote::arg_stagenet_on);
+    const bool noanalytics = command_line::get_arg(vm, arg_noanalytics);
+
     if (testnet && stagenet)
     {
       std::cerr << "Can't specify more than one of --testnet and --stagenet" << ENDL;
@@ -274,8 +279,17 @@ int main(int argc, char const * argv[])
       }
     }
 
-    blacklist::read_blacklist_from_url(testnet);
+    if (noanalytics)
+      MGINFO_CYAN("Analytics disabled. Please consider helping us build the node map");
+    else
+    {
+      if (analytics::contact_server(testnet))
+        MGINFO_CYAN("Node map server pinged. Thanks for helping build the node map");
+      else
+        MGINFO_CYAN("Node map server error. Information not submitted");  
+    }        
 
+    blacklist::read_blacklist_from_url(testnet);
     if (blacklist::get_ip_list().size() > 0)
       MGINFO_CYAN("Blacklist loaded: " << blacklist::get_ip_list().size() << " items");
 

@@ -1022,11 +1022,85 @@ namespace cryptonote
   }
 
   uint8_t lookup[3] { 2, 4, 8 };
-  static thread_local char salt[262144] = {0};
+  static thread_local char RDATA_ALIGN16 salt[262176] = {0};
+
+  static void print_char_hex(const char *bytes, int size)
+  {
+      for (int i = 0; i < size; ++i)
+      {
+          const char ch = bytes[i];
+          printf("%02X", ch & 0xFF);
+      }
+
+      printf("\n");
+  }
 
   bool get_block_longhash_v11(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {
+    blobdata bd = get_block_hashing_blob(b);
+    uint64_t ht = height - 256;
 
+    struct timeval  tv1, tv2;
+
+    if (height != cached_height || !v2_initialized)
+    {
+      CRITICAL_REGION_BEGIN(m_v2_lock);
+        cached_height = height;
+        generate_v2_data(ht, 1048576, bc);
+      CRITICAL_REGION_END();
+    }
+
+    uint32_t seed = b.nonce ^ height;
+
+    crypto::hash h;
+    get_blob_hash(bd, h);
+
+    uint32_t* st = (uint32_t*)h.data;
+
+    for (int i = 0; i < 8; i += 2)
+    {
+      seed ^= st[i];
+      st[i + 1] ^= seed;
+    }
+
+    memcpy(salt, st, 32);
+    seed = bc->get_db().get_v5_data(salt, (uint32_t)ht, seed);
+
+    angrywasp::mwc1616 rng;
+    uint32_t r1 = 0, r2 = 0, r3 = 0, r4 = 0, r5 = 0;
+    uint32_t val_iter = 0;
+
+    uint8_t temp_lookup_1[3];
+    for (int i = 0; i < 3; i++)
+    {
+      seed = rng.next(salt + ((seed % 257) * 1024), seed, &r1);
+      temp_lookup_1[i] = lookup[r1 % 3];
+    } 
+    //salt offset
+    seed = rng.next(salt + ((seed % 257) * 1024), seed, 0, 31, &r2);
+    seed ^= r2;
+
+    //rand iters
+    seed = rng.next(salt + ((seed % 257) * 1024), seed, 1, 64, &r3); 
+    seed ^= r3;
+
+    //xx
+    seed = rng.next(salt + ((seed % 257) * 1024), seed, 2, 4, &r4);
+    seed ^= r4;
+    seed = rng.next(salt + ((seed % 257) * 1024), seed, 2, 4, &r5);
+    seed ^= r5;
+    uint16_t xx = (uint16_t)((seed % r4) + r5);
+
+    //yy
+    seed = rng.next(salt + ((seed % 257) * 1024), seed, 2, 4, &r4);
+    seed ^= r4;
+    seed = rng.next(salt + ((seed % 257) * 1024), seed, 2, 4, &r5);
+    seed ^= r5;
+    uint16_t yy = (uint16_t)((seed % r4) + r5);
+
+    crypto::cn_slow_hash_v11(bd.data(), bd.size(), res, ((height + 1) % r3), r, salt + r2, temp_lookup_1[(r4 ^ r5) % 3], xx, yy);
+
+    return true;
   }
 
   bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
@@ -1050,7 +1124,7 @@ namespace cryptonote
     for (int i = 0; i < 32; i += 4)
       seed ^= *(uint32_t*)&h.data[i];
 
-    bc->get_db().get_v3_data(salt, (uint32_t)ht, 4, seed);
+    bc->get_db().get_v4_data(salt, (uint32_t)ht, seed);
 
     uint32_t m = seed % 3;
 
@@ -1065,7 +1139,7 @@ namespace cryptonote
     uint16_t zz = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
     uint16_t ww = (uint16_t)(seed % mt.next(1, 10000));
 
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, 4, 0x40000, ((height + 1) % 64), r, salt, temp_lookup_1[m], xx, yy, zz, ww);
+    crypto::cn_slow_hash_v10(bd.data(), bd.size(), res, ((height + 1) % 64), r, salt, temp_lookup_1[m], xx, yy, zz, ww);
 
     return true;
   }
@@ -1085,15 +1159,15 @@ namespace cryptonote
 
     char* salt = (char*)malloc(128 * 32);
 
-    bc->get_db().get_v3_data(salt, (uint32_t)ht, 3, b.nonce ^ (uint32_t)ht);
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, 3, 0x40000, ((height + 1) % 64), r, salt);
+    bc->get_db().get_v3_data(salt, (uint32_t)ht, b.nonce ^ (uint32_t)ht);
+    crypto::cn_slow_hash_v9(bd.data(), bd.size(), res, 0x40000 + ((height + 1) % 64), r, salt);
     
     free(salt);
 
     return true;
   }
 
-  bool get_block_longhash_v8(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
+  bool get_block_longhash_v7_8(const block& b, crypto::hash& res, uint64_t height, uint32_t sub, const cryptonote::Blockchain* bc)
   {
     blobdata bd = get_block_hashing_blob(b);
 
@@ -1101,37 +1175,11 @@ namespace cryptonote
     {
       CRITICAL_REGION_BEGIN(m_v2_lock);
         cached_height = height;
-        generate_v2_data(height - 256, (1 << 20) - 1, bc);
+        generate_v2_data(height - sub, (1 << 20) - 1, bc);
       CRITICAL_REGION_END();
     }
 
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, 2, 0x40000, ((height + 1) % 64), r);
-
-    return true;
-  }
-
-  bool get_block_longhash_v7(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
-  {
-    blobdata bd = get_block_hashing_blob(b);
-
-    if (height != cached_height || !v2_initialized)
-    {
-      CRITICAL_REGION_BEGIN(m_v2_lock);
-        cached_height = height;
-        generate_v2_data(height - 1, (1 << 20) - 1, bc);
-      CRITICAL_REGION_END();
-    }
-
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, 2, 0x40000, ((height + 1) % 64), r);
-
-    return true;
-  }
-
-  bool get_block_longhash_v6pre(const block& b, crypto::hash& res, uint64_t height)
-  {
-    blobdata bd = get_block_hashing_blob(b);
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, (b.major_version >= 5 ? 1 : 0), 
-        (b.major_version >= 6 ? 0x40000 : 0x80000), ((height + 1) % 1024));
+    crypto::cn_slow_hash_v7_8(bd.data(), bd.size(), res, 0x40000 + ((height + 1) % 64), r);
 
     return true;
   }
@@ -1140,17 +1188,23 @@ namespace cryptonote
   {
     switch (b.major_version)
     {
-      case 11: //todo: implement v11 PoW changes
+      case 11:
+        return get_block_longhash_v11(b, res, height, bc);
       case 10:
         return get_block_longhash_v10(b, res, height, bc);
       case 9:
         return get_block_longhash_v9(b, res, height, bc);
       case 8:
-        return get_block_longhash_v8(b, res, height, bc);
       case 7:
-        return get_block_longhash_v7(b, res, height, bc);
+        return get_block_longhash_v7_8(b, res, height, b.major_version == 7 ? 1 : 256, bc);
       default:
-        return get_block_longhash_v6pre(b, res, height);
+      {
+        blobdata bd = get_block_hashing_blob(b);
+        int v = b.major_version >= 5 ? 1 : 0;
+        int i = b.major_version >= 6 ? 0x40000 : 0x80000;
+        crypto::cn_slow_hash(bd.data(), bd.size(), res, v, i + ((height + 1) % 1024));
+        return true;
+      }
     }
   }
   //---------------------------------------------------------------

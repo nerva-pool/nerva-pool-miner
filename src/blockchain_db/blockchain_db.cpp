@@ -244,7 +244,7 @@ static block get_block_from_blob(const blobdata& bd, const std::string& type)
 {
   block b;
   if (!parse_and_validate_block_from_blob(bd, b))
-    throw DB_ERROR("Failed to parse block from blob retrieved from the db");
+    throw DB_ERROR(("Failed to parse " + type + " from blob retrieved from the db").c_str());
 
   return b;
 }

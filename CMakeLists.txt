@@ -484,6 +484,7 @@ else()
   endif()
 
   option(NO_AES "Explicitly disable AES support" ${NO_AES})
+  option(NO_SSE4 "Disable SSE4 intrinsics in favour of SSE" ${NO_SSE4})
 
   if(NO_AES)
     message(STATUS "AES support explicitly disabled")
@@ -511,6 +512,12 @@ else()
     endif()
   else()
     message(STATUS "AES support disabled")
+  endif()
+
+  if (NO_SSE4)
+    message(STATUS "SSE4 intrinsics explicitly disabled")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DNO_SSE4")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNO_SSE4")
   endif()
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAG}")

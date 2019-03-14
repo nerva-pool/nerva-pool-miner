@@ -2028,7 +2028,7 @@ void BlockchainLMDB::build_cache(uint64_t height) const
   last_height = height;
 }
 
-/*void BlockchainLMDB::get_v3_data_non_opt(char* salt, uint64_t height, const int variant, uint32_t seed) const
+void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, uint32_t seed) const
 {
   MDB_txn *txn;
   MDB_cursor *cur;
@@ -2041,8 +2041,6 @@ void BlockchainLMDB::build_cache(uint64_t height) const
   uint64_t r = 0, x = 0, y = 0, z = 0, w = 0;
   uint8_t a = 32, b = 64;
 
-  uint32_t count = (variant == 3) ? 32 : 2048;
-
   mdb_block_info* bi;
 
   if (auto r = lmdb_txn_begin(m_env, NULL, MDB_RDONLY, &txn))
@@ -2050,7 +2048,7 @@ void BlockchainLMDB::build_cache(uint64_t height) const
 
   err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
 
-  for (uint32_t i = 0; i < count; i++)
+  for (uint32_t i = 0; i < 32; i++)
   {
     //block hash
     r = mt.next(1, (uint32_t)(height - 1));
@@ -2110,17 +2108,14 @@ void BlockchainLMDB::build_cache(uint64_t height) const
     std::memcpy(blob_data + 96, bi->bi_hash.data, 32);
 
     std::memcpy(salt + (i * 128), blob_data, 128);
-
-    if (variant >= 4)
-      mt.set_seed(seed ^ mt.generate_uint());
   }
 
   free(bd);
   mdb_cursor_close(cur);
   mdb_txn_abort(txn); 
-}*/
+}
 
-void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const
+void BlockchainLMDB::get_v4_data(char* salt, uint64_t height, uint32_t seed) const
 {
   angrywasp::mersenne_twister mt(seed);
   
@@ -2130,13 +2125,11 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
   uint8_t a = 32, b = 64;
 
   build_cache(height);
-  std::array<uint32_t, 36864> rand_seq = mt.generate_v3_sequence(seed, (uint32_t)height);
+  std::array<uint32_t, 36864> rand_seq = mt.generate_v4_sequence(seed, (uint32_t)height);
   uint32_t i_config = 0;
   mdb_block_info* bi;
 
-  uint32_t count = (variant == 3) ? 32 : 2048;
-
-  for (uint32_t i = 0; i < count; i++)
+  for (uint32_t i = 0; i < 2048; i++)
   {
     r = rand_seq[i_config++];
     bi = &_cache[r];
@@ -2178,9 +2171,63 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
   }
 }
 
-uint32_t BlockchainLMDB::get_v4_data(char* salt, uint64_t height, const int variant, uint32_t seed) const
+uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed) const
 {
+  angrywasp::mwc1616 rng;
   
+  int err = 0;
+  uint32_t t = 0, r = 0;
+  build_cache(height);
+  mdb_block_info* bi;
+
+  uint32_t min = 1, max = (uint32_t)(height - 1);
+  uint32_t salt_offset = 32;
+
+  for (uint32_t i = 0; i < 2048; i++)
+  {
+    seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+    bi = &_cache[r];
+    std::memcpy(salt + salt_offset, bi->bi_hash.data, 32);
+    salt_offset += 32;
+
+    for (uint32_t j = 0; j < 4; j++)
+    {
+      seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+      bi = &_cache[r];
+      t = (uint32_t)bi->bi_timestamp;
+      seed ^= t;
+      std::memcpy(salt + salt_offset, &t, 4);
+      salt_offset += 4;
+
+      seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+      bi = &_cache[r];
+      t = (uint32_t)bi->bi_diff;
+      seed ^= t;
+      std::memcpy(salt + salt_offset, &t, 4);
+      salt_offset += 4;
+
+      seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+      bi = &_cache[r];
+      t = (uint32_t)(bi->bi_coins >> 32U);
+      seed ^= t;
+      std::memcpy(salt + salt_offset, &t, 4);
+      salt_offset += 4;
+
+      seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+      bi = &_cache[r];
+      t = (uint32_t)bi->bi_coins;
+      seed ^= t;
+      std::memcpy(salt + salt_offset, &t, 4);
+      salt_offset += 4;
+    }
+
+    seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+    bi = &_cache[r];
+    std::memcpy(salt + salt_offset, bi->bi_hash.data, 32);
+    salt_offset += 32;
+  }
+
+  return seed;
 }
 
 cryptonote::blobdata BlockchainLMDB::get_uncle_blob_from_height(const uint64_t& height) const

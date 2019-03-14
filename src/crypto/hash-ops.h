@@ -78,6 +78,16 @@ enum {
   HASH_DATA_AREA = 136
 };
 
+void cn_fast_hash(const void *data, size_t length, char *hash);
+void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters);
+
+void hash_extra_blake(const void *data, size_t length, char *hash);
+void hash_extra_groestl(const void *data, size_t length, char *hash);
+void hash_extra_jh(const void *data, size_t length, char *hash);
+void hash_extra_skein(const void *data, size_t length, char *hash);
+
+void tree_hash(const char (*hashes)[HASH_SIZE], size_t count, char *root_hash);
+
 #define RANDOM_VALUES 32
 
 enum {
@@ -102,15 +112,58 @@ typedef struct randomizer_values
   int8_t values[RANDOM_VALUES];
 } random_values;
 
-void randomize_scratchpad(random_values *r, const char* salt, uint8_t* scratchpad, uint32_t variant);
+void   cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy);
+void   cn_slow_hash_v10(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww);
+void    cn_slow_hash_v9(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes);
+void  cn_slow_hash_v7_8(const void *data, size_t length, char *hash, size_t iters, random_values *r);
 
-void cn_fast_hash(const void *data, size_t length, char *hash);
-void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t base_iters, size_t rand_iters, random_values *r, char* sp_bytes,
-  uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww);
+/*void randomize_scratchpad(random_values *r, uint8_t *scratchpad)
+{
+  for (int i = 0; i < RANDOM_VALUES; i++)
+  {
+    switch (r->operators[i])
+    {
+    case ADD:
+      scratchpad[r->indices[i]] += r->values[i];
+      break;
+    case SUB:
+      scratchpad[r->indices[i]] -= r->values[i];
+      break;
+    case XOR:
+      scratchpad[r->indices[i]] ^= r->values[i];
+      break;
+    case OR:
+      scratchpad[r->indices[i]] |= r->values[i];
+      break;
+    case AND:
+      scratchpad[r->indices[i]] &= r->values[i];
+      break;
+    case COMP:
+      scratchpad[r->indices[i]] = ~r->values[i];
+      break;
+    case EQ:
+      scratchpad[r->indices[i]] = r->values[i];
+      break;
+    }
+  }
+}
 
-void hash_extra_blake(const void *data, size_t length, char *hash);
-void hash_extra_groestl(const void *data, size_t length, char *hash);
-void hash_extra_jh(const void *data, size_t length, char *hash);
-void hash_extra_skein(const void *data, size_t length, char *hash);
+#define MEMORY 1048576
 
-void tree_hash(const char (*hashes)[HASH_SIZE], size_t count, char *root_hash);
+void randomize_scratchpad_256k(random_values *r, const char *salt, uint8_t *scratchpad)
+{
+  uint32_t x = 0;
+  for (uint32_t i = 0; i < MEMORY; i += 4)
+    scratchpad[i] ^= salt[x++];
+
+  randomize_scratchpad(r, scratchpad);
+}
+
+void randomize_scratchpad_4k(random_values *r, const char *salt, uint8_t *scratchpad)
+{
+  uint32_t x = 0;
+  for (uint32_t i = 0; i < MEMORY; i += 256)
+    scratchpad[i] ^= salt[x++];
+
+  randomize_scratchpad(r, scratchpad);
+}*/
