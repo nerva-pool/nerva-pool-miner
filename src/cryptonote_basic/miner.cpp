@@ -569,7 +569,7 @@ namespace cryptonote
         //we lucky!
         ++m_config.current_extra_message_index;
         MGINFO_GREEN("Found block at height: " << height);
-	if (is_uncle_block_included(b)) {
+	      if (is_uncle_block_included(b)) {
           MGINFO_GREEN("Uncle mined: " << b.uncle);
         }
         if(!m_phandler->handle_block_found(b))

@@ -1024,7 +1024,7 @@ namespace cryptonote
   uint8_t lookup[3] { 2, 4, 8 };
   static thread_local char RDATA_ALIGN16 salt[262176] = {0};
 
-  static void print_char_hex(const char *bytes, int size)
+    static void print_char_hex(const char *bytes, int size)
   {
       for (int i = 0; i < size; ++i)
       {
@@ -1040,8 +1040,6 @@ namespace cryptonote
     blobdata bd = get_block_hashing_blob(b);
     uint64_t ht = height - 256;
 
-    struct timeval  tv1, tv2;
-
     if (height != cached_height || !v2_initialized)
     {
       CRITICAL_REGION_BEGIN(m_v2_lock);
@@ -1055,50 +1053,48 @@ namespace cryptonote
     crypto::hash h;
     get_blob_hash(bd, h);
 
-    uint32_t* st = (uint32_t*)h.data;
+    for (int i = 0; i < 32; i += 4)
+      seed ^= *(uint32_t*)&h.data[i];
 
-    for (int i = 0; i < 8; i += 2)
-    {
-      seed ^= st[i];
-      st[i + 1] ^= seed;
-    }
-
-    memcpy(salt, st, 32);
+    memcpy(salt, h.data, 32);
     seed = bc->get_db().get_v5_data(salt, (uint32_t)ht, seed);
 
-    angrywasp::mwc1616 rng;
+    angrywasp::xoshiro256 rng;
     uint32_t r1 = 0, r2 = 0, r3 = 0, r4 = 0, r5 = 0;
-    uint32_t val_iter = 0;
 
     uint8_t temp_lookup_1[3];
     for (int i = 0; i < 3; i++)
     {
-      seed = rng.next(salt + ((seed % 257) * 1024), seed, &r1);
+      r1 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024]);
+      seed = rng.rotl32(seed, 1) ^ r1;
       temp_lookup_1[i] = lookup[r1 % 3];
     } 
     //salt offset
-    seed = rng.next(salt + ((seed % 257) * 1024), seed, 0, 31, &r2);
-    seed ^= r2;
+    r2 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 0, 31);
+    seed = rng.rotl32(seed, 1) ^ r2;
 
     //rand iters
-    seed = rng.next(salt + ((seed % 257) * 1024), seed, 1, 64, &r3); 
-    seed ^= r3;
+    r3 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 1, 64);
+    seed = rng.rotl32(seed, 1) ^ r3;
 
     //xx
-    seed = rng.next(salt + ((seed % 257) * 1024), seed, 2, 4, &r4);
-    seed ^= r4;
-    seed = rng.next(salt + ((seed % 257) * 1024), seed, 2, 4, &r5);
-    seed ^= r5;
-    uint16_t xx = (uint16_t)((seed % r4) + r5);
+    r4 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
+    seed = rng.rotl32(seed, 1) ^ r4;
+    r5 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
+    seed = rng.rotl32(seed, 1) ^ r5;
+    uint16_t xx = (uint16_t)(r4 + r5);
 
     //yy
-    seed = rng.next(salt + ((seed % 257) * 1024), seed, 2, 4, &r4);
-    seed ^= r4;
-    seed = rng.next(salt + ((seed % 257) * 1024), seed, 2, 4, &r5);
-    seed ^= r5;
-    uint16_t yy = (uint16_t)((seed % r4) + r5);
+    r4 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
+    seed = rng.rotl32(seed, 1) ^ r4;
+    r5 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
+    seed = rng.rotl32(seed, 1) ^ r5;
+    uint16_t yy = (uint16_t)(r4 + r5);
 
-    crypto::cn_slow_hash_v11(bd.data(), bd.size(), res, ((height + 1) % r3), r, salt + r2, temp_lookup_1[(r4 ^ r5) % 3], xx, yy);
+    uint8_t init_size_blk = temp_lookup_1[(r4 ^ r5) % 3];
+    uint32_t iters = ((height + 1) % r3);
+
+    crypto::cn_slow_hash_v11(bd.data(), bd.size(), res, iters, r, salt + r2, init_size_blk, xx, yy);
 
     return true;
   }

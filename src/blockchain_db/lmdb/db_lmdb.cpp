@@ -2173,7 +2173,7 @@ void BlockchainLMDB::get_v4_data(char* salt, uint64_t height, uint32_t seed) con
 
 uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed) const
 {
-  angrywasp::mwc1616 rng;
+  angrywasp::xoshiro256 rng;
   
   int err = 0;
   uint32_t t = 0, r = 0;
@@ -2185,43 +2185,40 @@ uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed)
 
   for (uint32_t i = 0; i < 2048; i++)
   {
-    seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+    r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
+    seed = rng.rotl32(seed, 1) ^ r;
     bi = &_cache[r];
     std::memcpy(salt + salt_offset, bi->bi_hash.data, 32);
     salt_offset += 32;
 
     for (uint32_t j = 0; j < 4; j++)
     {
-      seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
       bi = &_cache[r];
       t = (uint32_t)bi->bi_timestamp;
-      seed ^= t;
       std::memcpy(salt + salt_offset, &t, 4);
       salt_offset += 4;
 
-      seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
       bi = &_cache[r];
       t = (uint32_t)bi->bi_diff;
-      seed ^= t;
       std::memcpy(salt + salt_offset, &t, 4);
       salt_offset += 4;
 
-      seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
       bi = &_cache[r];
       t = (uint32_t)(bi->bi_coins >> 32U);
-      seed ^= t;
       std::memcpy(salt + salt_offset, &t, 4);
       salt_offset += 4;
 
-      seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
       bi = &_cache[r];
       t = (uint32_t)bi->bi_coins;
-      seed ^= t;
       std::memcpy(salt + salt_offset, &t, 4);
       salt_offset += 4;
     }
 
-    seed = rng.next(salt + (salt_offset - 32), seed, min, max, &r);
+    r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
     bi = &_cache[r];
     std::memcpy(salt + salt_offset, bi->bi_hash.data, 32);
     salt_offset += 32;

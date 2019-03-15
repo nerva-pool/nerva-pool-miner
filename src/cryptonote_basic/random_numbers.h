@@ -4,8 +4,6 @@
 
 #include <stdint.h>
 #include <limits>
-#include <xmmintrin.h>
-#include <smmintrin.h>
 
 #ifndef RDATA_ALIGN16
     #if defined(_MSC_VER)
@@ -127,126 +125,69 @@ namespace angrywasp
             }
     };
 
-    class mwc1616
+    class xoshiro256
     {
+        // Based on the xoshiro256** random number generater
+        // Copyright 2018 David Blackman and Sebastiano Vigna (vigna@acm.org)
+        // http://xoshiro.di.unimi.it/
+
         private:
 
-            const RDATA_ALIGN16 uint32_t  msk[4];
-            const RDATA_ALIGN16 uint32_t mul1[4];
-            const RDATA_ALIGN16 uint32_t mul2[4];
-
-            union Split64
+            union d64
             {
-                uint64_t u;
-                struct {
-                    uint32_t a;
-                    uint32_t b;
-                };
+                uint64_t i;
+                double d;
             };
+
+            static inline double to_double(uint64_t x)
+            {
+                union d64 u = { .i = UINT64_C(0x3FF) << 52 | x >> 12 };
+                return u.d - 1.0;
+            }
 
         public:
 
-        mwc1616() : msk{ 0xFFFF }, mul1{ 0x4650 }, mul2{ 0x78B7 } { }
-
-        uint32_t next(char* input, uint32_t seed, uint32_t* rng_result)
-        {
-            for (int i = 0; i < 32; i += 8)
+            static inline uint64_t rotl64(const uint64_t x, int k)
             {
-                seed = (seed * 0x6DE6ECDE5DULL + 0xBULL) & ((1ULL << 48) - 1);
-                *(uint32_t*)&input[i] ^= seed;
+                return (x << k) | (x >> (64 - k));
             }
 
-            uint16_t* st = (uint16_t*)input;
-
-            RDATA_ALIGN16 uint32_t sa[4] =
+            static inline uint32_t rotl32(const uint32_t x, int k)
             {
-                ((uint32_t)st[ 0] << 16) | st[ 2],
-                ((uint32_t)st[ 1] << 16) | st[ 3],
-                ((uint32_t)st[ 4] << 16) | st[ 6],
-                ((uint32_t)st[ 5] << 16) | st[ 7]
-            };
-            RDATA_ALIGN16 uint32_t sb[4] =
+                return (x << k) | (x >> (32 - k));
+            }
+            
+            static inline uint64_t u64(uint64_t* state)
             {
-                ((uint32_t)st[ 8] << 16) | st[10],
-                ((uint32_t)st[ 9] << 16) | st[11],
-                ((uint32_t)st[12] << 16) | st[14],
-                ((uint32_t)st[13] << 16) | st[14]
-            };
+                const uint64_t result = rotl64(state[1] * 5, 7) * 9;
+                const uint64_t t = state[1] << 17;
 
-            uint64_t result[2] = { 0 };
+                state[2] ^= state[0];
+                state[3] ^= state[1];
+                state[1] ^= state[2];
+                state[0] ^= state[3];
 
-            #if !defined(NO_SSE4)
-                __m128i a = _mm_load_si128((const __m128i *)sa);
-                __m128i b = _mm_load_si128((const __m128i *)sb);
+                state[2] ^= t;
+                state[3] = rotl64(state[3], 45);
 
-                const __m128i mask = _mm_load_si128((const __m128i *)msk);
-                const __m128i m1 = _mm_load_si128((const __m128i *)mul1);
-                const __m128i m2 = _mm_load_si128((const __m128i *)mul2);
+                return result;
+            }
 
-                __m128i amask = _mm_and_si128(a, mask);
-                __m128i ashift = _mm_srli_epi32(a, 0x10);
-                __m128i amul = _mm_mullo_epi32(amask, m1);
-                __m128i anew = _mm_add_epi32(amul, ashift);
-                _mm_store_si128((__m128i *)sa, anew);
+            uint32_t u32(uint64_t* state)
+            {
+                uint64_t r = u64(state);
+                double dbl = to_double(r);
+                double div = 1.0 / (double)((uint32_t)-1);
+                return (dbl / div);
+            }
 
-                __m128i bmask = _mm_and_si128(b, mask);
-                __m128i bshift = _mm_srli_epi32(b, 0x10);
-                __m128i bmul = _mm_mullo_epi32(bmask, m2);
-                __m128i bnew = _mm_add_epi32(bmul, bshift);
-                _mm_store_si128((__m128i *)sb, bnew);
-
-                __m128i bmasknew = _mm_and_si128(bnew, mask);
-                __m128i ashiftnew = _mm_slli_epi32(anew, 0x10);
-                __m128i res = _mm_add_epi32(ashiftnew, bmasknew);
-                _mm_store_si128((__m128i *)result, res);
-            #else
-                __m128i a = _mm_load_si128((const __m128i *)sa);
-                __m128i b = _mm_load_si128((const __m128i *)sb);
-
-                const __m128i mask = _mm_load_si128((const __m128i *)msk);
-                const __m128i m1 = _mm_load_si128((const __m128i *)mul1);
-                const __m128i m2 = _mm_load_si128((const __m128i *)mul2);
-
-                __m128i ashift = _mm_srli_epi32(a, 0x10);
-                __m128i amask = _mm_and_si128(a, mask);
-                __m128i amullow = _mm_mullo_epi16(amask, m1);
-                __m128i amulhigh = _mm_mulhi_epu16(amask, m1);
-                __m128i amulhigh_shift = _mm_slli_epi32(amulhigh, 0x10);
-                __m128i amul = _mm_or_si128(amullow, amulhigh_shift);
-                __m128i anew = _mm_add_epi32(amul, ashift);
-                _mm_store_si128((__m128i *)sa, anew);
-
-                __m128i bshift = _mm_srli_epi32(b, 0x10);
-                __m128i bmask = _mm_and_si128(b, mask);
-                __m128i bmullow = _mm_mullo_epi16(bmask, m2);
-                __m128i bmulhigh = _mm_mulhi_epu16(bmask, m2);
-                __m128i bmulhigh_shift = _mm_slli_epi32(bmulhigh, 0x10);
-                __m128i bmul = _mm_or_si128(bmullow, bmulhigh_shift);
-                __m128i bnew = _mm_add_epi32(bmul, bshift);
-                _mm_store_si128((__m128i *)sb, bnew);
-
-                __m128i bmasknew = _mm_and_si128(bnew, mask);
-                __m128i ashiftnew = _mm_slli_epi32(anew, 0x10);
-                __m128i res = _mm_add_epi32(ashiftnew, bmasknew);
-                _mm_store_si128((__m128i *)result, res);
-            #endif
-
-            union Split64 y;
-            y.u = result[0] ^ result[1];
-
-            *rng_result = (y.a ^ y.b);
-            return seed;
-        }
-
-        uint32_t next(char* input, uint32_t seed, uint32_t min, uint32_t max, uint32_t* rng_result)
-        {
-            uint32_t r;
-            seed = next(input, seed, &r);
-
-            double div = (double)(0xffffffff) / (double)(max - min);
-            *rng_result = ((double)(r) / div) + (double)min;
-            return seed;
-        }
+            uint32_t u32(uint64_t* state, uint32_t min, uint32_t max)
+            {
+                uint64_t r = u64(state);
+                double dbl = to_double(r);
+                double div = 1.0 / (double)(max - min);
+                return (dbl / div) + (double)min;
+            }
     };
 };
 

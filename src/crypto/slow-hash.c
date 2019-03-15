@@ -108,7 +108,7 @@ void cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters,
     uint32_t offset_2 = 0;
 
     uint16_t k = 1, l = 1;
-    uint16_t *r2 = (uint16_t *)&_c;
+    uint16_t *r2 = (uint16_t *)&c;
     for (k = 1; k < xx; k++)
     {
         pre_aes();
