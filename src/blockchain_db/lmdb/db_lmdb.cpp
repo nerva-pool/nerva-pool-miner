@@ -2182,7 +2182,6 @@ uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed)
 
   uint32_t min = 1, max = (uint32_t)(height - 1);
   uint32_t salt_offset = 32;
-  char* temp = (char*)malloc(128);
 
   for (uint32_t i = 0; i < 2048; i++)
   {
@@ -2219,10 +2218,9 @@ uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed)
       salt_offset += 4;
     }
 
-    memcpy(temp, &salt[salt_offset - 128], 128);
-    crypto::hash salt_hash = crypto::null_hash;
-    crypto::cn_fast_hash(temp, 128, salt_hash);
-    std::memcpy(salt + salt_offset, salt_hash.data, 32);
+    r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
+    bi = &_cache[r];
+    std::memcpy(salt + salt_offset, bi->bi_hash.data, 32);
     salt_offset += 32;
   }
 
