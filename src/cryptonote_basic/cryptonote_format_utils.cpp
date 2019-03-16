@@ -1035,10 +1035,26 @@ namespace cryptonote
       printf("\n");
   }
 
+#define INIT_TIMER() \
+   struct timeval  tv1, tv2;
+
+#define START_TIMER() \
+  gettimeofday(&tv1, NULL);
+
+#define STOP_TIMER(msg) \
+  gettimeofday(&tv2, NULL); \
+  printf(msg); \
+	printf (" = %f seconds\n", (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec));
+  
+
   bool get_block_longhash_v11(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {
     blobdata bd = get_block_hashing_blob(b);
     uint64_t ht = height - 256;
+
+#ifdef DEBUG_TERMINAL
+  INIT_TIMER();
+#endif
 
     if (height != cached_height || !v2_initialized)
     {
@@ -1047,6 +1063,10 @@ namespace cryptonote
         generate_v2_data(ht, 1048576, bc);
       CRITICAL_REGION_END();
     }
+
+#ifdef DEBUG_TERMINAL
+  START_TIMER();
+#endif
 
     uint32_t seed = b.nonce ^ height;
 
@@ -1094,7 +1114,20 @@ namespace cryptonote
     uint8_t init_size_blk = temp_lookup_1[(r4 ^ r5) % 3];
     uint32_t iters = ((height + 1) % r3);
 
+#ifdef DEBUG_TERMINAL
+  STOP_TIMER(" Salt Gen");
+#endif
+
+#ifdef DEBUG_TERMINAL
+  START_TIMER();
+#endif
+
     crypto::cn_slow_hash_v11(bd.data(), bd.size(), res, iters, r, salt + r2, init_size_blk, xx, yy);
+
+
+#ifdef DEBUG_TERMINAL
+  STOP_TIMER("Slow Hash");
+#endif
 
     return true;
   }

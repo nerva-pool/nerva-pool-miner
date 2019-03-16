@@ -47,6 +47,8 @@
                 "--zmq-rpc-bind-port", "38082", 
                 "--rpc-restricted-bind-port", "38083",
                 "--add-exclusive-node", "127.0.0.1:28080",
+                "--start-mining", "NV3Co2jzKSKTm7GM3Y8pnyKxGFZwHJ2wf4UWV7Er3JqNa4Hqj8NcdNiJdTBC3KtBSNdxWc5zWmeeyCEFyisSk18J1XSHoc6GV",
+                "--mining-threads", "1"
             ],
             "stopAtEntry": false,
             
