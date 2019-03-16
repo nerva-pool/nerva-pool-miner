@@ -1,4 +1,5 @@
 // Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2019, The NERVA Project
 //
 // All rights reserved.
 //
@@ -25,36 +26,55 @@
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include "wallet/api/wallet2_api.h"
-#include <boost/thread/shared_mutex.hpp>
+#pragma once
 
-namespace Monero {
+#include <boost/iostreams/stream_buffer.hpp>
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/filesystem/path.hpp>
+#include <boost/filesystem/operations.hpp>
 
-class WalletImpl;
+#include "cryptonote_basic/cryptonote_basic.h"
+#include "cryptonote_basic/cryptonote_boost_serialization.h"
+#include "cryptonote_core/blockchain.h"
+#include "blockchain_db/blockchain_db.h"
 
-class TransactionHistoryImpl : public TransactionHistory
+#include <algorithm>
+#include <cstdio>
+#include <fstream>
+#include <boost/iostreams/copy.hpp>
+#include <atomic>
+
+#include "common/command_line.h"
+#include "version.h"
+
+#include "blockchain_utilities.h"
+
+
+using namespace cryptonote;
+
+class QuickSyncFile
 {
 public:
-    TransactionHistoryImpl(WalletImpl * wallet);
-    ~TransactionHistoryImpl();
-    virtual int count() const;
-    virtual TransactionInfo * transaction(int index)  const;
-    virtual TransactionInfo * transaction(const std::string &id) const;
-    virtual std::vector<TransactionInfo*> getAll() const;
-    virtual void refresh();
+
+  bool store_blockchain(cryptonote::Blockchain* cs, boost::filesystem::path& output_file, uint64_t start_height = 0, uint64_t stop_height = 0);
+
+protected:
+
+  Blockchain* m_blockchain_storage;
+
+  std::ofstream * m_raw_data_file;
+
+  // open export file for write
+  bool open_writer(const boost::filesystem::path& file_path, uint64_t block_start, uint64_t block_stop);
+  bool initialize_file(uint64_t block_start, uint64_t block_stop);
+  void store_blockchain();
+  bool close();
 
 private:
 
-    // TransactionHistory is responsible of memory management
-    std::vector<TransactionInfo*> m_history;
-    WalletImpl *m_wallet;
-    mutable boost::shared_mutex   m_historyMutex;
+  uint64_t m_cur_height; // tracks current height during export
+  const uint32_t quicksync_magic = 0x149f943e;
 };
-
-}
-
-namespace Bitmonero = Monero;
-

@@ -104,7 +104,6 @@ namespace cryptonote
 /** a pair of <transaction hash, output index>, typedef for convenience */
 typedef std::pair<crypto::hash, uint64_t> tx_out_index;
 
-extern const command_line::arg_descriptor<std::string> arg_db_type;
 extern const command_line::arg_descriptor<std::string> arg_db_sync_mode;
 extern const command_line::arg_descriptor<bool, false> arg_db_salvage;
 extern const command_line::arg_descriptor<uint32_t> arg_db_readers;
@@ -937,8 +936,9 @@ public:
    */
   virtual cryptonote::blobdata get_block_blob_from_height(const uint64_t& height) const = 0;
 
-  virtual void get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const = 0;
-  virtual void get_v3_data_opt(char* salt, uint64_t height, const int variant, uint32_t seed) const = 0;
+  virtual void get_v3_data(char* salt, uint64_t height, uint32_t seed) const = 0;
+  virtual void get_v4_data(char* salt, uint64_t height, uint32_t seed) const = 0;
+  virtual uint32_t get_v5_data(char* salt, uint64_t height, uint32_t seed) const = 0;
 
   virtual void build_cache(uint64_t height) const = 0;
 
@@ -1412,7 +1412,7 @@ public:
    *
    * @return the requested output data
    */
-  virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index) = 0;
+  virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool v2) = 0;
 
   /**
    * @brief get some of an output's data
@@ -1481,7 +1481,7 @@ public:
    * @param offsets a list of amount-specific output indices
    * @param outputs return-by-reference a list of outputs' metadata
    */
-  virtual void get_output_key(const uint64_t &amount, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool allow_partial = false) = 0;
+  virtual void get_output_key(const uint64_t &amount, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool v2, bool allow_partial = false) = 0;
   
   /*
    * FIXME: Need to check with git blame and ask what this does to
@@ -1736,7 +1736,7 @@ public:
 
 };  // class BlockchainDB
 
-BlockchainDB *new_db(const std::string& db_type);
+BlockchainDB *new_db( );
 
 }  // namespace cryptonote
 

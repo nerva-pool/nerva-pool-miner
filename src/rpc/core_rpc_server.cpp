@@ -45,6 +45,7 @@ using namespace epee;
 #include "misc_language.h"
 #include "storages/http_abstract_invoke.h"
 #include "crypto/hash.h"
+#include "crypto/crypto.h"
 #include "rpc/rpc_args.h"
 #include "core_rpc_server_error_codes.h"
 #include "p2p/net_node.h"
@@ -314,7 +315,7 @@ namespace cryptonote
       if (use_bootstrap_daemon_if_necessary<COMMAND_RPC_GET_ALT_BLOCKS_HASHES>(invoke_http_mode::JON, "/get_alt_blocks_hashes", req, res, r))
         return r;
 
-      std::list<block> blks;
+      std::vector<block> blks;
 
       if(!m_core.get_alternative_blocks(blks))
       {
@@ -546,6 +547,192 @@ namespace cryptonote
     }
     res.status = CORE_RPC_STATUS_OK;
     LOG_PRINT_L2("COMMAND_RPC_GET_TX_GLOBAL_OUTPUTS_INDEXES: [" << res.o_indexes.size() << "]");
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
+  bool core_rpc_server::on_decode_outputs(const COMMAND_RPC_DECODE_OUTPUTS::request& req, COMMAND_RPC_DECODE_OUTPUTS::response& res, epee::json_rpc::error& error_resp)
+  {
+    PERF_TIMER(on_decode_outputs);
+
+    std::vector<crypto::hash> vh;
+    for(const auto& tx_hex_str: req.tx_hashes)
+    {
+      blobdata b;
+      if(!string_tools::parse_hexstr_to_binbuff(tx_hex_str, b))
+      {
+        res.status = "Failed to parse hex representation of transaction hash";
+        return false;
+      }
+      if(b.size() != sizeof(crypto::hash))
+      {
+        res.status = "Failed, size of data mismatch";
+        return false;
+      }
+      vh.push_back(*reinterpret_cast<const crypto::hash*>(b.data()));
+    }
+
+    std::vector<crypto::hash> missed_txs;
+    std::vector<transaction> txs;
+    std::vector<transaction> pool_txs;
+    address_parse_info ai;
+
+    if(!m_core.get_transactions(vh, txs, missed_txs))
+    {
+      res.status = "Failed. Could not retrieve transactions";
+      return false;
+    }
+
+    if (!missed_txs.empty())
+    {
+      m_core.get_pool_transactions(pool_txs, false);
+
+      if (!pool_txs.empty())
+      {
+        for(const auto& h: vh)
+        {
+          for(const auto& t: pool_txs)
+          {
+            if (t.hash == h)
+            {
+              txs.push_back(t);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!get_account_address_from_str(ai, cryptonote::MAINNET, req.address))
+    {
+      res.status = "Failed. Could not parse address";
+      return false;
+    }
+
+    crypto::public_key spend_pubkey = ai.address.m_spend_public_key;
+    cryptonote::blobdata sec_vk_data;
+    crypto::secret_key view_seckey;
+
+    hw::device &hwdev = hw::get_device("default");
+
+    if(!epee::string_tools::parse_hexstr_to_binbuff(req.sec_view_key, sec_vk_data) || sec_vk_data.size() != sizeof(crypto::secret_key))
+    {
+      res.status = "Failed. Could not parse view key";
+      return false;
+    }
+
+    view_seckey = *reinterpret_cast<const crypto::secret_key*>(sec_vk_data.data());
+    std::vector<crypto::key_derivation> tx_derivations;
+
+    for(const auto& tx: txs)
+    {
+      crypto::public_key tx_pubkey = get_tx_pub_key_from_extra(tx.extra);
+      crypto::key_derivation kd;
+
+      crypto::generate_key_derivation(tx_pubkey, view_seckey, kd);
+      tx_derivations.push_back(kd);
+
+      std::vector<crypto::public_key> additional_keys = get_additional_tx_pub_keys_from_extra(tx.extra);
+      if (!additional_keys.empty())
+      {
+        for(const auto& ak: additional_keys)
+        {
+          crypto::generate_key_derivation(ak, view_seckey, kd);
+          tx_derivations.push_back(kd);
+        }
+      }
+
+      uint32_t i = 0;
+      std::string tx_hash = epee::string_tools::pod_to_hex(cryptonote::get_transaction_hash(tx));
+      uint64_t tx_amount = (uint64_t)-1;
+      
+      bool found = false;
+
+      for(const tx_out& o: tx.vout)
+      {
+        found = false;
+        for(const crypto::key_derivation& k: tx_derivations)
+        {
+          crypto::public_key out_key;
+          crypto::derive_public_key(k, i, spend_pubkey, out_key);
+          crypto::public_key target_key = boost::get<txout_to_key>(o.target).key;
+
+          if (target_key == out_key)
+          {
+            rct::key mask;
+            crypto::secret_key scalar1;
+            hwdev.derivation_to_scalar(k, i, scalar1);
+
+            try
+            {
+              switch (tx.rct_signatures.type)
+              {
+                case rct::RCTTypeSimple:
+                case rct::RCTTypeBulletproof1Simple:
+                case rct::RCTTypeBulletproof2:
+                  tx_amount = rct::decodeRctSimple(tx.rct_signatures, rct::sk2rct(scalar1), i, mask, hwdev);
+                  break;
+                case rct::RCTTypeFull:
+                case rct::RCTTypeBulletproof1Full:
+                  tx_amount = rct::decodeRct(tx.rct_signatures, rct::sk2rct(scalar1), i, mask, hwdev);
+                  break;
+                default:
+                {
+                  res.status = "Failed. Unknown RCT type";
+                  return false;
+                }
+              }
+            }
+            catch (const std::exception &e)
+            {
+              res.status = "Failed. Failed to decode input";
+              return false;
+            }
+
+            found = true;
+            break;
+          }
+        }
+
+        if (found)
+          break;
+
+        ++i;
+      }
+      
+      if (!found)
+        continue;
+        
+      std::vector<tx_extra_field> tx_extra_fields;
+      std::string payment_id_string = "";
+
+      if (cryptonote::parse_tx_extra(tx.extra, tx_extra_fields))
+      {
+        tx_extra_nonce extra_nonce;
+
+        if (find_tx_extra_field_by_type(tx_extra_fields, extra_nonce))
+        {
+          crypto::hash payment_id = crypto::null_hash;
+          crypto::hash8 payment_id8 = crypto::null_hash8;
+
+          if(get_encrypted_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id8))
+          {
+            if (hwdev.decrypt_payment_id(payment_id8, tx_pubkey, view_seckey))
+            {
+              payment_id_string = epee::string_tools::pod_to_hex(payment_id8);
+            }
+            else
+              payment_id_string = epee::string_tools::pod_to_hex(payment_id8);
+          }
+          else if (get_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id))
+            payment_id_string = epee::string_tools::pod_to_hex(payment_id);
+        }
+      }
+
+      res.decoded_outs.push_back({tx_amount, tx_hash, payment_id_string});
+    }
+
+    res.status = CORE_RPC_STATUS_OK;
+
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------
@@ -853,6 +1040,12 @@ namespace cryptonote
       LOG_PRINT_L0(res.status);
       return true;
     }
+    if (info.is_subaddress)
+    {
+      res.status = "Mining to subaddress isn't supported yet";
+      LOG_PRINT_L0(res.status);
+      return true;
+    }
 
     unsigned int concurrency_count = boost::thread::hardware_concurrency() * 4;
 
@@ -874,7 +1067,12 @@ namespace cryptonote
     boost::thread::attributes attrs;
     attrs.set_stack_size(THREAD_STACK_SIZE);
 
-    if(!miner.start(req.miner_address, static_cast<size_t>(req.threads_count), attrs, req.do_background_mining, req.ignore_battery))
+    if (miner.is_mining())
+    {
+      res.status = "Already mining";
+      return true;
+    }
+    if(!miner.start(info.address, static_cast<size_t>(req.threads_count), attrs, req.do_background_mining, req.ignore_battery))
     {
       res.status = "Failed, mining not started";
       LOG_PRINT_L0(res.status);
@@ -915,7 +1113,8 @@ namespace cryptonote
     if ( lMiner.is_mining() ) {
       res.speed = lMiner.get_speed();
       res.threads_count = lMiner.get_threads_count();
-      res.address = lMiner.get_mining_address();
+      const account_public_address& lMiningAdr = lMiner.get_mining_address();
+      res.address = get_account_address_as_str(m_nettype, false, lMiningAdr);
     }
 
     res.status = CORE_RPC_STATUS_OK;
@@ -1183,10 +1382,10 @@ namespace cryptonote
       return false;
     }
 
-    block b = AUTO_VAL_INIT(b);
+    block b;
     cryptonote::blobdata blob_reserve;
     blob_reserve.resize(req.reserve_size, 0);
-    if(!m_core.get_block_template(b, req.wallet_address, res.difficulty, res.height, res.expected_reward, blob_reserve))
+    if(!m_core.get_block_template(b, info.address, res.difficulty, res.height, res.expected_reward, blob_reserve))
     {
       error_resp.code = CORE_RPC_ERROR_CODE_INTERNAL_ERROR;
       error_resp.message = "Internal error: failed to create block template";
@@ -1199,7 +1398,7 @@ namespace cryptonote
     {
       error_resp.code = CORE_RPC_ERROR_CODE_INTERNAL_ERROR;
       error_resp.message = "Internal error: failed to create block template";
-      LOG_ERROR("Failed to  tx pub key in coinbase extra");
+      LOG_ERROR("Failed to get tx pub key in coinbase extra");
       return false;
     }
     res.reserved_offset = slow_memmem((void*)block_blob.data(), block_blob.size(), &tx_pub_key, sizeof(tx_pub_key));

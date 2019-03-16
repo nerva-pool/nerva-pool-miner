@@ -52,7 +52,8 @@
 #define CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE             10
 
 #define BULLETPROOF_MAX_OUTPUTS                         16
-#define BULLETPROOF_FORK_HEIGHT                         8
+#define BULLETPROOF_SIMPLE_FORK_HEIGHT                  8
+#define BULLETPROOF_FULL_FORK_HEIGHT                    11
 
 #define BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW               60
 
@@ -88,7 +89,7 @@
 #define UNCLE_DIFFICULTY_TARGET                         DIFFICULTY_TARGET/4
 #define UNCLE_REWARD_RATIO                              2
 #define NEPHEW_REWARD_RATIO                             20
-#define UNCLE_MINING_FORK_HEIGHT                        11
+#define UNCLE_MINING_FORK_HEIGHT                        12
 
 #define DIFFICULTY_BLOCKS_ESTIMATE_TIMESPAN             DIFFICULTY_TARGET //just alias; used by tests
 #define DIFFICULTY_WINDOW_V2                            17
@@ -105,7 +106,7 @@
 #define CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS       1
 
 #define BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT          10000  //by default, blocks ids count in synchronizing
-#define BLOCKS_SYNCHRONIZING_DEFAULT_COUNT              20     //by default, blocks count in blocks downloading
+#define BLOCKS_SYNCHRONIZING_DEFAULT_COUNT              100     //by default, blocks count in blocks downloading
 
 #define CRYPTONOTE_MEMPOOL_TX_LIVETIME                    (86400*3) //seconds, three days
 #define CRYPTONOTE_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME     604800 //seconds, one week
@@ -126,8 +127,8 @@
 #define P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT       70
 #define P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT            2
 
-#define SUPPORTED_MIN_VERSION_STR                       "0.1.5.0"
-#define SUPPORTED_MIN_VERSION_HF_STR                    "0.1.5.0"
+#define SUPPORTED_MIN_VERSION_STR                       "0.1.5.6"
+#define SUPPORTED_MIN_VERSION_HF_STR                    "0.1.6.0"
 
 #define HF_SUPPORTED_MIN_VERSION_TESTNET                version_string_to_integer(SUPPORTED_MIN_VERSION_HF_STR)
 #define HF_SUPPORTED_MIN_VERSION_MAINNET                version_string_to_integer(SUPPORTED_MIN_VERSION_STR)

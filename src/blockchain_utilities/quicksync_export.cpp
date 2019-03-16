@@ -1,4 +1,5 @@
 // Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2019, The NERVA Project
 //
 // All rights reserved.
 //
@@ -26,8 +27,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "bootstrap_file.h"
-#include "blocksdat_file.h"
+#include "quicksync_file.h"
 #include "common/command_line.h"
 #include "cryptonote_core/tx_pool.h"
 #include "cryptonote_core/cryptonote_core.h"
@@ -40,6 +40,8 @@
 namespace po = boost::program_options;
 using namespace epee;
 
+#define DEFAULT_FILE_NAME "quicksync.raw"
+
 int main(int argc, char* argv[])
 {
   TRY_ENTRY();
@@ -47,8 +49,9 @@ int main(int argc, char* argv[])
   epee::string_tools::set_module_name_and_folder(argv[0]);
 
   uint32_t log_level = 0;
+  uint64_t block_start = 0;
   uint64_t block_stop = 0;
-  bool blocks_dat = false;
+  bool export_csv = false;
 
   tools::on_startup();
 
@@ -58,8 +61,8 @@ int main(int argc, char* argv[])
   po::options_description desc_cmd_sett("Command line options and settings options");
   const command_line::arg_descriptor<std::string> arg_output_file = {"output-file", "Specify output file", "", true};
   const command_line::arg_descriptor<std::string> arg_log_level  = {"log-level",  "0-4 or categories", ""};
+  const command_line::arg_descriptor<uint64_t> arg_block_start = {"block-start", "Start at block number", block_start};
   const command_line::arg_descriptor<uint64_t> arg_block_stop = {"block-stop", "Stop at block number", block_stop};
-  const command_line::arg_descriptor<bool> arg_blocks_dat = {"blocksdat", "Output in blocks.dat format", blocks_dat};
 
 
   command_line::add_arg(desc_cmd_sett, cryptonote::arg_data_dir);
@@ -67,8 +70,8 @@ int main(int argc, char* argv[])
   command_line::add_arg(desc_cmd_sett, cryptonote::arg_testnet_on);
   command_line::add_arg(desc_cmd_sett, cryptonote::arg_stagenet_on);
   command_line::add_arg(desc_cmd_sett, arg_log_level);
+  command_line::add_arg(desc_cmd_sett, arg_block_start);
   command_line::add_arg(desc_cmd_sett, arg_block_stop);
-  command_line::add_arg(desc_cmd_sett, arg_blocks_dat);
 
   command_line::add_arg(desc_cmd_only, command_line::arg_help);
 
@@ -92,11 +95,13 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  mlog_configure(mlog_get_default_log_path("nerva-blockchain-export.log"), true);
+  mlog_configure(mlog_get_default_log_path("nerva-quicksync-export.log"), true);
   if (!command_line::is_arg_defaulted(vm, arg_log_level))
     mlog_set_log(command_line::get_arg(vm, arg_log_level).c_str());
   else
     mlog_set_log(std::string(std::to_string(log_level) + ",bcutil:INFO").c_str());
+
+  block_start = command_line::get_arg(vm, arg_block_start);  
   block_stop = command_line::get_arg(vm, arg_block_stop);
 
   LOG_PRINT_L0("Starting...");
@@ -108,8 +113,7 @@ int main(int argc, char* argv[])
     std::cerr << "Can't specify more than one of --testnet and --stagenet" << std::endl;
     return 1;
   }
-  bool opt_blocks_dat = command_line::get_arg(vm, arg_blocks_dat);
-
+ 
   std::string m_config_folder;
 
   m_config_folder = command_line::get_arg(vm, cryptonote::arg_data_dir);
@@ -117,26 +121,17 @@ int main(int argc, char* argv[])
   if (command_line::has_arg(vm, arg_output_file))
     output_file_path = boost::filesystem::path(command_line::get_arg(vm, arg_output_file));
   else
-    output_file_path = boost::filesystem::path(m_config_folder) / "export" / BLOCKCHAIN_RAW;
+    output_file_path = boost::filesystem::path(m_config_folder) / "export" / DEFAULT_FILE_NAME;
+
   LOG_PRINT_L0("Export output file: " << output_file_path.string());
 
-  // If we wanted to use the memory pool, we would set up a fake_core.
-
-  // Use Blockchain instead of lower-level BlockchainDB for two reasons:
-  // 1. Blockchain has the init() method for easy setup
-  // 2. exporter needs to use get_current_blockchain_height(), get_block_id_by_height(), get_block_by_hash()
-  //
-  // cannot match blockchain_storage setup above with just one line,
-  // e.g.
-  //   Blockchain* core_storage = new Blockchain(NULL);
-  // because unlike blockchain_storage constructor, which takes a pointer to
-  // tx_memory_pool, Blockchain's constructor takes tx_memory_pool object.
   LOG_PRINT_L0("Initializing source blockchain (BlockchainDB)");
   Blockchain* core_storage = NULL;
   tx_memory_pool m_mempool(*core_storage);
   core_storage = new Blockchain(m_mempool);
 
   BlockchainDB* db = new_db();
+
   boost::filesystem::path folder(m_config_folder);
   folder /= db->get_db_name();
   const std::string filename = folder.string();
@@ -155,20 +150,13 @@ int main(int argc, char* argv[])
 
   CHECK_AND_ASSERT_MES(r, 1, "Failed to initialize source blockchain storage");
   LOG_PRINT_L0("Source blockchain storage initialized OK");
-  LOG_PRINT_L0("Exporting blockchain raw data...");
+  LOG_PRINT_L0("Exporting quick sync data...");
 
-  if (opt_blocks_dat)
-  {
-    BlocksdatFile blocksdat;
-    r = blocksdat.store_blockchain_raw(core_storage, NULL, output_file_path, block_stop);
-  }
-  else
-  {
-    BootstrapFile bootstrap;
-    r = bootstrap.store_blockchain_raw(core_storage, NULL, output_file_path, block_stop);
-  }
-  CHECK_AND_ASSERT_MES(r, 1, "Failed to export blockchain raw data");
-  LOG_PRINT_L0("Blockchain raw data exported OK");
+  QuickSyncFile bootstrap;
+  r = bootstrap.store_blockchain(core_storage, output_file_path, block_start, block_stop);
+  
+  CHECK_AND_ASSERT_MES(r, 1, "Failed to export quick sync data");
+  LOG_PRINT_L0("Export OK");
   return 0;
 
   CATCH_ENTRY("Export error", 1);

@@ -38,11 +38,6 @@
 #include "math_helper.h"
 #ifdef _WIN32
 #include <windows.h>
-#elif defined(__linux__)
-#include <unistd.h>
-#include <sys/resource.h>
-#include <sys/times.h>
-#include <time.h>
 #endif
 
 namespace cryptonote
@@ -52,7 +47,7 @@ namespace cryptonote
   struct i_miner_handler
   {
     virtual bool handle_block_found(block& b) = 0;
-    virtual bool get_block_template(block& b, std::string adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce) = 0;
+    virtual bool get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce) = 0;
   protected:
     ~i_miner_handler(){};
   };
@@ -69,13 +64,13 @@ namespace cryptonote
     static void init_options(boost::program_options::options_description& desc);
     bool set_block_template(const block& bl, const difficulty_type& diffic, uint64_t height);
     bool on_block_chain_update();
-    bool start(std::string adr, size_t threads_count, const boost::thread::attributes& attrs, bool do_background = false, bool ignore_battery = false);
+    bool start(const account_public_address& adr, size_t threads_count, const boost::thread::attributes& attrs, bool do_background = false, bool ignore_battery = false);
     uint64_t get_speed() const;
     uint32_t get_threads_count() const;
     void send_stop_signal();
     bool stop();
     bool is_mining() const;
-    std::string get_mining_address() const;
+    const account_public_address& get_mining_address() const;
     bool on_idle();
     void on_synchronized();
     //synchronous analog (for fast calls)
@@ -109,6 +104,7 @@ namespace cryptonote
     bool worker_thread();
     bool request_block_template();
     void  merge_hr();
+    void  update_autodetection();
     
     struct miner_config
     {
@@ -135,20 +131,23 @@ namespace cryptonote
     std::list<boost::thread> m_threads;
     epee::critical_section m_threads_lock;
     i_miner_handler* m_phandler;
-    std::string m_mine_address;
+    account_public_address m_mine_address;
     epee::math_helper::once_a_time_seconds<5> m_update_block_template_interval;
     epee::math_helper::once_a_time_seconds<2> m_update_merge_hr_interval;
+    epee::math_helper::once_a_time_seconds<1> m_autodetect_interval;
     std::vector<blobdata> m_extra_messages;
     miner_config m_config;
     std::string m_config_folder_path;    
     std::atomic<uint64_t> m_last_hr_merge_time;
     std::atomic<uint64_t> m_hashes;
+    std::atomic<uint64_t> m_total_hashes;
     std::atomic<uint64_t> m_current_hash_rate;
     epee::critical_section m_last_hash_rates_lock;
     std::list<uint64_t> m_last_hash_rates;
     bool m_do_print_hashrate;
     bool m_do_mining;
-    bool m_optimized = true;
+    std::vector<std::pair<uint64_t, uint64_t>> m_threads_autodetect;
+    boost::thread::attributes m_attrs;
 
     cryptonote::Blockchain* m_blockchain;
 

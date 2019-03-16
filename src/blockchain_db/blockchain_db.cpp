@@ -37,11 +37,6 @@
 
 #include "lmdb/db_lmdb.h"
 
-static const char *db_types[] = {
-  "lmdb",
-  NULL
-};
-
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "blockchain.db"
 
@@ -50,36 +45,6 @@ using epee::string_tools::pod_to_hex;
 namespace cryptonote
 {
 
-bool blockchain_valid_db_type(const std::string& db_type)
-{
-  int i;
-  for (i=0; db_types[i]; i++)
-  {
-    if (db_types[i] == db_type)
-      return true;
-  }
-  return false;
-}
-
-std::string blockchain_db_types(const std::string& sep)
-{
-  int i;
-  std::string ret = "";
-  for (i=0; db_types[i]; i++)
-  {
-    if (i)
-      ret += sep;
-    ret += db_types[i];
-  }
-  return ret;
-}
-
-std::string arg_db_type_description = "Specify database type, available: " + cryptonote::blockchain_db_types(", ");
-const command_line::arg_descriptor<std::string> arg_db_type = {
-  "db-type"
-, arg_db_type_description.c_str()
-, DEFAULT_DB_TYPE
-};
 const command_line::arg_descriptor<std::string> arg_db_sync_mode = {
   "db-sync-mode"
 , "Specify sync option, using format [safe|fast|fastest]:[sync|async]:[nblocks_per_sync]." 
@@ -96,16 +61,13 @@ const command_line::arg_descriptor<uint32_t> arg_db_readers  = {
 , 126U
 };
 
-BlockchainDB *new_db(const std::string& db_type)
+BlockchainDB *new_db()
 {
-  if (db_type == "lmdb")
-    return new BlockchainLMDB();
-  return NULL;
+  return new BlockchainLMDB();
 }
 
 void BlockchainDB::init_options(boost::program_options::options_description& desc)
 {
-  command_line::add_arg(desc, arg_db_type);
   command_line::add_arg(desc, arg_db_sync_mode);
   command_line::add_arg(desc, arg_db_salvage);
   command_line::add_arg(desc, arg_db_readers);
@@ -160,7 +122,7 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const transacti
 
   uint64_t tx_id = add_transaction_data(blk_hash, tx, tx_hash);
 
-  std::vector<uint64_t> amount_output_indices;
+  std::vector<uint64_t> amount_output_indices(tx.vout.size());
 
   // iterate tx.vout using indices instead of C++11 foreach syntax because
   // we need the index
@@ -171,14 +133,14 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const transacti
     if (miner_tx)
     {
       cryptonote::tx_out vout = tx.vout[i];
-      rct::key commitment = rct::zeroCommit(vout.amount);
+      rct::key commitment = rct::zeroCommit_v1(vout.amount);
       vout.amount = 0;
-      amount_output_indices.push_back(add_output(tx_hash, vout, i, tx.unlock_time,
-        &commitment));
+      amount_output_indices[i] = add_output(tx_hash, vout, i, tx.unlock_time,
+        &commitment);
     }
     else
     {
-      amount_output_indices.push_back(add_output(tx_hash, tx.vout[i], i, tx.unlock_time, &tx.rct_signatures.outPk[i].mask));
+      amount_output_indices[i] = add_output(tx_hash, tx.vout[i], i, tx.unlock_time, &tx.rct_signatures.outPk[i].mask);
     }
   }
   add_tx_amount_output_indices(tx_id, amount_output_indices);
@@ -248,12 +210,13 @@ void BlockchainDB::pop_block(block& blk, std::vector<transaction>& txs)
 
   for (const auto& h : boost::adaptors::reverse(blk.tx_hashes))
   {
-    txs.push_back(get_tx(h));
+    cryptonote::transaction tx;
+    if (!get_tx(h, tx))
+      throw DB_ERROR("Failed to get transaction from the db");
+    txs.push_back(std::move(tx));
     remove_transaction(h);
   }
-  crypto::hash tx_hash = get_transaction_hash(blk.miner_tx);
-  MDEBUG("Removing miner tx" << tx_hash);
-  remove_transaction(tx_hash);
+  remove_transaction(get_transaction_hash(blk.miner_tx));
 }
 
 bool BlockchainDB::is_open() const

@@ -44,7 +44,7 @@ using namespace epee;
 #include "crypto/hash.h"
 #include "ringct/rctSigs.h"
 #include "cryptonote_core/blockchain.h"
-#include "mersenne_twister.h"
+#include "random_numbers.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -132,6 +132,7 @@ namespace cryptonote
     bool r = ::serialization::serialize(ba, tx);
     CHECK_AND_ASSERT_MES(r, false, "Failed to parse transaction from blob");
     tx.invalidate_hashes();
+    tx.set_blob_size(tx_blob.size());
     return true;
   }
   //---------------------------------------------------------------
@@ -142,6 +143,17 @@ namespace cryptonote
     binary_archive<false> ba(ss);
     bool r = tx.serialize_base(ba);
     CHECK_AND_ASSERT_MES(r, false, "Failed to parse transaction from blob");
+    tx.invalidate_hashes();
+    return true;
+  }
+  //---------------------------------------------------------------
+  bool parse_and_validate_tx_prefix_from_blob(const blobdata& tx_blob, transaction_prefix& tx)
+  {
+    std::stringstream ss;
+    ss << tx_blob;
+    binary_archive<false> ba(ss);
+    bool r = ::serialization::serialize_noeof(ba, tx);
+    CHECK_AND_ASSERT_MES(r, false, "Failed to parse transaction prefix from blob");
     return true;
   }
   //---------------------------------------------------------------
@@ -164,15 +176,25 @@ namespace cryptonote
   {
     crypto::key_derivation recv_derivation = AUTO_VAL_INIT(recv_derivation);
     bool r = hwdev.generate_key_derivation(tx_public_key, ack.m_view_secret_key, recv_derivation);
-    CHECK_AND_ASSERT_MES(r, false, "key image helper: failed to generate_key_derivation(" << tx_public_key << ", " << ack.m_view_secret_key << ")");
+    if (!r)
+    {
+      MWARNING("key image helper: failed to generate_key_derivation(" << tx_public_key << ", " << ack.m_view_secret_key << ")");
+      memcpy(&recv_derivation, rct::identity().bytes, sizeof(recv_derivation));
+    }
 
     std::vector<crypto::key_derivation> additional_recv_derivations;
     for (size_t i = 0; i < additional_tx_public_keys.size(); ++i)
     {
       crypto::key_derivation additional_recv_derivation = AUTO_VAL_INIT(additional_recv_derivation);
       r = hwdev.generate_key_derivation(additional_tx_public_keys[i], ack.m_view_secret_key, additional_recv_derivation);
-      CHECK_AND_ASSERT_MES(r, false, "key image helper: failed to generate_key_derivation(" << additional_tx_public_keys[i] << ", " << ack.m_view_secret_key << ")");
-      additional_recv_derivations.push_back(additional_recv_derivation);
+      if (!r)
+      {
+        MWARNING("key image helper: failed to generate_key_derivation(" << additional_tx_public_keys[i] << ", " << ack.m_view_secret_key << ")");
+      }
+      else
+      {
+        additional_recv_derivations.push_back(additional_recv_derivation);
+      }
     }
 
     boost::optional<subaddress_receive_info> subaddr_recv_info = is_out_to_acc_precomp(subaddresses, out_key, recv_derivation, additional_recv_derivations, real_output_index,hwdev);
@@ -323,6 +345,90 @@ namespace cryptonote
     return true;
   }
   //---------------------------------------------------------------
+  template<typename T>
+  static bool pick(binary_archive<true> &ar, std::vector<tx_extra_field> &fields, uint8_t tag)
+  {
+    std::vector<tx_extra_field>::iterator it;
+    while ((it = std::find_if(fields.begin(), fields.end(), [](const tx_extra_field &f) { return f.type() == typeid(T); })) != fields.end())
+    {
+      bool r = ::do_serialize(ar, tag);
+      CHECK_AND_NO_ASSERT_MES_L1(r, false, "failed to serialize tx extra field");
+      r = ::do_serialize(ar, boost::get<T>(*it));
+      CHECK_AND_NO_ASSERT_MES_L1(r, false, "failed to serialize tx extra field");
+      fields.erase(it);
+    }
+    return true;
+  }
+  //---------------------------------------------------------------
+  bool sort_tx_extra(const std::vector<uint8_t>& tx_extra, std::vector<uint8_t> &sorted_tx_extra, bool allow_partial)
+  {
+    std::vector<tx_extra_field> tx_extra_fields;
+
+    if(tx_extra.empty())
+    {
+      sorted_tx_extra.clear();
+      return true;
+    }
+
+    std::string extra_str(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size());
+    std::istringstream iss(extra_str);
+    binary_archive<false> ar(iss);
+
+    bool eof = false;
+    size_t processed = 0;
+    while (!eof)
+    {
+      tx_extra_field field;
+      bool r = ::do_serialize(ar, field);
+      if (!r)
+      {
+        MWARNING("failed to deserialize extra field. extra = " << string_tools::buff_to_hex_nodelimer(std::string(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size())));
+        if (!allow_partial)
+          return false;
+        break;
+      }
+      tx_extra_fields.push_back(field);
+      processed = iss.tellg();
+
+      std::ios_base::iostate state = iss.rdstate();
+      eof = (EOF == iss.peek());
+      iss.clear(state);
+    }
+    if (!::serialization::check_stream_state(ar))
+    {
+      MWARNING("failed to deserialize extra field. extra = " << string_tools::buff_to_hex_nodelimer(std::string(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size())));
+      if (!allow_partial)
+        return false;
+    }
+    MTRACE("Sorted " << processed << "/" << tx_extra.size());
+
+    std::ostringstream oss;
+    binary_archive<true> nar(oss);
+
+    // sort by:
+    if (!pick<tx_extra_pub_key>(nar, tx_extra_fields, TX_EXTRA_TAG_PUBKEY)) return false;
+    if (!pick<tx_extra_additional_pub_keys>(nar, tx_extra_fields, TX_EXTRA_TAG_ADDITIONAL_PUBKEYS)) return false;
+    if (!pick<tx_extra_nonce>(nar, tx_extra_fields, TX_EXTRA_NONCE)) return false;
+    if (!pick<tx_extra_merge_mining_tag>(nar, tx_extra_fields, TX_EXTRA_MERGE_MINING_TAG)) return false;
+    if (!pick<tx_extra_mysterious_minergate>(nar, tx_extra_fields, TX_EXTRA_MYSTERIOUS_MINERGATE_TAG)) return false;
+    if (!pick<tx_extra_padding>(nar, tx_extra_fields, TX_EXTRA_TAG_PADDING)) return false;
+
+    // if not empty, someone added a new type and did not add a case above
+    if (!tx_extra_fields.empty())
+    {
+      MERROR("tx_extra_fields not empty after sorting, someone forgot to add a case above");
+      return false;
+    }
+
+    std::string oss_str = oss.str();
+    if (allow_partial && processed < tx_extra.size())
+    {
+      MDEBUG("Appending unparsed data");
+      oss_str += std::string((const char*)tx_extra.data() + processed, tx_extra.size() - processed);
+    }
+    sorted_tx_extra = std::vector<uint8_t>(oss_str.begin(), oss_str.end());
+    return true;
+  }
   crypto::public_key get_tx_pub_key_from_extra(const std::vector<uint8_t>& tx_extra, size_t pk_index)
   {
     std::vector<tx_extra_field> tx_extra_fields;
@@ -671,7 +777,7 @@ namespace cryptonote
   {
     if (decimal_point == (unsigned int)-1)
       decimal_point = default_decimal_point;
-    switch (std::atomic_load(&default_decimal_point))
+    switch (decimal_point)
     {
       case 12:
         return "nerva";
@@ -684,7 +790,7 @@ namespace cryptonote
       case 0:
         return "piconerva";
       default:
-        ASSERT_MES_AND_THROW("Invalid decimal point specification: " << default_decimal_point);
+        ASSERT_MES_AND_THROW("Invalid decimal point specification: " << decimal_point);
     }
   }
   //---------------------------------------------------------------
@@ -915,24 +1021,118 @@ namespace cryptonote
     }
   }
 
-  char const hex[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B','C','D','E','F'};
   uint8_t lookup[3] { 2, 4, 8 };
+  static thread_local char RDATA_ALIGN16 salt[262176] = {0};
 
-  std::string byte_2_str(const char* bytes, int size)
+    static void print_char_hex(const char *bytes, int size)
   {
-    std::string str;
-    for (int i = 0; i < size; ++i)
-    {
-      const char ch = bytes[i];
-      str.append(&hex[(ch & 0xF0) >> 4], 1);
-      str.append(&hex[ch & 0xF], 1);
-    }
-    return str;
+      for (int i = 0; i < size; ++i)
+      {
+          const char ch = bytes[i];
+          printf("%02X", ch & 0xFF);
+      }
+
+      printf("\n");
   }
 
-  static thread_local char salt[262144] = {0};
+#define INIT_TIMER() \
+   struct timeval  tv1, tv2;
 
-  bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc, bool optimized)
+#define START_TIMER() \
+  gettimeofday(&tv1, NULL);
+
+#define STOP_TIMER(msg) \
+  gettimeofday(&tv2, NULL); \
+  printf(msg); \
+	printf (" = %f seconds\n", (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec));
+  
+
+  bool get_block_longhash_v11(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
+  {
+    blobdata bd = get_block_hashing_blob(b);
+    uint64_t ht = height - 256;
+
+#ifdef DEBUG_TERMINAL
+  INIT_TIMER();
+#endif
+
+    if (height != cached_height || !v2_initialized)
+    {
+      CRITICAL_REGION_BEGIN(m_v2_lock);
+        cached_height = height;
+        generate_v2_data(ht, 1048576, bc);
+      CRITICAL_REGION_END();
+    }
+
+#ifdef DEBUG_TERMINAL
+  START_TIMER();
+#endif
+
+    uint32_t seed = b.nonce ^ height;
+
+    crypto::hash h;
+    get_blob_hash(bd, h);
+
+    for (int i = 0; i < 32; i += 4)
+      seed ^= *(uint32_t*)&h.data[i];
+
+    memcpy(salt, h.data, 32);
+    seed = bc->get_db().get_v5_data(salt, (uint32_t)ht, seed);
+
+    angrywasp::xoshiro256 rng;
+    uint32_t r1 = 0, r2 = 0, r3 = 0, r4 = 0, r5 = 0;
+
+    uint8_t temp_lookup_1[3];
+    for (int i = 0; i < 3; i++)
+    {
+      r1 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024]);
+      seed = rng.rotl32(seed, 1) ^ r1;
+      temp_lookup_1[i] = lookup[r1 % 3];
+    } 
+    //salt offset
+    r2 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 0, 31);
+    seed = rng.rotl32(seed, 1) ^ r2;
+
+    //rand iters
+    r3 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 1, 64);
+    seed = rng.rotl32(seed, 1) ^ r3;
+
+    //xx
+    r4 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
+    seed = rng.rotl32(seed, 1) ^ r4;
+    r5 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
+    seed = rng.rotl32(seed, 1) ^ r5;
+    uint16_t xx = (uint16_t)(r4 + r5);
+
+    //yy
+    r4 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
+    seed = rng.rotl32(seed, 1) ^ r4;
+    r5 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
+    seed = rng.rotl32(seed, 1) ^ r5;
+    uint16_t yy = (uint16_t)(r4 + r5);
+
+    uint8_t init_size_blk = temp_lookup_1[(r4 ^ r5) % 3];
+    uint32_t iters = ((height + 1) % r3);
+
+#ifdef DEBUG_TERMINAL
+  STOP_TIMER(" Salt Gen");
+#endif
+
+#ifdef DEBUG_TERMINAL
+  START_TIMER();
+#endif
+
+    crypto::cn_slow_hash_v11(bd.data(), bd.size(), res, iters, r, salt + r2, init_size_blk, xx, yy);
+
+
+#ifdef DEBUG_TERMINAL
+  STOP_TIMER("Slow Hash");
+#endif
+
+    return true;
+  }
+
+  bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {
     blobdata bd = get_block_hashing_blob(b);
     uint64_t ht = height - 256;
@@ -953,10 +1153,7 @@ namespace cryptonote
     for (int i = 0; i < 32; i += 4)
       seed ^= *(uint32_t*)&h.data[i];
 
-    if (optimized)
-      bc->get_db().get_v3_data_opt(salt, (uint32_t)ht, 4, seed);
-    else
-      bc->get_db().get_v3_data(salt, (uint32_t)ht, 4, seed);
+    bc->get_db().get_v4_data(salt, (uint32_t)ht, seed);
 
     uint32_t m = seed % 3;
 
@@ -971,7 +1168,7 @@ namespace cryptonote
     uint16_t zz = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
     uint16_t ww = (uint16_t)(seed % mt.next(1, 10000));
 
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, 4, 0x40000, ((height + 1) % 64), r, salt, temp_lookup_1[m], xx, yy, zz, ww);
+    crypto::cn_slow_hash_v10(bd.data(), bd.size(), res, ((height + 1) % 64), r, salt, temp_lookup_1[m], xx, yy, zz, ww);
 
     return true;
   }
@@ -991,15 +1188,15 @@ namespace cryptonote
 
     char* salt = (char*)malloc(128 * 32);
 
-    bc->get_db().get_v3_data(salt, (uint32_t)ht, 3, b.nonce ^ (uint32_t)ht);
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, 3, 0x40000, ((height + 1) % 64), r, salt);
+    bc->get_db().get_v3_data(salt, (uint32_t)ht, b.nonce ^ (uint32_t)ht);
+    crypto::cn_slow_hash_v9(bd.data(), bd.size(), res, 0x40000 + ((height + 1) % 64), r, salt);
     
     free(salt);
 
     return true;
   }
 
-  bool get_block_longhash_v8(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
+  bool get_block_longhash_v7_8(const block& b, crypto::hash& res, uint64_t height, uint32_t sub, const cryptonote::Blockchain* bc)
   {
     blobdata bd = get_block_hashing_blob(b);
 
@@ -1007,55 +1204,36 @@ namespace cryptonote
     {
       CRITICAL_REGION_BEGIN(m_v2_lock);
         cached_height = height;
-        generate_v2_data(height - 256, (1 << 20) - 1, bc);
+        generate_v2_data(height - sub, (1 << 20) - 1, bc);
       CRITICAL_REGION_END();
     }
 
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, 2, 0x40000, ((height + 1) % 64), r);
+    crypto::cn_slow_hash_v7_8(bd.data(), bd.size(), res, 0x40000 + ((height + 1) % 64), r);
 
     return true;
   }
 
-  bool get_block_longhash_v7(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
-  {
-    blobdata bd = get_block_hashing_blob(b);
-
-    if (height != cached_height || !v2_initialized)
-    {
-      CRITICAL_REGION_BEGIN(m_v2_lock);
-        cached_height = height;
-        generate_v2_data(height - 1, (1 << 20) - 1, bc);
-      CRITICAL_REGION_END();
-    }
-
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, 2, 0x40000, ((height + 1) % 64), r);
-
-    return true;
-  }
-
-  bool get_block_longhash_v6pre(const block& b, crypto::hash& res, uint64_t height)
-  {
-    blobdata bd = get_block_hashing_blob(b);
-    crypto::cn_slow_hash(bd.data(), bd.size(), res, (b.major_version >= 5 ? 1 : 0), 
-        (b.major_version >= 6 ? 0x40000 : 0x80000), ((height + 1) % 1024));
-
-    return true;
-  }
-
-  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc, bool optimized)
+  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {
     switch (b.major_version)
     {
+      case 11:
+        return get_block_longhash_v11(b, res, height, bc);
       case 10:
-        return get_block_longhash_v10(b, res, height, bc, optimized);
+        return get_block_longhash_v10(b, res, height, bc);
       case 9:
         return get_block_longhash_v9(b, res, height, bc);
       case 8:
-        return get_block_longhash_v8(b, res, height, bc);
       case 7:
-        return get_block_longhash_v7(b, res, height, bc);
+        return get_block_longhash_v7_8(b, res, height, b.major_version == 7 ? 1 : 256, bc);
       default:
-        return get_block_longhash_v6pre(b, res, height);
+      {
+        blobdata bd = get_block_hashing_blob(b);
+        int v = b.major_version >= 5 ? 1 : 0;
+        int i = b.major_version >= 6 ? 0x40000 : 0x80000;
+        crypto::cn_slow_hash(bd.data(), bd.size(), res, v, i + ((height + 1) % 1024));
+        return true;
+      }
     }
   }
   //---------------------------------------------------------------
@@ -1082,7 +1260,7 @@ namespace cryptonote
   crypto::hash get_block_longhash(const block& b, uint64_t height, const cryptonote::Blockchain* bc)
   {
     crypto::hash p = null_hash;
-    get_block_longhash(b, p, height, bc, false);
+    get_block_longhash(b, p, height, bc);
     return p;
   }
   //---------------------------------------------------------------

@@ -226,8 +226,9 @@ public:
 
   virtual cryptonote::blobdata get_block_blob_from_height(const uint64_t& height) const;
 
-  virtual void get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const;
-  virtual void get_v3_data_opt(char* salt, uint64_t height, const int variant, uint32_t seed) const;
+  virtual void get_v3_data(char* salt, uint64_t height, uint32_t seed) const;
+  virtual void get_v4_data(char* salt, uint64_t height, uint32_t seed) const;
+  virtual uint32_t get_v5_data(char* salt, uint64_t height, uint32_t seed) const;
 
   virtual void build_cache(uint64_t height) const;
 
@@ -284,9 +285,9 @@ public:
 
   virtual uint64_t get_num_outputs(const uint64_t& amount) const;
 
-  virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index);
+  virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool v2);
   virtual output_data_t get_output_key(const uint64_t& global_index) const;
-  virtual void get_output_key(const uint64_t &amount, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool allow_partial = false);
+  virtual void get_output_key(const uint64_t &amount, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool v2, bool allow_partial = false);
 
   virtual tx_out_index get_output_tx_and_index_from_global(const uint64_t& index) const;
   virtual void get_output_tx_and_index_from_global(const std::vector<uint64_t> &global_indices,

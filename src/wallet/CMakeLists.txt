@@ -107,7 +107,6 @@ install(TARGETS wallet_rpc_server DESTINATION bin)
 # build and install libwallet_merged only if we building for GUI
 if (BUILD_GUI_DEPS)
     set(libs_to_merge
-            wallet_api
             wallet
             multisig
             cryptonote_core
@@ -134,4 +133,3 @@ if (BUILD_GUI_DEPS)
         ARCHIVE DESTINATION ${lib_folder})
 endif()
 
-add_subdirectory(api)

@@ -38,7 +38,7 @@
 #include "string_tools.h"
 #include "common/util.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
-#include "cryptonote_basic/mersenne_twister.h"
+#include "cryptonote_basic/random_numbers.h"
 #include "crypto/crypto.h"
 #include "profile_tools.h"
 #include "ringct/rctOps.h"
@@ -2014,7 +2014,7 @@ void BlockchainLMDB::build_cache(uint64_t height) const
 
   mdb_block_info* bi;
   
-  for(uint64_t index = 0; index < height; ++index)
+  for(uint64_t index = last_height; index < height; ++index)
   {
     MDB_val_set(query, index);
     err = mdb_cursor_get(cur, (MDB_val*)&zerokval, &query, MDB_GET_BOTH); check_error(err);
@@ -2028,7 +2028,7 @@ void BlockchainLMDB::build_cache(uint64_t height) const
   last_height = height;
 }
 
-void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant, uint32_t seed) const
+void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, uint32_t seed) const
 {
   MDB_txn *txn;
   MDB_cursor *cur;
@@ -2041,8 +2041,6 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
   uint64_t r = 0, x = 0, y = 0, z = 0, w = 0;
   uint8_t a = 32, b = 64;
 
-  uint32_t count = (variant == 3) ? 32 : 2048;
-
   mdb_block_info* bi;
 
   if (auto r = lmdb_txn_begin(m_env, NULL, MDB_RDONLY, &txn))
@@ -2050,7 +2048,7 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
 
   err = mdb_cursor_open(txn, m_block_info, &cur); check_error(err);
 
-  for (uint32_t i = 0; i < count; i++)
+  for (uint32_t i = 0; i < 32; i++)
   {
     //block hash
     r = mt.next(1, (uint32_t)(height - 1));
@@ -2110,9 +2108,6 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
     std::memcpy(blob_data + 96, bi->bi_hash.data, 32);
 
     std::memcpy(salt + (i * 128), blob_data, 128);
-
-    if (variant >= 4)
-      mt.set_seed(seed ^ mt.generate_uint());
   }
 
   free(bd);
@@ -2120,7 +2115,7 @@ void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, const int variant,
   mdb_txn_abort(txn); 
 }
 
-void BlockchainLMDB::get_v3_data_opt(char* salt, uint64_t height, const int variant, uint32_t seed) const
+void BlockchainLMDB::get_v4_data(char* salt, uint64_t height, uint32_t seed) const
 {
   angrywasp::mersenne_twister mt(seed);
   
@@ -2130,7 +2125,7 @@ void BlockchainLMDB::get_v3_data_opt(char* salt, uint64_t height, const int vari
   uint8_t a = 32, b = 64;
 
   build_cache(height);
-  std::array<uint32_t, 36864> rand_seq = mt.generate_v3_sequence(seed, (uint32_t)height);
+  std::array<uint32_t, 36864> rand_seq = mt.generate_v4_sequence(seed, (uint32_t)height);
   uint32_t i_config = 0;
   mdb_block_info* bi;
 
@@ -2174,6 +2169,62 @@ void BlockchainLMDB::get_v3_data_opt(char* salt, uint64_t height, const int vari
     bi = &_cache[r];
     std::memcpy(salt + (i * 128) + 96, bi->bi_hash.data, 32);
   }
+}
+
+uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed) const
+{
+  angrywasp::xoshiro256 rng;
+  
+  int err = 0;
+  uint32_t t = 0, r = 0;
+  build_cache(height);
+  mdb_block_info* bi;
+
+  uint32_t min = 1, max = (uint32_t)(height - 1);
+  uint32_t salt_offset = 32;
+
+  for (uint32_t i = 0; i < 2048; i++)
+  {
+    r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
+    seed = rng.rotl32(seed, 1) ^ r;
+    bi = &_cache[r];
+    std::memcpy(salt + salt_offset, bi->bi_hash.data, 32);
+    salt_offset += 32;
+
+    for (uint32_t j = 0; j < 4; j++)
+    {
+      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
+      bi = &_cache[r];
+      t = (uint32_t)bi->bi_timestamp;
+      std::memcpy(salt + salt_offset, &t, 4);
+      salt_offset += 4;
+
+      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
+      bi = &_cache[r];
+      t = (uint32_t)bi->bi_diff;
+      std::memcpy(salt + salt_offset, &t, 4);
+      salt_offset += 4;
+
+      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
+      bi = &_cache[r];
+      t = (uint32_t)(bi->bi_coins >> 32U);
+      std::memcpy(salt + salt_offset, &t, 4);
+      salt_offset += 4;
+
+      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
+      bi = &_cache[r];
+      t = (uint32_t)bi->bi_coins;
+      std::memcpy(salt + salt_offset, &t, 4);
+      salt_offset += 4;
+    }
+
+    r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
+    bi = &_cache[r];
+    std::memcpy(salt + salt_offset, bi->bi_hash.data, 32);
+    salt_offset += 32;
+  }
+
+  return seed;
 }
 
 cryptonote::blobdata BlockchainLMDB::get_uncle_blob_from_height(const uint64_t& height) const
@@ -2789,7 +2840,7 @@ output_data_t BlockchainLMDB::get_output_key(const uint64_t &global_index) const
   return od;
 }
 
-output_data_t BlockchainLMDB::get_output_key(const uint64_t& amount, const uint64_t& index)
+output_data_t BlockchainLMDB::get_output_key(const uint64_t& amount, const uint64_t& index, bool v2)
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
   check_open();
@@ -2814,8 +2865,8 @@ output_data_t BlockchainLMDB::get_output_key(const uint64_t& amount, const uint6
   else
   {
     const pre_rct_outkey *okp = (const pre_rct_outkey *)v.mv_data;
-    memcpy(&ret, &okp->data, sizeof(pre_rct_output_data_t));;
-    ret.commitment = rct::zeroCommit(amount);
+    memcpy(&ret, &okp->data, sizeof(pre_rct_output_data_t));
+    ret.commitment = rct::zeroCommit(amount, v2);
   }
   TXN_POSTFIX_RDONLY();
   return ret;
@@ -3482,7 +3533,7 @@ void BlockchainLMDB::get_output_tx_and_index_from_global(const std::vector<uint6
   TXN_POSTFIX_RDONLY();
 }
 
-void BlockchainLMDB::get_output_key(const uint64_t &amount, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool allow_partial)
+void BlockchainLMDB::get_output_key(const uint64_t &amount, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool v2, bool allow_partial)
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
   TIME_MEASURE_START(db3);
@@ -3521,7 +3572,7 @@ void BlockchainLMDB::get_output_key(const uint64_t &amount, const std::vector<ui
     {
       const pre_rct_outkey *okp = (const pre_rct_outkey *)v.mv_data;
       memcpy(&data, &okp->data, sizeof(pre_rct_output_data_t));
-      data.commitment = rct::zeroCommit(amount);
+      data.commitment = rct::zeroCommit(amount, v2);
     }
     outputs.push_back(data);
   }

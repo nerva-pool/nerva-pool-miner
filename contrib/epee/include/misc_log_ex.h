@@ -39,10 +39,10 @@
 #define MAX_LOG_FILES 50
 
 #define MCLOG_TYPE(level, cat, type, x) do { \
-    if (ELPP->vRegistry()->allowed(level, cat)) { \
-      el::base::Writer(level, __FILE__, __LINE__, ELPP_FUNC, type).construct(cat) << x; \
-    } \
-  } while (0)
+  if (ELPP->vRegistry()->allowed(level, cat)) { \
+    el::base::Writer(level, __FILE__, __LINE__, ELPP_FUNC, type).construct(cat) << x; \
+  } \
+} while (0)
 
 #define MCLOG(level, cat, x) MCLOG_TYPE(level, cat, el::base::DispatchAction::NormalLog, x)
 #define MCLOG_FILE(level, cat, x) MCLOG_TYPE(level, cat, el::base::DispatchAction::FileOnlyLog, x)

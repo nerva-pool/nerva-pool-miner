@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2018, The Monero Project
+// Copyright (c) 2019, The NERVA Project
 //
 // All rights reserved.
 //
@@ -25,67 +25,31 @@
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include "subaddress.h"
-#include "wallet.h"
+#pragma once
+#include "misc_log_ex.h"
 #include "crypto/hash.h"
-#include "wallet/wallet2.h"
-#include "common_defines.h"
-
+#include "cryptonote_config.h"
 #include <vector>
 
-namespace Monero {
-  
-Subaddress::~Subaddress() {}
-  
-SubaddressImpl::SubaddressImpl(WalletImpl *wallet)
-    : m_wallet(wallet) {}
-
-void SubaddressImpl::addRow(uint32_t accountIndex, const std::string &label)
+namespace cryptonote
 {
-  m_wallet->m_wallet->add_subaddress(accountIndex, label);
-  refresh(accountIndex);
-}
-
-void SubaddressImpl::setLabel(uint32_t accountIndex, uint32_t addressIndex, const std::string &label)
-{
-  try
+  class quicksync
   {
-    m_wallet->m_wallet->set_subaddress_label({accountIndex, addressIndex}, label);
-    refresh(accountIndex);
-  }
-  catch (const std::exception& e)
-  {
-    LOG_ERROR("setLabel: " << e.what());
-  }
-}
+  public:
+    quicksync();
+    bool check_block(uint32_t height, const crypto::hash h) const;
+    bool load(const std::string &qs_file);
+    bool is_loaded() { return m_is_loaded; }
+    uint32_t min() { return m_min; }
+    uint32_t max() { return m_max; }
 
-void SubaddressImpl::refresh(uint32_t accountIndex) 
-{
-  LOG_PRINT_L2("Refreshing subaddress");
-  
-  clearRows();
-  for (size_t i = 0; i < m_wallet->m_wallet->get_num_subaddresses(accountIndex); ++i)
-  {
-    m_rows.push_back(new SubaddressRow(i, m_wallet->m_wallet->get_subaddress_as_str({accountIndex, (uint32_t)i}), m_wallet->m_wallet->get_subaddress_label({accountIndex, (uint32_t)i})));
-  }
+  private:
+    std::map<uint64_t, crypto::hash> m_data;
+    bool m_is_loaded = false;
+    uint32_t m_min = 0;
+    uint32_t m_max = 0;
+  };
 }
-
-void SubaddressImpl::clearRows() {
-   for (auto r : m_rows) {
-     delete r;
-   }
-   m_rows.clear();
-}
-
-std::vector<SubaddressRow*> SubaddressImpl::getAll() const
-{
-  return m_rows;
-}
-
-SubaddressImpl::~SubaddressImpl()
-{
-  clearRows();
-}
-
-} // namespace

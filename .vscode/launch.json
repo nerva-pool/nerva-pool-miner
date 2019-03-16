@@ -5,20 +5,129 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Stagenet",
+            "name": "Stagenet-Node-1",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
                 "--stagenet",
-                "--data-dir", "${workspaceFolder}/db/n0",
-                //"--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                //"--mining-threads", "1",
-                "--fixed-difficulty", "50",
-                "--add-exclusive-node", "127.0.0.1:28080",
+                "--data-dir", "${workspaceFolder}/db/n1",
+                "--fixed-difficulty", "100",
+                "--p2p-bind-port", "28080", 
+                "--rpc-bind-port", "28081", 
+                "--zmq-rpc-bind-port", "28082", 
+                "--rpc-restricted-bind-port", "28083",
                 "--add-exclusive-node", "127.0.0.1:38080",
-                "--add-exclusive-node", "127.0.0.1:48080"
             ],
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Stagenet-Node-2",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
+            "args": [
+                "--stagenet",
+                "--data-dir", "${workspaceFolder}/db/n2",
+                "--fixed-difficulty", "100",
+                "--p2p-bind-port", "38080", 
+                "--rpc-bind-port", "38081", 
+                "--zmq-rpc-bind-port", "38082", 
+                "--rpc-restricted-bind-port", "38083",
+                "--add-exclusive-node", "127.0.0.1:28080",
+                "--start-mining", "NV3Co2jzKSKTm7GM3Y8pnyKxGFZwHJ2wf4UWV7Er3JqNa4Hqj8NcdNiJdTBC3KtBSNdxWc5zWmeeyCEFyisSk18J1XSHoc6GV",
+                "--mining-threads", "1"
+            ],
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Stagenet-Wallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "args": [
+                "--stagenet",
+                "--daemon-address", "127.0.0.1:28081",
+                "--wallet-file", "${workspaceFolder}/t2",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Stagenet-HwWallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "args": [
+                "--stagenet",
+                "--daemon-address", "127.0.0.1:28081",
+                "--hw-device", "Ledger",
+                "--wallet-file", "${workspaceFolder}/hw",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Stagenet-HwWallet-Restore",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "args": [
+                "--stagenet",
+                "--daemon-address", "127.0.0.1:28081",
+                "--generate-from-device", "${workspaceFolder}/hw",
+                "--restore-height", "815",
+                "--password", "''",
+            ],
+            "preLaunchTask": "delete-hw-wallet",
             "stopAtEntry": false,
             
             "cwd": "${workspaceFolder}",
@@ -39,9 +148,30 @@
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
-                "--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                "--mining-threads", "1",
+                //"--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
+                "--log-level", "0", "--block-sync-size", "20",
                 "--testnet"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Mainnet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
+            "args": [
+                "--quicksync", "~/.nerva/export/quicksync.raw", "--block-sync-size", "100"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -68,34 +198,7 @@
                 "miDebuggerPath": "C:\\msys64\\mingw64\\bin\\gdb.exe",
             },
             "args": [
-                "--testnet", "--rpc-bind-port", "22525", "--daemon-address", "127.0.0.1:18566", "--disable-rpc-login", "--wallet-dir", "./"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Import",
-            "type": "cppdbg",
-            "request": "launch",
-            "linux": {
-                "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-blockchain-import",
-            },
-            "windows": {
-                "program": "${workspaceFolder}\\builder\\build\\dev\\debug\\bin\\nerva-wallet-rpc.exe",
-                "miDebuggerPath": "C:\\msys64\\mingw64\\bin\\gdb.exe",
-            },
-            "args": [
-                "--log-level", "1"
+                "--testnet", "--rpc-bind-port", "22525", "--daemon-address", "127.0.0.1:18566", "--disable-rpc-login", "--wallet-file", "${workspaceFolder}/t1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

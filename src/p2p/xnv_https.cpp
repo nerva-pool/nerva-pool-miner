@@ -4,8 +4,9 @@
 #include <vector>
 #include <set>
 #include <string>
-#include "blacklist.h"
+#include "xnv_https.h"
 #include "cryptonote_config.h"
+#include "version.h"
 
 namespace blacklist
 {
@@ -49,10 +50,7 @@ namespace blacklist
 
         for (const std::string &a : seed_node_aliases)
         {
-            std::string url;
-            url.append("https://");
-            url.append(a);
-            url.append("/xnv_blacklist.txt");
+            std::string url = "https://" + a + "/xnv_blacklist.txt";
 
             CURL* curl = curl_easy_init(); 
             if(curl) 
@@ -70,5 +68,36 @@ namespace blacklist
         }
 
         ip_list = split_string(m_read_buffer, "\n");
+    }
+}
+
+namespace analytics
+{
+    bool contact_server(const bool testnet)
+    {
+        std::set<std::string> seed_node_aliases = testnet ? 
+            ::config::testnet::seed_node_aliases : ::config::seed_node_aliases;
+
+        for (const std::string &a : seed_node_aliases)
+        {
+            std::string url = "https://" + a + "/api/submitanalytics.php";
+
+            std::string user_agent = "nerva-cli/";
+            user_agent.append(MONERO_VERSION);
+
+            CURL* curl = curl_easy_init(); 
+            if(curl) 
+            {
+                curl_easy_setopt(curl, CURLOPT_URL, url.c_str()); 
+                curl_easy_setopt(curl, CURLOPT_FAILONERROR, true);
+                curl_easy_setopt(curl, CURLOPT_USERAGENT, user_agent.c_str());
+                CURLcode res = curl_easy_perform(curl); 
+                curl_easy_cleanup(curl); 
+                if (res == CURLE_OK)
+                    return true;
+            } 
+        }
+
+        return false;
     }
 }

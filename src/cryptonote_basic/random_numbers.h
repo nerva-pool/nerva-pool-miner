@@ -1,10 +1,17 @@
 // Copyright (c) 2018, The NERVA Project
-//Implementation of a Mersenne Twister random number generator
-#ifndef _MERSENNE_TWISTER_
-#define _MERSENNE_TWISTER_
+#ifndef _RANDOM_NUMBERS_
+#define _RANDOM_NUMBERS_
 
 #include <stdint.h>
 #include <limits>
+
+#ifndef RDATA_ALIGN16
+    #if defined(_MSC_VER)
+        #define RDATA_ALIGN16 __declspec(align(16))
+    #else
+        #define RDATA_ALIGN16 __attribute__ ((aligned(16)))
+    #endif
+#endif
 
 namespace angrywasp
 {
@@ -21,26 +28,6 @@ namespace angrywasp
             static const uint32_t TEMPERING_MASK_C = 0xefc60000;
 
             const uint32_t mag01[2] = { 0x0, MATRIX_A };
-
-            inline uint32_t TEMPERING_SHIFT_U(uint32_t y)
-            {
-                return (y >> 11);
-            } 
-
-            inline uint32_t TEMPERING_SHIFT_S(uint32_t y)
-            {
-                return (y << 7);
-            }
-
-            inline uint32_t TEMPERING_SHIFT_T(uint32_t y)
-            {
-                return (y << 15);
-            }
-
-            inline uint32_t TEMPERING_SHIFT_L(uint32_t y)
-            {
-                return (y >> 18);
-            }
             
             uint32_t mt[N] = { 0 };
             uint16_t mti = 0;
@@ -86,10 +73,10 @@ namespace angrywasp
                 }
 
                 y = mt[mti++];
-                y ^= TEMPERING_SHIFT_U(y);
-                y ^= TEMPERING_SHIFT_S(y) & TEMPERING_MASK_B;
-                y ^= TEMPERING_SHIFT_T(y) & TEMPERING_MASK_C;
-                y ^= TEMPERING_SHIFT_L(y);
+                y ^= (y >> 11);
+                y ^= (y << 7) & TEMPERING_MASK_B;
+                y ^= (y << 15) & TEMPERING_MASK_C;
+                y ^= (y >> 18);
 
                 return y;
             }
@@ -101,20 +88,7 @@ namespace angrywasp
                 return (r / div) + min;
             }
 
-            void next_bytes(uint8_t* data, uint32_t length)
-            {
-                for (uint32_t i = 0; i < length; i++)
-                    data[i] = (uint8_t)(generate_uint() / (0xffffffff / (uint32_t)0xff));
-            }
-
-            void next_bytes(char* data, uint32_t length)
-            {
-                for (uint32_t i = 0; i < length; i++)
-                    data[i] = (char)(generate_uint() / (0xffffffff / (uint32_t)0xff));
-            }
-
-            //generate number sequence for v3/4
-            std::array<uint32_t, 36864> generate_v3_sequence(uint32_t seed, uint32_t height)
+            std::array<uint32_t, 36864> generate_v4_sequence(uint32_t seed, uint32_t height)
             {
               std::array<uint32_t, 36864> reval;
               size_t oIndex = 0;
@@ -148,6 +122,71 @@ namespace angrywasp
                 set_seed(seed ^ generate_uint());
               }
               return reval;
+            }
+    };
+
+    class xoshiro256
+    {
+        // Based on the xoshiro256** random number generater
+        // Copyright 2018 David Blackman and Sebastiano Vigna (vigna@acm.org)
+        // http://xoshiro.di.unimi.it/
+
+        private:
+
+            union d64
+            {
+                uint64_t i;
+                double d;
+            };
+
+            static inline double to_double(uint64_t x)
+            {
+                union d64 u = { .i = UINT64_C(0x3FF) << 52 | x >> 12 };
+                return u.d - 1.0;
+            }
+
+        public:
+
+            static inline uint64_t rotl64(const uint64_t x, int k)
+            {
+                return (x << k) | (x >> (64 - k));
+            }
+
+            static inline uint32_t rotl32(const uint32_t x, int k)
+            {
+                return (x << k) | (x >> (32 - k));
+            }
+            
+            static inline uint64_t u64(uint64_t* state)
+            {
+                const uint64_t result = rotl64(state[1] * 5, 7) * 9;
+                const uint64_t t = state[1] << 17;
+
+                state[2] ^= state[0];
+                state[3] ^= state[1];
+                state[1] ^= state[2];
+                state[0] ^= state[3];
+
+                state[2] ^= t;
+                state[3] = rotl64(state[3], 45);
+
+                return result;
+            }
+
+            uint32_t u32(uint64_t* state)
+            {
+                uint64_t r = u64(state);
+                double dbl = to_double(r);
+                double div = 1.0 / (double)((uint32_t)-1);
+                return (dbl / div);
+            }
+
+            uint32_t u32(uint64_t* state, uint32_t min, uint32_t max)
+            {
+                uint64_t r = u64(state);
+                double dbl = to_double(r);
+                double div = 1.0 / (double)(max - min);
+                return (dbl / div) + (double)min;
             }
     };
 };

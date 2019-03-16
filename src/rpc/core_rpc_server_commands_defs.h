@@ -2495,4 +2495,43 @@ namespace cryptonote
     };
   };
 
+  struct COMMAND_RPC_DECODE_OUTPUTS
+  {
+    struct request
+    {
+      std::vector<std::string> tx_hashes;
+      std::string sec_view_key;
+      std::string address;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(tx_hashes)
+        KV_SERIALIZE(sec_view_key)
+        KV_SERIALIZE(address)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct decoded_out
+    {
+      uint64_t amount;
+      std::string tx_hash;
+      std::string payment_id;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(tx_hash);
+        KV_SERIALIZE(payment_id);
+        KV_SERIALIZE(amount);
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::string status;
+      std::vector<decoded_out> decoded_outs;
+      
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(status)
+        KV_SERIALIZE(decoded_outs)
+      END_KV_SERIALIZE_MAP()
+    };
+  };
 }
