@@ -45,6 +45,7 @@
 #include "oaes_lib.h"
 
 #define MEMORY 1048576
+#define SALT_MEMORY 262176
 #define AES_BLOCK_SIZE 16
 #define AES_KEY_SIZE 32
 #define INIT_SIZE_BLK 8
@@ -52,6 +53,12 @@ extern void aesb_single_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
 extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *expandedKey);
 
 #define NONCE_POINTER (((const uint8_t *)data) + 35)
+
+#if defined(_MSC_VER)
+#define THREADV __declspec(thread)
+#else
+#define THREADV __thread
+#endif
 
 #if !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
 
@@ -63,6 +70,18 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
 
 #define VARIANT1_2(p) \
     xor64(p, tweak1_2);
+
+#define salt_pad(a, b, c, d)                       \
+    extra_hashes[a % 3](sp_bytes, 200, salt_hash); \
+    temp_1 = (uint16_t)(iters ^ (b ^ c));          \
+    offset_1 = temp_1 * ((d % 3) + 1);             \
+    for (j = 0; j < 32; j++)                       \
+        sp_bytes[offset_1 + j] ^= salt_hash[j];    \
+    x = 0;                                         \
+    offset_1 = (d % 64) + 1;                       \
+    offset_2 = ((temp_1 * offset_1) % 125) + 4;    \
+    for (j = offset_1; j < MEMORY; j += offset_2)  \
+        hp_state[j] ^= sp_bytes[x++];
 
 #include <emmintrin.h>
 
@@ -164,18 +183,6 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
     VARIANT1_2(p + 1);                       \
     _b = _c;
 
-#define salt_pad(a, b, c, d)                       \
-    extra_hashes[a % 3](sp_bytes, 200, salt_hash); \
-    temp_1 = (uint16_t)(iters ^ (b ^ c));          \
-    offset_1 = temp_1 * ((d % 3) + 1);             \
-    for (j = 0; j < 32; j++)                       \
-        sp_bytes[offset_1 + j] ^= salt_hash[j];    \
-    x = 0;                                         \
-    offset_1 = (d % 64) + 1;                       \
-    offset_2 = ((temp_1 * offset_1) % 125) + 4;    \
-    for (j = offset_1; j < MEMORY; j += offset_2)  \
-        hp_state[j] ^= sp_bytes[x++];
-
 #define init_hash()                                                             \
     uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);                 \
     RDATA_ALIGN16 uint8_t expandedKey[240];                                     \
@@ -189,9 +196,7 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
     size_t i, j;                                                                \
     uint64_t *p = NULL;                                                         \
     static void (*const extra_hashes[4])(const void *, size_t, char *) = {      \
-        hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein}; \
-    if (hp_state == NULL)                                                       \
-        slow_hash_allocate_state();
+        hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein}; 
 
 #define xor_u64()                                            \
     U64(a)[0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];  \
@@ -221,12 +226,6 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
     hash_permutation(&state.hs);                                                                     \
     extra_hashes[state.hs.b[0] & 3](&state, 200, hash);                                              \
     free(text);
-
-#if defined(_MSC_VER)
-#define THREADV __declspec(thread)
-#else
-#define THREADV __thread
-#endif
 
 #if defined(_MSC_VER)
 #define cpuid(info, x) __cpuidex(info, x, 0)
@@ -476,64 +475,51 @@ static void xor64(uint8_t *left, const uint8_t *right)
 
 #define aes_sw_variant()                                   \
     j = e2i(a, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;  \
-    copy_block(c1, &long_state[j]);                        \
+    copy_block(c1, &hp_state[j]);                        \
     aesb_single_round(c1, c1, a);                          \
-    copy_block(&long_state[j], c1);                        \
-    xor_blocks(&long_state[j], b);                         \
-    VARIANT1_1(&long_state[j]);                            \
+    copy_block(&hp_state[j], c1);                        \
+    xor_blocks(&hp_state[j], b);                         \
+    VARIANT1_1(&hp_state[j]);                            \
     j = e2i(c1, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE; \
-    copy_block(c2, &long_state[j]);                        \
+    copy_block(c2, &hp_state[j]);                        \
     mul(c1, c2, d);                                        \
     swap_blocks(a, c1);                                    \
     sum_half_blocks(c1, d);                                \
     swap_blocks(c1, c2);                                   \
     xor_blocks(c1, c2);                                    \
     VARIANT1_2(c2 + 8);                                    \
-    copy_block(&long_state[j], c2);                        \
+    copy_block(&hp_state[j], c2);                        \
     copy_block(b, a);                                      \
     copy_block(a, c1);
 
 #define aes_sw_novariant()                                 \
     j = e2i(a, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;  \
-    copy_block(c1, &long_state[j]);                        \
+    copy_block(c1, &hp_state[j]);                        \
     aesb_single_round(c1, c1, a);                          \
-    copy_block(&long_state[j], c1);                        \
-    xor_blocks(&long_state[j], b);                         \
+    copy_block(&hp_state[j], c1);                        \
+    xor_blocks(&hp_state[j], b);                         \
     j = e2i(c1, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE; \
-    copy_block(c2, &long_state[j]);                        \
+    copy_block(c2, &hp_state[j]);                        \
     mul(c1, c2, d);                                        \
     swap_blocks(a, c1);                                    \
     sum_half_blocks(c1, d);                                \
     swap_blocks(c1, c2);                                   \
     xor_blocks(c1, c2);                                    \
-    copy_block(&long_state[j], c2);                        \
+    copy_block(&hp_state[j], c2);                        \
     copy_block(b, a);                                      \
     copy_block(a, c1);
 
-#define salt_pad(a, b, c, d)                       \
-    extra_hashes[a % 3](sp_bytes, 200, salt_hash); \
-    temp_1 = (uint16_t)(iters ^ (b ^ c));          \
-    offset_1 = temp_1 * ((d % 3) + 1);             \
-    for (j = 0; j < 32; j++)                       \
-        sp_bytes[offset_1 + j] ^= salt_hash[j];    \
-    x = 0;                                         \
-    offset_1 = (d % 64) + 1;                       \
-    offset_2 = ((temp_1 * offset_1) % 125) + 4;    \
-    for (j = offset_1; j < MEMORY; j += offset_2)  \
-        long_state[j] ^= sp_bytes[x++];
-
-#define init_hash()                                             \
-    uint8_t *long_state = (uint8_t *)malloc(MEMORY);            \
-    union cn_slow_hash_state state;                             \
-    uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE); \
-    uint8_t *text = (uint8_t *)malloc(init_size_byte);          \
-    uint8_t a[AES_BLOCK_SIZE];                                  \
-    uint8_t b[AES_BLOCK_SIZE];                                  \
-    uint8_t c1[AES_BLOCK_SIZE];                                 \
-    uint8_t c2[AES_BLOCK_SIZE];                                 \
-    uint8_t d[AES_BLOCK_SIZE];                                  \
-    size_t i, j;                                                \
-    uint8_t aes_key[AES_KEY_SIZE];                              \
+#define init_hash()                                                \
+    union cn_slow_hash_state state;                                \
+    uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);    \
+    uint8_t *text = (uint8_t *)malloc(init_size_byte);             \
+    uint8_t a[AES_BLOCK_SIZE];                                     \
+    uint8_t b[AES_BLOCK_SIZE];                                     \
+    uint8_t c1[AES_BLOCK_SIZE];                                    \
+    uint8_t c2[AES_BLOCK_SIZE];                                    \
+    uint8_t d[AES_BLOCK_SIZE];                                     \
+    size_t i, j;                                                   \
+    uint8_t aes_key[AES_KEY_SIZE];                                 \
     oaes_ctx *aes_ctx;
 
 #define expand_key()                                                                                         \
@@ -551,7 +537,7 @@ static void xor64(uint8_t *left, const uint8_t *right)
         {                                                                                                    \
             aesb_pseudo_round(&text[AES_BLOCK_SIZE * j], &text[AES_BLOCK_SIZE * j], aes_ctx->key->exp_data); \
         }                                                                                                    \
-        memcpy(&long_state[i * init_size_byte], text, init_size_byte);                                       \
+        memcpy(&hp_state[i * init_size_byte], text, init_size_byte);                                         \
     }
 
 #define finalize_hash()                                                                                      \
@@ -561,7 +547,7 @@ static void xor64(uint8_t *left, const uint8_t *right)
     {                                                                                                        \
         for (j = 0; j < init_size_blk; j++)                                                                  \
         {                                                                                                    \
-            xor_blocks(&text[j * AES_BLOCK_SIZE], &long_state[i * init_size_byte + j * AES_BLOCK_SIZE]);     \
+            xor_blocks(&text[j * AES_BLOCK_SIZE], &hp_state[i * init_size_byte + j * AES_BLOCK_SIZE]);       \
             aesb_pseudo_round(&text[AES_BLOCK_SIZE * j], &text[AES_BLOCK_SIZE * j], aes_ctx->key->exp_data); \
         }                                                                                                    \
     }                                                                                                        \
@@ -569,8 +555,7 @@ static void xor64(uint8_t *left, const uint8_t *right)
     hash_permutation(&state.hs);                                                                             \
     extra_hashes[state.hs.b[0] & 3](&state, 200, hash);                                                      \
     oaes_free((OAES_CTX **)&aes_ctx);                                                                        \
-    free(text);                                                                                              \
-    free(long_state);
+    free(text);                                                                                              
 
 #define xor_u64()                                                             \
     for (i = 0; i < AES_BLOCK_SIZE; i++)                                      \

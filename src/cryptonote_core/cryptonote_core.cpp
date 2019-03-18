@@ -1521,15 +1521,23 @@ namespace cryptonote
         main_message = "The daemon is running offline and will not attempt to sync to the NERVA network.";
       else
         main_message = "The daemon will start synchronizing with the network. This may take a long time to complete.";
-      MGINFO_YELLOW(ENDL << "**********************************************************************" << ENDL
+
+      MGINFO_GREEN(ENDL 
+        << R"(__________________________________________________________________________________________          )" << ENDL
+        << R"(___/\\\\\_____/\\\__/\\\\\\\\\\\\\\\____/\\\\\\\\\______/\\\________/\\\_____/\\\\\\\\\____         )" << ENDL
+        << R"(___\/\\\\\\___\/\\\_\/\\\///////////___/\\\///////\\\___\/\\\_______\/\\\___/\\\\\\\\\\\\\__        )" << ENDL
+        << R"(____\/\\\/\\\__\/\\\_\/\\\_____________\/\\\_____\/\\\___\//\\\______/\\\___/\\\/////////\\\_       )" << ENDL
+        << R"(_____\/\\\//\\\_\/\\\_\/\\\\\\\\\\\_____\/\\\\\\\\\\\/_____\//\\\____/\\\___\/\\\_______\/\\\_      )" << ENDL
+        << R"(______\/\\\\//\\\\/\\\_\/\\\///////______\/\\\//////\\\______\//\\\__/\\\____\/\\\\\\\\\\\\\\\_     )" << ENDL
+        << R"(_______\/\\\_\//\\\/\\\_\/\\\_____________\/\\\____\//\\\______\//\\\/\\\_____\/\\\/////////\\\_    )" << ENDL
+        << R"(________\/\\\__\//\\\\\\_\/\\\_____________\/\\\_____\//\\\______\//\\\\\______\/\\\_______\/\\\_   )" << ENDL
+        << R"(_________\/\\\___\//\\\\\_\/\\\\\\\\\\\\\\\_\/\\\______\//\\\______\//\\\_______\/\\\_______\/\\\_  )" << ENDL
+        << R"(__________\///_____\/////__\///////////////__\///________\///________\///________\///________\///__ )" << ENDL
+        << R"(____________________________________________________________________________________________________)" << ENDL);
+      MGINFO_YELLOW(ENDL
         << main_message << ENDL
-        << ENDL
-        << "You can set the level of process detailization through \"set_log <level|categories>\" command," << ENDL
-        << "where <level> is between 0 (no details) and 4 (very verbose), or custom category based levels (eg, *:WARNING)." << ENDL
-        << ENDL
         << "Use the \"help\" command to see the list of available commands." << ENDL
-        << "Use \"help <command>\" to see a command's documentation." << ENDL
-        << "**********************************************************************" << ENDL);
+        << "Use \"help <command>\" to see a command's documentation." << ENDL);
       m_starter_message_showed = true;
     }
 

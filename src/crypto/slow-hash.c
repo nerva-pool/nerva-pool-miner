@@ -47,9 +47,11 @@ union cn_slow_hash_state {
 #if !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
 
 THREADV uint8_t *hp_state = NULL;
+THREADV char *salt_state = NULL;
 THREADV int hp_allocated = 0;
+THREADV int salt_allocated = 0;
 
-void slow_hash_allocate_state(void)
+void allocate_scratchpad(void)
 {
     if (hp_state != NULL)
         return;
@@ -74,7 +76,38 @@ void slow_hash_allocate_state(void)
     }
 }
 
-void slow_hash_free_state(void)
+void allocate_salt(void)
+{
+    if (salt_state != NULL)
+        return;
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    SetLockPagesPrivilege(GetCurrentProcess(), TRUE);
+    salt_state = (char*)VirtualAlloc(salt_state, SALT_MEMORY, MEM_LARGE_PAGES | MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+#else
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__NetBSD__)
+    salt_state = mmap(0, SALT_MEMORY, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, 0, 0);
+#else
+    salt_state = mmap(0, SALT_MEMORY, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, 0, 0);
+#endif
+    if (salt_state == MAP_FAILED)
+        salt_state = NULL;
+#endif
+    salt_allocated = 1;
+    if (salt_state == NULL)
+    {
+        salt_allocated = 0;
+        salt_state = (char *)malloc(SALT_MEMORY);
+    }
+}
+
+void slow_hash_allocate_state(void)
+{
+    allocate_scratchpad();
+    allocate_salt();
+}
+
+void free_scratchpad(void)
 {
     if (hp_state == NULL)
         return;
@@ -91,6 +124,36 @@ void slow_hash_free_state(void)
     }
     hp_state = NULL;
     hp_allocated = 0;
+}
+
+void free_salt(void)
+{
+    if (salt_state == NULL)
+        return;
+
+    if (!salt_allocated)
+        free(salt_state);
+    else
+    {
+#if defined(_MSC_VER) || defined(__MINGW32__)
+        VirtualFree(salt_state, 0, MEM_RELEASE);
+#else
+        munmap(salt_state, SALT_MEMORY);
+#endif
+    }
+    salt_state = NULL;
+    salt_allocated = 0;
+}
+
+void slow_hash_free_state(void)
+{
+    free_scratchpad();
+    free_salt();
+}
+
+char* get_salt_state(void)
+{
+    return salt_state;
 }
 
 void cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy)
@@ -290,15 +353,32 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
 
 #else
 
-void slow_hash_allocate_state(void) { return; }
-void slow_hash_free_state(void) { return; }
+THREADV uint8_t *hp_state = NULL;
+THREADV char *salt_state = NULL;
+
+void slow_hash_allocate_state(void)
+{
+    hp_state = (uint8_t *)malloc(MEMORY);
+    salt_state = (char *)malloc(SALT_MEMORY);
+}
+
+void slow_hash_free_state(void)
+{ 
+    free(hp_state);
+    free(salt_state);
+}
+
+char* get_salt_state(void)
+{
+    return salt_state;
+}
 
 void cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy)
 {
     char *salt_hash = (char *)malloc(32);
     init_hash();
     expand_key();
-    randomize_scratchpad_256k(r, sp_bytes, long_state);
+    randomize_scratchpad_256k(r, sp_bytes, hp_state);
     xor_u64();
 
     uint16_t temp_1 = 0;
@@ -331,7 +411,7 @@ void cn_slow_hash_v10(const void *data, size_t length, char *hash, size_t iters,
     char *salt_hash = (char *)malloc(32);
     init_hash();
     expand_key();
-    randomize_scratchpad_256k(r, sp_bytes, long_state);
+    randomize_scratchpad_256k(r, sp_bytes, hp_state);
     xor_u64();
 
     uint16_t temp_1 = 0;
@@ -386,7 +466,7 @@ void cn_slow_hash_v9(const void *data, size_t length, char *hash, size_t iters, 
     char *salt_hash = (char *)malloc(32);
     init_hash();
     expand_key();
-    randomize_scratchpad_4k(r, sp_bytes, long_state);
+    randomize_scratchpad_4k(r, sp_bytes, hp_state);
     xor_u64();
 
     for (i = 0; i < iters; i++) {
@@ -402,7 +482,7 @@ void cn_slow_hash_v7_8(const void *data, size_t length, char *hash, size_t iters
     uint32_t init_size_blk = INIT_SIZE_BLK;
     init_hash();
     expand_key();
-    randomize_scratchpad(r, long_state);
+    randomize_scratchpad(r, hp_state);
     xor_u64();
 
     for (i = 0; i < iters; i++) {
@@ -438,7 +518,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         for (j = 0; j < INIT_SIZE_BLK; j++) {
             aesb_pseudo_round(&text[AES_BLOCK_SIZE * j], &text[AES_BLOCK_SIZE * j], aes_ctx->key->exp_data);
         }
-        memcpy(&long_state[i * init_size_byte], text, init_size_byte);
+        memcpy(&hp_state[i * init_size_byte], text, init_size_byte);
     }
 
     xor_u64();

@@ -103,67 +103,13 @@ enum {
 
 typedef struct randomizer_values
 {
-  //list of bitwise functions to perform from the list above
   uint8_t operators[RANDOM_VALUES];
-  //list of scratchpad locations to perform the bitwise operations on
-  //this has to be uint32_t as the scratchpad is too long to store every possible index in uint16_t
   uint32_t indices[RANDOM_VALUES];
-  //a list of values to perform the bitwise operations with
   int8_t values[RANDOM_VALUES];
 } random_values;
 
-void   cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy);
-void   cn_slow_hash_v10(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww);
-void    cn_slow_hash_v9(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes);
+void  cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy);
+void  cn_slow_hash_v10(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww);
+void  cn_slow_hash_v9(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes);
 void  cn_slow_hash_v7_8(const void *data, size_t length, char *hash, size_t iters, random_values *r);
-
-/*void randomize_scratchpad(random_values *r, uint8_t *scratchpad)
-{
-  for (int i = 0; i < RANDOM_VALUES; i++)
-  {
-    switch (r->operators[i])
-    {
-    case ADD:
-      scratchpad[r->indices[i]] += r->values[i];
-      break;
-    case SUB:
-      scratchpad[r->indices[i]] -= r->values[i];
-      break;
-    case XOR:
-      scratchpad[r->indices[i]] ^= r->values[i];
-      break;
-    case OR:
-      scratchpad[r->indices[i]] |= r->values[i];
-      break;
-    case AND:
-      scratchpad[r->indices[i]] &= r->values[i];
-      break;
-    case COMP:
-      scratchpad[r->indices[i]] = ~r->values[i];
-      break;
-    case EQ:
-      scratchpad[r->indices[i]] = r->values[i];
-      break;
-    }
-  }
-}
-
-#define MEMORY 1048576
-
-void randomize_scratchpad_256k(random_values *r, const char *salt, uint8_t *scratchpad)
-{
-  uint32_t x = 0;
-  for (uint32_t i = 0; i < MEMORY; i += 4)
-    scratchpad[i] ^= salt[x++];
-
-  randomize_scratchpad(r, scratchpad);
-}
-
-void randomize_scratchpad_4k(random_values *r, const char *salt, uint8_t *scratchpad)
-{
-  uint32_t x = 0;
-  for (uint32_t i = 0; i < MEMORY; i += 256)
-    scratchpad[i] ^= salt[x++];
-
-  randomize_scratchpad(r, scratchpad);
-}*/
+char* get_salt_state(void);

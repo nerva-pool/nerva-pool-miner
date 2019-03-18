@@ -42,6 +42,9 @@
 #include "crypto/crypto.h"
 #include "profile_tools.h"
 #include "ringct/rctOps.h"
+#include "syncobj.h"
+
+using namespace epee;
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "blockchain.db.lmdb"
@@ -1995,13 +1998,16 @@ void check_error(int err)
     fprintf(stderr, "get_v3_data failed, error %d %s\n", err, mdb_strerror(err));
 }
 
-static thread_local std::vector<mdb_block_info> _cache;
-static thread_local uint64_t last_height = 0;
+static std::vector<mdb_block_info> _cache;
+static uint64_t last_height = 0;
+critical_section cache_lock;
 
 void BlockchainLMDB::build_cache(uint64_t height) const
 {
   if (last_height == height)
     return;
+
+  CRITICAL_REGION_BEGIN(cache_lock);
 
   _cache.resize(height);
 
@@ -2026,6 +2032,8 @@ void BlockchainLMDB::build_cache(uint64_t height) const
   mdb_txn_abort(txn); 
 
   last_height = height;
+
+  CRITICAL_REGION_END();
 }
 
 void BlockchainLMDB::get_v3_data(char* salt, uint64_t height, uint32_t seed) const

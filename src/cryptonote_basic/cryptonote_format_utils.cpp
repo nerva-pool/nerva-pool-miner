@@ -1022,9 +1022,8 @@ namespace cryptonote
   }
 
   uint8_t lookup[3] { 2, 4, 8 };
-  static thread_local char RDATA_ALIGN16 salt[262176] = {0};
 
-    static void print_char_hex(const char *bytes, int size)
+  static void print_char_hex(const char *bytes, int size)
   {
       for (int i = 0; i < size; ++i)
       {
@@ -1045,16 +1044,11 @@ namespace cryptonote
   gettimeofday(&tv2, NULL); \
   printf(msg); \
 	printf (" = %f seconds\n", (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec));
-  
 
   bool get_block_longhash_v11(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {
     blobdata bd = get_block_hashing_blob(b);
     uint64_t ht = height - 256;
-
-#ifdef DEBUG_TERMINAL
-  INIT_TIMER();
-#endif
 
     if (height != cached_height || !v2_initialized)
     {
@@ -1064,10 +1058,6 @@ namespace cryptonote
       CRITICAL_REGION_END();
     }
 
-#ifdef DEBUG_TERMINAL
-  START_TIMER();
-#endif
-
     uint32_t seed = b.nonce ^ height;
 
     crypto::hash h;
@@ -1075,6 +1065,8 @@ namespace cryptonote
 
     for (int i = 0; i < 32; i += 4)
       seed ^= *(uint32_t*)&h.data[i];
+
+    char* salt = crypto::get_salt();
 
     memcpy(salt, h.data, 32);
     seed = bc->get_db().get_v5_data(salt, (uint32_t)ht, seed);
@@ -1114,20 +1106,7 @@ namespace cryptonote
     uint8_t init_size_blk = temp_lookup_1[(r4 ^ r5) % 3];
     uint32_t iters = ((height + 1) % r3);
 
-#ifdef DEBUG_TERMINAL
-  STOP_TIMER(" Salt Gen");
-#endif
-
-#ifdef DEBUG_TERMINAL
-  START_TIMER();
-#endif
-
     crypto::cn_slow_hash_v11(bd.data(), bd.size(), res, iters, r, salt + r2, init_size_blk, xx, yy);
-
-
-#ifdef DEBUG_TERMINAL
-  STOP_TIMER("Slow Hash");
-#endif
 
     return true;
   }
@@ -1152,6 +1131,8 @@ namespace cryptonote
 
     for (int i = 0; i < 32; i += 4)
       seed ^= *(uint32_t*)&h.data[i];
+
+    char* salt = crypto::get_salt();
 
     bc->get_db().get_v4_data(salt, (uint32_t)ht, seed);
 

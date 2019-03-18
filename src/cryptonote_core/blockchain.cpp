@@ -4247,6 +4247,7 @@ bool Blockchain::update_next_cumulative_size_limit()
 bool Blockchain::add_new_block(const block& bl_, block_verification_context& bvc)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
+  slow_hash_allocate_state();
   //copy block here to let modify block.target
   block bl = bl_;
   crypto::hash id = get_block_hash(bl);
