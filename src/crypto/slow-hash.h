@@ -196,7 +196,8 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
     size_t i, j;                                                                \
     uint64_t *p = NULL;                                                         \
     static void (*const extra_hashes[4])(const void *, size_t, char *) = {      \
-        hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein}; 
+        hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein}; \
+    slow_hash_allocate_state(); 
 
 #define xor_u64()                                            \
     U64(a)[0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];  \
@@ -520,7 +521,8 @@ static void xor64(uint8_t *left, const uint8_t *right)
     uint8_t d[AES_BLOCK_SIZE];                                     \
     size_t i, j;                                                   \
     uint8_t aes_key[AES_KEY_SIZE];                                 \
-    oaes_ctx *aes_ctx;
+    oaes_ctx *aes_ctx;                                             \
+    slow_hash_allocate_state();
 
 #define expand_key()                                                                                         \
     hash_process(&state.hs, data, length);                                                                   \
