@@ -1976,7 +1976,6 @@ namespace cryptonote
       uint32_t votes;
       uint32_t threshold;
       uint8_t voting;
-      uint32_t state;
       uint64_t earliest_height;
       std::string status;
       bool untrusted;
@@ -1988,7 +1987,6 @@ namespace cryptonote
         KV_SERIALIZE(votes)
         KV_SERIALIZE(threshold)
         KV_SERIALIZE(voting)
-        KV_SERIALIZE(state)
         KV_SERIALIZE(earliest_height)
         KV_SERIALIZE(status)
         KV_SERIALIZE(untrusted)

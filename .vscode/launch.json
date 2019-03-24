@@ -166,6 +166,30 @@
             ]
         },
         {
+            "name": "Testnet-Wallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "args": [
+                "--testnet",
+                "--wallet-file", "",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
             "name": "Mainnet",
             "type": "cppdbg",
             "request": "launch",

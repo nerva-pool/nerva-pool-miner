@@ -129,7 +129,6 @@ namespace rpc
     uint32_t votes;
     uint32_t threshold;
     uint8_t voting;
-    uint32_t state;
     uint64_t earliest_height;
   };
 

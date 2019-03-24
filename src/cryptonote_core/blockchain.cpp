@@ -85,62 +85,6 @@ DISABLE_VS_WARNINGS(4267)
 // used to overestimate the block reward when estimating a per kB to use
 #define BLOCK_REWARD_OVERESTIMATE (10 * 1000000000000)
 
-static const struct {
-  uint8_t version;
-  uint64_t height;
-  uint8_t threshold;
-  time_t time;
-} mainnet_hard_forks[] = {
-  { 1, 1, 0, 1504387246 },
-  { 2, 2, 0, 1507601066 },
-  { 3, 3, 0, 1512206452 },
-  { 4, 4, 0, 1513136914 },
-  { 5, 5, 0, 1525150523 },
-  { 6, 44500, 0, 1527818400 },
-  { 7, 173500, 0, 1535348069 },
-  { 8, 180000, 0, 1535963934 },
-  { 9, 240500, 0, 1539597600},
-  { 10, 341000, 0, 1545628800}
-};
-
-static const struct {
-  uint8_t version;
-  uint64_t height;
-  uint8_t threshold;
-  time_t time;
-} testnet_hard_forks[] = {
-  { 1, 1, 0, 1504374656 },
-  { 2, 2, 0, 1521000000 },
-  { 3, 3, 0, 1521120000 },
-  { 4, 4, 0, 1521240000 },
-  { 5, 5, 0, 1521350000 },
-  { 6, 6, 0, 1521460000 },
-  { 7, 550, 0, 1521570000 },
-  { 8, 560, 0, 1521670000 },
-  { 9, 570, 0, 1521770000 },
-  { 10, 580, 0, 1521870000 },
-  { 11, 125000, 0, 1521970000 },
-}; 
-
-static const struct {
-  uint8_t version;
-  uint64_t height;
-  uint8_t threshold;
-  time_t time;
-} stagenet_hard_forks[] = {
-  { 1, 1, 0, 1504374656 },
-  { 2, 2, 0, 1521000000 },
-  { 3, 3, 0, 1521120000 },
-  { 4, 4, 0, 1521240000 },
-  { 5, 5, 0, 1521350000 },
-  { 6, 6, 0, 1521460000 },
-  { 7, 550, 0, 1521570000 },
-  { 8, 560, 0, 1521670000 },
-  { 9, 570, 0, 1521770000 },
-  { 10, 580, 0, 1521870000 },
-  { 11, 590, 0, 1521970000 }
-};
-
 //------------------------------------------------------------------
 Blockchain::Blockchain(tx_memory_pool& tx_pool) :
   m_db(), m_tx_pool(tx_pool), m_hardfork(NULL), m_timestamps_and_difficulties_height(0), m_current_block_cumul_sz_limit(0), m_current_block_cumul_sz_median(0),
@@ -363,34 +307,29 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
   m_offline = offline;
   m_fixed_difficulty = fixed_difficulty;
   if (m_hardfork == nullptr)
-  {
-    if (m_nettype ==  FAKECHAIN || m_nettype == STAGENET)
-      m_hardfork = new HardFork(*db, 1, 0);
-    else if (m_nettype == TESTNET)
-      m_hardfork = new HardFork(*db, 1, 0);
-    else
-      m_hardfork = new HardFork(*db, 1, 0);
-  }
+    m_hardfork = new HardFork(*db, 1, 0);
+  
   if (m_nettype == FAKECHAIN)
   {
     for (size_t n = 0; test_options->hard_forks[n].first; ++n)
-      m_hardfork->add_fork(test_options->hard_forks[n].first, test_options->hard_forks[n].second, 0, n + 1);
+      m_hardfork->add_fork(test_options->hard_forks[n].first, test_options->hard_forks[n].second, 0);
   }
   else if (m_nettype == TESTNET)
   {
-    for (size_t n = 0; n < sizeof(testnet_hard_forks) / sizeof(testnet_hard_forks[0]); ++n)
-      m_hardfork->add_fork(testnet_hard_forks[n].version, testnet_hard_forks[n].height, testnet_hard_forks[n].threshold, testnet_hard_forks[n].time);
+    for (size_t n = 0; n < sizeof(::config::testnet::hard_forks) / sizeof(::config::testnet::hard_forks[0]); ++n)
+      m_hardfork->add_fork(::config::testnet::hard_forks[n].version, ::config::testnet::hard_forks[n].height);
   }
   else if (m_nettype == STAGENET)
   {
-    for (size_t n = 0; n < sizeof(stagenet_hard_forks) / sizeof(stagenet_hard_forks[0]); ++n)
-      m_hardfork->add_fork(stagenet_hard_forks[n].version, stagenet_hard_forks[n].height, stagenet_hard_forks[n].threshold, stagenet_hard_forks[n].time);
+    for (size_t n = 0; n < sizeof(::config::stagenet::hard_forks) / sizeof(::config::stagenet::hard_forks[0]); ++n)
+      m_hardfork->add_fork(::config::stagenet::hard_forks[n].version, ::config::stagenet::hard_forks[n].height);
   }
   else
   {
-    for (size_t n = 0; n < sizeof(mainnet_hard_forks) / sizeof(mainnet_hard_forks[0]); ++n)
-      m_hardfork->add_fork(mainnet_hard_forks[n].version, mainnet_hard_forks[n].height, mainnet_hard_forks[n].threshold, mainnet_hard_forks[n].time);
+    for (size_t n = 0; n < sizeof(::config::hard_forks) / sizeof(::config::hard_forks[0]); ++n)
+      m_hardfork->add_fork(::config::hard_forks[n].version, ::config::hard_forks[n].height);
   }
+
   m_hardfork->init();
 
   m_db->set_hard_fork(m_hardfork);
@@ -4988,12 +4927,6 @@ void Blockchain::safesyncmode(const bool onoff)
     m_db->safesyncmode(onoff);
     m_db_sync_mode = onoff ? db_nosync : db_async;
   }
-}
-
-HardFork::State Blockchain::get_hard_fork_state() const
-{
-  LOG_PRINT_L3("Blockchain::" << __func__);
-  return m_hardfork->get_state();
 }
 
 bool Blockchain::get_hard_fork_voting_info(uint8_t version, uint32_t &window, uint32_t &votes, uint32_t &threshold, uint64_t &earliest_height, uint8_t &voting) const

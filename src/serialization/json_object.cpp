@@ -802,7 +802,6 @@ void toJsonValue(rapidjson::Document& doc, const cryptonote::rpc::hard_fork_info
   INSERT_INTO_JSON_OBJECT(val, doc, votes, info.votes);
   INSERT_INTO_JSON_OBJECT(val, doc, threshold, info.threshold);
   INSERT_INTO_JSON_OBJECT(val, doc, voting, info.voting);
-  INSERT_INTO_JSON_OBJECT(val, doc, state, info.state);
   INSERT_INTO_JSON_OBJECT(val, doc, earliest_height, info.earliest_height);
 }
 
@@ -820,7 +819,6 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::hard_fork_info&
   GET_FROM_JSON_OBJECT(val, info.votes, votes);
   GET_FROM_JSON_OBJECT(val, info.threshold, threshold);
   GET_FROM_JSON_OBJECT(val, info.voting, voting);
-  GET_FROM_JSON_OBJECT(val, info.state, state);
   GET_FROM_JSON_OBJECT(val, info.earliest_height, earliest_height);
 }
 
