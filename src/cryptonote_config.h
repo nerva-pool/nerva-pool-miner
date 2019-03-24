@@ -149,7 +149,7 @@
 #define CRYPTONOTE_POOLDATA_FILENAME "poolstate.bin"
 #define CRYPTONOTE_BLOCKCHAINDATA_FILENAME "data.mdb"
 #define CRYPTONOTE_BLOCKCHAINDATA_LOCK_FILENAME "lock.mdb"
-#define P2P_NET_DATA_FILENAME "p2pstate.nerva.bin"
+#define P2P_NET_DATA_FILENAME "p2pstate.nerva.v11.bin"
 #define MINER_CONFIG_FILE_NAME "miner_conf.json"
 
 #define THREAD_STACK_SIZE 5 * 1024 * 1024
@@ -205,7 +205,8 @@ namespace config
         { 7, 173500},
         { 8, 180000},
         { 9, 240500},
-        {10, 341000}
+        {10, 341000},
+        {11, 477500}
     };
 
     namespace testnet
@@ -297,7 +298,7 @@ namespace cryptonote
         FAKECHAIN,
         UNDEFINED = 255
     };
-    
+
     struct config_t
     {
         uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
