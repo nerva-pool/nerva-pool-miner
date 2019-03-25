@@ -257,10 +257,9 @@ uint32_t Blockchain::get_minimum_version_for_fork(uint32_t min_ver) const
   const uint8_t hf_version = get_hardfork()->get_last_version();
   if (hf_version <= 1 || hf_version == top_block.major_version)
   {
-    uint32_t hf_supported_min_version = m_nettype == MAINNET ? HF_SUPPORTED_MIN_VERSION_MAINNET : HF_SUPPORTED_MIN_VERSION_TESTNET;
     //we are at the top block. So if the HF_SUPPORTED_MIN_VERSION > SUPPORTED_MIN_VERSION, that becomes our new minimum version
-    if (hf_supported_min_version > min_ver)
-      return hf_supported_min_version;
+    if (HF_SUPPORTED_MIN_VERSION > min_ver)
+      return HF_SUPPORTED_MIN_VERSION;
   }
 
   return min_ver;

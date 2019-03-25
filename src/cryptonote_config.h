@@ -128,10 +128,9 @@
 #define P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT 2
 
 #define SUPPORTED_MIN_VERSION_STR "0.1.5.6"
-#define SUPPORTED_MIN_VERSION_HF_STR "0.1.6.2"
+#define SUPPORTED_MIN_VERSION_HF_STR "0.1.6.3"
 
-#define HF_SUPPORTED_MIN_VERSION_TESTNET version_string_to_integer(SUPPORTED_MIN_VERSION_HF_STR)
-#define HF_SUPPORTED_MIN_VERSION_MAINNET version_string_to_integer(SUPPORTED_MIN_VERSION_STR)
+#define HF_SUPPORTED_MIN_VERSION version_string_to_integer(SUPPORTED_MIN_VERSION_HF_STR)
 #define SUPPORTED_MIN_VERSION version_string_to_integer(SUPPORTED_MIN_VERSION_STR)
 
 #define P2P_FAILED_ADDR_FORGET_SECONDS (60 * 60) //1 hour
@@ -205,8 +204,7 @@ namespace config
         { 7, 173500},
         { 8, 180000},
         { 9, 240500},
-        {10, 341000},
-        {11, 477500}
+        {10, 341000}
     };
 
     namespace testnet
@@ -229,17 +227,17 @@ namespace config
         };
 
         static const hard_fork hard_forks[] = {
-            { 1,      1},
-            { 2,      2},
-            { 3,      3},
-            { 4,      4},
-            { 5,      5},
-            { 6,      6},
-            { 7,    550},
-            { 8,    560},
-            { 9,    570},
-            {10,    580},
-            {11, 125000}
+            { 1,   1},
+            { 2,   2},
+            { 3,   3},
+            { 4,   4},
+            { 5,   5},
+            { 6,   6},
+            { 7, 550},
+            { 8, 560},
+            { 9, 570},
+            {10, 580},
+            {11, 590}
         };
     }
 
