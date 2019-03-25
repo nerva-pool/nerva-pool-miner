@@ -46,7 +46,7 @@ namespace cryptonote
 
     static const uint64_t DEFAULT_ORIGINAL_VERSION_TILL_HEIGHT = 0; // <= actual height
     static const uint64_t DEFAULT_WINDOW_SIZE = 10080; // supermajority window check length - a week
-    static const uint8_t DEFAULT_THRESHOLD_PERCENT = 80;
+    static const uint8_t DEFAULT_THRESHOLD_PERCENT = 0;
 
     /**
      * @brief creates a new HardFork object
