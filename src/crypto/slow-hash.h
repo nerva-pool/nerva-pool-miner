@@ -71,18 +71,6 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
 #define VARIANT1_2(p) \
     xor64(p, tweak1_2);
 
-#define salt_pad(a, b, c, d)                       \
-    extra_hashes[a % 3](sp_bytes, 200, salt_hash); \
-    temp_1 = (uint16_t)(iters ^ (b ^ c));          \
-    offset_1 = temp_1 * ((d % 3) + 1);             \
-    for (j = 0; j < 32; j++)                       \
-        sp_bytes[offset_1 + j] ^= salt_hash[j];    \
-    x = 0;                                         \
-    offset_1 = (d % 64) + 1;                       \
-    offset_2 = ((temp_1 * offset_1) % 125) + 4;    \
-    for (j = offset_1; j < MEMORY; j += offset_2)  \
-        hp_state[j] ^= sp_bytes[x++];
-
 #include <emmintrin.h>
 
 #if defined(_MSC_VER)
@@ -476,37 +464,37 @@ static void xor64(uint8_t *left, const uint8_t *right)
 
 #define aes_sw_variant()                                   \
     j = e2i(a, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;  \
-    copy_block(c1, &hp_state[j]);                        \
+    copy_block(c1, &hp_state[j]);                          \
     aesb_single_round(c1, c1, a);                          \
-    copy_block(&hp_state[j], c1);                        \
-    xor_blocks(&hp_state[j], b);                         \
-    VARIANT1_1(&hp_state[j]);                            \
+    copy_block(&hp_state[j], c1);                          \
+    xor_blocks(&hp_state[j], b);                           \
+    VARIANT1_1(&hp_state[j]);                              \
     j = e2i(c1, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE; \
-    copy_block(c2, &hp_state[j]);                        \
+    copy_block(c2, &hp_state[j]);                          \
     mul(c1, c2, d);                                        \
     swap_blocks(a, c1);                                    \
     sum_half_blocks(c1, d);                                \
     swap_blocks(c1, c2);                                   \
     xor_blocks(c1, c2);                                    \
     VARIANT1_2(c2 + 8);                                    \
-    copy_block(&hp_state[j], c2);                        \
+    copy_block(&hp_state[j], c2);                          \
     copy_block(b, a);                                      \
     copy_block(a, c1);
 
 #define aes_sw_novariant()                                 \
     j = e2i(a, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;  \
-    copy_block(c1, &hp_state[j]);                        \
+    copy_block(c1, &hp_state[j]);                          \
     aesb_single_round(c1, c1, a);                          \
-    copy_block(&hp_state[j], c1);                        \
-    xor_blocks(&hp_state[j], b);                         \
+    copy_block(&hp_state[j], c1);                          \
+    xor_blocks(&hp_state[j], b);                           \
     j = e2i(c1, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE; \
-    copy_block(c2, &hp_state[j]);                        \
+    copy_block(c2, &hp_state[j]);                          \
     mul(c1, c2, d);                                        \
     swap_blocks(a, c1);                                    \
     sum_half_blocks(c1, d);                                \
     swap_blocks(c1, c2);                                   \
     xor_blocks(c1, c2);                                    \
-    copy_block(&hp_state[j], c2);                        \
+    copy_block(&hp_state[j], c2);                          \
     copy_block(b, a);                                      \
     copy_block(a, c1);
 
@@ -571,6 +559,18 @@ static void xor64(uint8_t *left, const uint8_t *right)
 void slow_hash_allocate_state(void);
 void slow_hash_free_state(void);
 
+#define salt_pad(a, b, c, d)                           \
+    extra_hashes[a % 3](sp_bytes, 200, salt_hash);     \
+    temp_1 = (uint16_t)(iters ^ (b ^ c));              \
+    offset_1 = temp_1 * ((d % 3) + 1);                 \
+    for (j = 0; j < 32; j++)                           \
+        sp_bytes[offset_1 + j] ^= salt_hash[j];        \
+    x = 0;                                             \
+    offset_1 = (d % 64) + 1;                           \
+    offset_2 = ((temp_1 * offset_1) % 125) + 4;        \
+    for (j = offset_1; j < MEMORY; j += offset_2)      \
+        hp_state[j] ^= sp_bytes[x++];
+
 #define randomize_scratchpad(r, scratchpad)            \
     for (int i = 0; i < RANDOM_VALUES; i++)            \
     {                                                  \
@@ -606,10 +606,10 @@ void slow_hash_free_state(void);
         scratchpad[i] ^= salt[x++];                    \
     randomize_scratchpad(r, scratchpad);
 
-#define randomize_scratchpad_4k(r, salt, scratchpad) \
-    uint32_t x = 0;                                  \
-    for (uint32_t i = 0; i < MEMORY; i += 256)       \
-        scratchpad[i] ^= salt[x++];                  \
+#define randomize_scratchpad_4k(r, salt, scratchpad)   \
+    uint32_t x = 0;                                    \
+    for (uint32_t i = 0; i < MEMORY; i += 256)         \
+        scratchpad[i] ^= salt[x++];                    \
     randomize_scratchpad(r, scratchpad);
 
 #endif

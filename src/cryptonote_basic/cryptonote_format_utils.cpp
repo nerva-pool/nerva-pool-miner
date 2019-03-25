@@ -1081,6 +1081,7 @@ namespace cryptonote
       seed = rng.rotl32(seed, 1) ^ r1;
       temp_lookup_1[i] = lookup[r1 % 3];
     } 
+
     //salt offset
     r2 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 0, 31);
     seed = rng.rotl32(seed, 1) ^ r2;
@@ -1217,6 +1218,7 @@ namespace cryptonote
       }
     }
   }
+  
   //---------------------------------------------------------------
   std::vector<uint64_t> relative_output_offsets_to_absolute(const std::vector<uint64_t>& off)
   {
