@@ -348,12 +348,13 @@ namespace nodetool
     if(command_line::has_arg(vm, arg_min_ver))
     {
       std::string v = command_line::get_arg(vm, arg_min_ver);
-      MGINFO_CYAN("Blocking all hosts with versions < " << v);
+      if (!v.empty())
+      {
+        MGINFO_CYAN("Blocking all hosts with versions < " << v);
 
-      m_minimum_version = version_string_to_integer(v);
-
-      if (m_minimum_version < SUPPORTED_MIN_VERSION)
-        m_minimum_version = SUPPORTED_MIN_VERSION;
+        m_minimum_version = version_string_to_integer(v);
+        m_min_version_override = true;
+      }
     }
 
     return true;
@@ -758,7 +759,7 @@ namespace nodetool
       if (hsh_result)
       {
         uint32_t rsp_ver = version_string_to_integer(rsp.version);
-        m_minimum_version = m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
+        m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
         if (rsp_ver < m_minimum_version)
         {
           MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.version);
@@ -815,7 +816,7 @@ namespace nodetool
       }
 
       uint32_t rsp_ver = version_string_to_integer(rsp.node_data.version);
-      m_minimum_version = m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
+      m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
       if (rsp_ver < m_minimum_version)
       {
         MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
@@ -1785,7 +1786,7 @@ namespace nodetool
     }
 
     uint32_t rsp_ver = version_string_to_integer(arg.node_data.version);
-    m_minimum_version = m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
+    m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
     if (rsp_ver < m_minimum_version)
     {
       MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << arg.node_data.version);

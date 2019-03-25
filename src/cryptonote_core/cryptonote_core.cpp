@@ -1038,10 +1038,6 @@ namespace cryptonote
     return m_blockchain_storage.get_db().get_block_already_generated_coins(h);
   }
 
-  uint32_t core::get_min_version()
-  {
-    return m_blockchain_storage.get_minimum_version_for_fork(SUPPORTED_MIN_VERSION);
-  }
   //-----------------------------------------------------------------------------------------------
   char const hex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
 
