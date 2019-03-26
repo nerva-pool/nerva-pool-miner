@@ -256,32 +256,31 @@ namespace config
             { 8, 560},
             { 9, 570},
             {10, 580},
-            {11, 590}};
-        }
+            {11, 590}
+        };
     }
+}
 
-    #ifndef VERSION_TO_INT
-    #define VERSION_TO_INT
+#ifndef VERSION_TO_INT
+#define VERSION_TO_INT
 
-    inline uint32_t version_string_to_integer(std::string data)
-    {
-        const char *v = data.c_str();
+inline uint32_t version_string_to_integer(std::string data)
+{
+    const char *v = data.c_str();
 
-        unsigned int byte3;
-        unsigned int byte2;
-        unsigned int byte1;
-        unsigned int byte0;
-        char dummyString[2];
+    unsigned int byte3;
+    unsigned int byte2;
+    unsigned int byte1;
+    unsigned int byte0;
+    char dummyString[2];
 
-        if (sscanf(v, "%u.%u.%u.%u%1s", &byte3, &byte2, &byte1, &byte0, dummyString) == 4)
-        {
-            return (byte3 << 24) + (byte2 << 16) + (byte1 << 8) + byte0;
-        }
+    if (sscanf(v, "%u.%u.%u.%u%1s", &byte3, &byte2, &byte1, &byte0, dummyString) == 4)
+        return (byte3 << 24) + (byte2 << 16) + (byte1 << 8) + byte0;
 
-        return 0;
-    }
+    return 0;
+}
 
-    #endif
+#endif
 
 namespace cryptonote
 {
