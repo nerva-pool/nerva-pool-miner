@@ -2179,57 +2179,133 @@ void BlockchainLMDB::get_v4_data(char* salt, uint64_t height, uint32_t seed) con
   }
 }
 
+static void print_char_hex(const char *bytes, int size)
+{
+  for (int i = 0; i < size; ++i)
+  {
+    const char ch = bytes[i];
+    printf("%02X", ch & 0xFF);
+  }
+
+  printf("\n");
+}
+
+static void xor_hash(char* dest, char* src)
+{
+  uint64_t* aa = (uint64_t*)dest;
+  uint64_t* bb = (uint64_t*)src;
+
+  for (uint32_t i = 0; i < 4; i++)
+    aa[i] ^= bb[i];
+}
+
+uint32_t gen_salt_block(char* salt, uint32_t salt_length, uint32_t look_back, uint32_t min, uint32_t max)
+{
+  angrywasp::xoshiro256 rng;
+  char* dat = (char*)malloc(128);
+  crypto::hash keccak = crypto::null_hash;
+  uint32_t t = 0, r = 0;
+  mdb_block_info* bi;
+  uint32_t offset = 0;
+
+  //take the keccak of the last look_back bytes (128 for the first run, 192 after) of data added to the salt
+  // (the last added iteration and half the one before it)
+  //that becomes the rng state for this iteration
+  keccak = cn_fast_hash(&salt[salt_length - look_back], look_back);
+  uint64_t* state = (uint64_t*)keccak.data;
+
+  //add a block hash
+  r = rng.u32(state, min, max);
+  bi = &_cache[r];
+  memcpy(dat + offset, bi->bi_hash.data, 32);
+  offset += 32;
+
+  //add 4x16 bytes consisting of
+  //timestamp, diff, coins
+  for (uint32_t j = 0; j < 4; j++)
+  {
+    r = rng.u32(state, min, max);
+    bi = &_cache[r];
+    t = (uint32_t)bi->bi_timestamp;
+    std::memcpy(dat + offset, &t, 4);
+    offset += 4;
+
+    r = rng.u32(state, min, max);
+    bi = &_cache[r];
+    t = (uint32_t)bi->bi_diff;
+    std::memcpy(dat + offset, &t, 4);
+    offset += 4;
+
+    r = rng.u32(state, min, max);
+    bi = &_cache[r];
+    t = (uint32_t)(bi->bi_coins >> 32U);
+    std::memcpy(dat + offset, &t, 4);
+    offset += 4;
+
+    r = rng.u32(state, min, max);
+    bi = &_cache[r];
+    t = (uint32_t)bi->bi_coins;
+    std::memcpy(dat + offset, &t, 4);
+    offset += 4;
+  }
+
+  //add the state used as the random number generator into the last 32 bytes
+  memcpy(dat + offset, state, 32);
+  //printf("iter-1:\n");
+  //print_char_hex(dat, 128);
+
+  //use bytes 16-48 as the state for r
+  //use bytes 80-112 as the state for s
+  //these 2 calls further modify the data that will be copied to the salt
+  //in a manner that overlaps both the 32 byte chunks added at the beginning and the end
+  t = rng.u32((uint64_t*)&dat[16]);
+  r = rng.u32((uint64_t*)&dat[80]);
+
+  //printf("iter-2:\n");
+  //print_char_hex(dat, 128);
+
+  memcpy(salt + salt_length, dat, 128);
+
+  return t ^ r;
+}
+
 uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed) const
 {
   angrywasp::xoshiro256 rng;
   
   int err = 0;
-  uint32_t t = 0, r = 0;
+  uint32_t r = 0;
   build_cache(height);
   mdb_block_info* bi;
 
   uint32_t min = 1, max = (uint32_t)(height - 1);
-  uint32_t salt_offset = 32;
+  uint32_t salt_length = 128;
 
-  for (uint32_t i = 0; i < 2048; i++)
+  //we keccak hash the entire state, then increment the pointer 8 bytes and 
+  //xor the keccak result back against the state. Rinse and repeat till all 128 bytes are filled
+  //the first 32 bytes are already populated with the block blob hash and the rest are zeroed out
+  crypto::hash keccak = crypto::null_hash;
+  uint32_t i = 0;
+  for (i = 8; i <= 96; i += 8)
   {
-    r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
+    keccak = cn_fast_hash(salt, 128);
+    xor_hash(salt + i, keccak.data);
+  }
+
+  //printf("init_state:\n");
+  //print_char_hex(salt, 128);
+
+  //the first iteration we use the previous 128 bytes only as at this point there are only 128 bytes in the salt
+  gen_salt_block(salt, salt_length, 128, min, max);
+  salt_length += 128;
+
+  for (uint32_t i = 0; i < 2047; i++)
+  {
+    //after the first loop, we look back 192 bytes for the keccak hash which is all of the last 
+    //iteration and half the one before it forces the results to be chained
+    r = gen_salt_block(salt, salt_length, 192, min, max);
+    salt_length += 128;
     seed = rng.rotl32(seed, 1) ^ r;
-    bi = &_cache[r];
-    std::memcpy(salt + salt_offset, bi->bi_hash.data, 32);
-    salt_offset += 32;
-
-    for (uint32_t j = 0; j < 4; j++)
-    {
-      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
-      bi = &_cache[r];
-      t = (uint32_t)bi->bi_timestamp;
-      std::memcpy(salt + salt_offset, &t, 4);
-      salt_offset += 4;
-
-      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
-      bi = &_cache[r];
-      t = (uint32_t)bi->bi_diff;
-      std::memcpy(salt + salt_offset, &t, 4);
-      salt_offset += 4;
-
-      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
-      bi = &_cache[r];
-      t = (uint32_t)(bi->bi_coins >> 32U);
-      std::memcpy(salt + salt_offset, &t, 4);
-      salt_offset += 4;
-
-      r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
-      bi = &_cache[r];
-      t = (uint32_t)bi->bi_coins;
-      std::memcpy(salt + salt_offset, &t, 4);
-      salt_offset += 4;
-    }
-
-    r = rng.u32((uint64_t*)&salt[salt_offset - 32], min, max);
-    bi = &_cache[r];
-    std::memcpy(salt + salt_offset, bi->bi_hash.data, 32);
-    salt_offset += 32;
   }
 
   return seed;
