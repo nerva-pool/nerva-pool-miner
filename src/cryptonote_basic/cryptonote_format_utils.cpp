@@ -1067,7 +1067,7 @@ namespace cryptonote
       seed ^= *(uint32_t*)&h.data[i];
 
     char* salt = crypto::get_salt();
-
+    memset(salt, 0, 128);
     memcpy(salt, h.data, 32);
     seed = bc->get_db().get_v5_data(salt, (uint32_t)ht, seed);
 

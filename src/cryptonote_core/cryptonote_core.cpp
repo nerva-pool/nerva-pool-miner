@@ -1570,10 +1570,8 @@ namespace cryptonote
     static const char software[] = "nerva";
 #ifdef BUILD_TAG
     static const char buildtag[] = BOOST_PP_STRINGIZE(BUILD_TAG);
-    static const char subdir[] = "cli"; // because it can never be simple
 #else
-    static const char buildtag[] = "source";
-    static const char subdir[] = "source"; // because it can never be simple
+    static const char buildtag[] = "x64";
 #endif
 
     if (m_offline)
@@ -1590,13 +1588,16 @@ namespace cryptonote
     if (tools::vercmp(version.c_str(), MONERO_VERSION) <= 0)
       return true;
 
-    std::string url = tools::get_update_url(software, subdir, buildtag, version, true);
-    MCLOG_CYAN(el::Level::Info, "global", "Version " << version << " of " << software << " for " << buildtag << " is available: " << url << ", SHA256 hash " << hash);
+    std::string url = tools::get_update_url(software, buildtag, version);
+    MCLOG_CYAN(el::Level::Info, "global", ENDL
+    << "Version " << version << " of " << software << " for " << buildtag << " is available" << ENDL
+    << url << ENDL
+    << "SHA256: " << hash);
 
     if (check_updates_level == UPDATES_NOTIFY)
       return true;
 
-    url = tools::get_update_url(software, subdir, buildtag, version, false);
+    url = tools::get_update_url(software, buildtag, version);
     std::string filename;
     const char *slash = strrchr(url.c_str(), '/');
     if (slash)

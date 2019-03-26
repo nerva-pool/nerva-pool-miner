@@ -17,9 +17,9 @@ mkdir -p ${BUILDER_DIR}/build/dev/${BUILD_TYPE}
 cd ${BUILDER_DIR}/build/dev/${BUILD_TYPE}
 
 if [ ${NERVA_BUILD_OS} = "linux" ]; then
-    cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D NO_SSE4=OFF -D NO_AES=OFF -D BUILD_TAG="linux-dev" ../../../..
+    cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D NO_SSE4=OFF -D NO_AES=OFF -D BUILD_TAG="linux-x64" ../../../..
 elif [ ${NERVA_BUILD_OS} = "windows" ]; then
-    cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D NO_SSE4=OFF -D NO_AES=OFF -D STATIC=ON -D BUILD_TAG="windows-dev" -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
+    cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D NO_SSE4=OFF -D NO_AES=OFF -D STATIC=ON -D BUILD_TAG="windows-x64" -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
 else
     echo "Development builds not supported"
     exit 0

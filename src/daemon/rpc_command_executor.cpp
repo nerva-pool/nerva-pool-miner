@@ -1948,7 +1948,7 @@ bool t_rpc_command_executor::update(const std::string &command)
     return true;
   }
 
-  tools::msg_writer() << "Update available: v" << res.version << ": " << res.user_uri << ", hash " << res.hash;
+  tools::msg_writer() << "Update available: v" << res.version << ENDL << res.uri << ENDL << "SHA256: " << res.hash;
   if (command == "check")
     return true;
 

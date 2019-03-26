@@ -42,10 +42,8 @@ namespace tools
     std::vector<std::string> records;
     bool found = false;
 
-    MDEBUG("Checking updates for " << buildtag << " " << software);
-
     static const std::vector<std::string> dns_urls = {
-      "getnerva.org",
+      "update.getnerva.org",
     };
 
     if (!tools::dns_utils::load_txt_records_from_dns(records, dns_urls))
@@ -57,7 +55,7 @@ namespace tools
       boost::split(fields, record, boost::is_any_of(":"));
       if (fields.size() != 4)
       {
-        MWARNING("Updates record does not have 4 fields: " << record);
+        MWARNING("Update record does not have 4 fields: " << record);
         continue;
       }
 
@@ -93,21 +91,8 @@ namespace tools
     return found;
   }
 
-  std::string get_update_url(const std::string &software, const std::string &subdir, const std::string &buildtag, const std::string &version, bool user)
+  std::string get_update_url(const std::string &software, const std::string &buildtag, const std::string &version)
   {
-    const char *base = user ? "https://downloads.getnerva.org/" : "https://updates.getnerva.org/";
-#ifdef _WIN32
-    static const char *extension = strncmp(buildtag.c_str(), "install-", 8) ? ".zip" : ".exe";
-#else
-    static const char extension[] = ".tar.bz2";
-#endif
-
-    std::string url;
-
-    url =  base;
-    if (!subdir.empty())
-      url += subdir + "/";
-    url = url + software + "-" + buildtag + "-v" + version + extension;
-    return url;
+    return "https://getnerva.org/content/binaries/" + software + "-v" + version + "_" + buildtag + ".zip";
   }
 }

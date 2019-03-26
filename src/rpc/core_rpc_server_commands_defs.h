@@ -2265,8 +2265,7 @@ namespace cryptonote
       std::string status;
       bool update;
       std::string version;
-      std::string user_uri;
-      std::string auto_uri;
+      std::string uri;
       std::string hash;
       std::string path;
 
@@ -2274,8 +2273,7 @@ namespace cryptonote
         KV_SERIALIZE(status)
         KV_SERIALIZE(update)
         KV_SERIALIZE(version)
-        KV_SERIALIZE(user_uri)
-        KV_SERIALIZE(auto_uri)
+        KV_SERIALIZE(uri)
         KV_SERIALIZE(hash)
         KV_SERIALIZE(path)
       END_KV_SERIALIZE_MAP()

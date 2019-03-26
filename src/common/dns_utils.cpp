@@ -102,7 +102,6 @@ get_builtin_ds(void)
 {
   static const char * const ds[] =
   {
-    ". IN DS 19036 8 2 49AAC11D7B6F6446702E54A1607371607A1A41855200FD2CE1CDDE32F24E8FB5\n",
     ". IN DS 20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D\n",
     NULL
   };
@@ -514,12 +513,12 @@ bool load_txt_records_from_dns(std::vector<std::string> &good_records, const std
     if (!avail[cur_index])
     {
       records[cur_index].clear();
-      LOG_PRINT_L2("DNSSEC not available for checkpoint update at URL: " << url << ", skipping.");
+      LOG_PRINT_L2("DNSSEC not available for URL: " << url << ", skipping.");
     }
     if (!valid[cur_index])
     {
       records[cur_index].clear();
-      LOG_PRINT_L2("DNSSEC validation failed for checkpoint update at URL: " << url << ", skipping.");
+      LOG_PRINT_L2("DNSSEC validation failed for URL: " << url << ", skipping.");
     }
 
     cur_index++;
@@ -545,30 +544,43 @@ bool load_txt_records_from_dns(std::vector<std::string> &good_records, const std
     return false;
   }
 
-  int good_records_index = -1;
-  for (size_t i = 0; i < records.size() - 1; ++i)
+  //nerva currently only has one dns update url. So if we have made it this far
+  //we have a dnssec verified update record, so accept it. it is after all only for notification purposes
+  //the code will automatically require 2 if it comes a time when we can add a second domain
+  if (dns_urls.size() == 1)
   {
-    if (records[i].size() == 0) continue;
-
-    for (size_t j = i + 1; j < records.size(); ++j)
+    good_records = records[0];
+    return true;
+  }
+  else
+  {
+    int good_records_index = -1;
+    for (size_t i = 0; i < records.size() - 1; ++i)
     {
-      if (dns_records_match(records[i], records[j]))
+      if (records[i].size() == 0) continue;
+
+      for (size_t j = i + 1; j < records.size(); ++j)
       {
-        good_records_index = i;
-        break;
+        if (dns_records_match(records[i], records[j]))
+        {
+          good_records_index = i;
+          break;
+        }
       }
+      if (good_records_index >= 0) break;
     }
-    if (good_records_index >= 0) break;
+
+    if (good_records_index < 0)
+    {
+      LOG_PRINT_L0("Unable to find two matching DNS records");
+      return false;
+    }
+
+    good_records = records[good_records_index];
+    return true;
   }
 
-  if (good_records_index < 0)
-  {
-    LOG_PRINT_L0("Unable to find two matching DNS records");
-    return false;
-  }
-
-  good_records = records[good_records_index];
-  return true;
+  return false;
 }
 
 std::vector<std::string> parse_dns_public(const char *s)

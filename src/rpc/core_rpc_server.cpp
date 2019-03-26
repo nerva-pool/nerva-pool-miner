@@ -2261,10 +2261,8 @@ namespace cryptonote
     static const char software[] = "nerva";
 #ifdef BUILD_TAG
     static const char buildtag[] = BOOST_PP_STRINGIZE(BUILD_TAG);
-    static const char subdir[] = "cli";
 #else
-    static const char buildtag[] = "source";
-    static const char subdir[] = "source";
+    static const char buildtag[] = "x64";
 #endif
 
     if (req.command != "check" && req.command != "download" && req.command != "update")
@@ -2287,8 +2285,7 @@ namespace cryptonote
     }
     res.update = true;
     res.version = version;
-    res.user_uri = tools::get_update_url(software, subdir, buildtag, version, true);
-    res.auto_uri = tools::get_update_url(software, subdir, buildtag, version, false);
+    res.uri = tools::get_update_url(software, buildtag, version);
     res.hash = hash;
     if (req.command == "check")
     {
@@ -2300,7 +2297,7 @@ namespace cryptonote
     if (req.path.empty())
     {
       std::string filename;
-      const char *slash = strrchr(res.auto_uri.c_str(), '/');
+      const char *slash = strrchr(res.uri.c_str(), '/');
       if (slash)
         filename = slash + 1;
       else
@@ -2317,9 +2314,9 @@ namespace cryptonote
     if (!tools::sha256sum(path.string(), file_hash) || (hash != epee::string_tools::pod_to_hex(file_hash)))
     {
       MDEBUG("We don't have that file already, downloading");
-      if (!tools::download(path.string(), res.auto_uri))
+      if (!tools::download(path.string(), res.uri))
       {
-        MERROR("Failed to download " << res.auto_uri);
+        MERROR("Failed to download " << res.uri);
         return false;
       }
       if (!tools::sha256sum(path.string(), file_hash))
@@ -2329,7 +2326,7 @@ namespace cryptonote
       }
       if (hash != epee::string_tools::pod_to_hex(file_hash))
       {
-        MERROR("Download from " << res.auto_uri << " does not match the expected hash");
+        MERROR("Download from " << res.uri << " does not match the expected hash");
         return false;
       }
       MINFO("New version downloaded to " << path);
