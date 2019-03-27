@@ -2257,7 +2257,9 @@ uint32_t gen_salt_block(char* salt, uint32_t salt_length, uint32_t min, uint32_t
   //use the first 32 bytes of dat (a block hash) as the input state to 
   //generate a new number to mod the seed with. this will do a further
   //modification on the first 32 bytes
-  return rng.u32((uint64_t*)&dat[0]);
+  uint32_t ret = rng.u32((uint64_t*)&dat[0]);
+  free(dat);
+  return ret;
 }
 
 uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed) const
