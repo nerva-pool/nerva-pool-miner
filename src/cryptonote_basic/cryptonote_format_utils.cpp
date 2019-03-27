@@ -1083,7 +1083,7 @@ namespace cryptonote
     } 
 
     //salt offset
-    r2 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 0, 31);
+    r2 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 0, 127);
     seed = rng.rotl32(seed, 1) ^ r2;
 
     //rand iters

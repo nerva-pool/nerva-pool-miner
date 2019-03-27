@@ -2251,22 +2251,13 @@ uint32_t gen_salt_block(char* salt, uint32_t salt_length, uint32_t look_back, ui
 
   //add the state used as the random number generator into the last 32 bytes
   memcpy(dat + offset, state, 32);
-  //printf("iter-1:\n");
-  //print_char_hex(dat, 128);
-
-  //use bytes 16-48 as the state for r
-  //use bytes 80-112 as the state for s
-  //these 2 calls further modify the data that will be copied to the salt
-  //in a manner that overlaps both the 32 byte chunks added at the beginning and the end
-  t = rng.u32((uint64_t*)&dat[16]);
-  r = rng.u32((uint64_t*)&dat[80]);
-
-  //printf("iter-2:\n");
-  //print_char_hex(dat, 128);
-
+  //copy the data for this iter to the salt
   memcpy(salt + salt_length, dat, 128);
 
-  return t ^ r;
+  //use the first 32 bytes of dat (a block hash) as the input state to 
+  //generate a new number to mod the seed with. this will do a further
+  //modification on the first 32 bytes
+  return rng.u32((uint64_t*)&dat[0]);
 }
 
 uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed) const
@@ -2292,9 +2283,6 @@ uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed)
     xor_hash(salt + i, keccak.data);
   }
 
-  //printf("init_state:\n");
-  //print_char_hex(salt, 128);
-
   //the first iteration we use the previous 128 bytes only as at this point there are only 128 bytes in the salt
   gen_salt_block(salt, salt_length, 128, min, max);
   salt_length += 128;
@@ -2302,7 +2290,7 @@ uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed)
   for (uint32_t i = 0; i < 2047; i++)
   {
     //after the first loop, we look back 192 bytes for the keccak hash which is all of the last 
-    //iteration and half the one before it forces the results to be chained
+    //iteration and half the one before it
     r = gen_salt_block(salt, salt_length, 192, min, max);
     salt_length += 128;
     seed = rng.rotl32(seed, 1) ^ r;
