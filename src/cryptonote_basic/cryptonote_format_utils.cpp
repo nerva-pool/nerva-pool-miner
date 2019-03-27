@@ -1067,8 +1067,10 @@ namespace cryptonote
       seed ^= *(uint32_t*)&h.data[i];
 
     char* salt = crypto::get_salt();
-    memset(salt, 0, 128);
+    memset(salt, 0, 192);
     memcpy(salt, h.data, 32);
+    memcpy(salt + 64, h.data, 32);
+    memcpy(salt + 128, h.data, 32);
     seed = bc->get_db().get_v5_data(salt, (uint32_t)ht, seed);
 
     angrywasp::xoshiro256 rng;
@@ -1083,7 +1085,7 @@ namespace cryptonote
     } 
 
     //salt offset
-    r2 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 0, 127);
+    r2 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 0, 191);
     seed = rng.rotl32(seed, 1) ^ r2;
 
     //rand iters

@@ -2199,7 +2199,7 @@ static void xor_hash(char* dest, char* src)
     aa[i] ^= bb[i];
 }
 
-uint32_t gen_salt_block(char* salt, uint32_t salt_length, uint32_t look_back, uint32_t min, uint32_t max)
+uint32_t gen_salt_block(char* salt, uint32_t salt_length, uint32_t min, uint32_t max)
 {
   angrywasp::xoshiro256 rng;
   char* dat = (char*)malloc(128);
@@ -2208,10 +2208,10 @@ uint32_t gen_salt_block(char* salt, uint32_t salt_length, uint32_t look_back, ui
   mdb_block_info* bi;
   uint32_t offset = 0;
 
-  //take the keccak of the last look_back bytes (128 for the first run, 192 after) of data added to the salt
-  // (the last added iteration and half the one before it)
+  //take the keccak of the last 192 bytes of data added to the salt
+  //(the last added iteration and half the one before it)
   //that becomes the rng state for this iteration
-  keccak = cn_fast_hash(&salt[salt_length - look_back], look_back);
+  keccak = cn_fast_hash(&salt[salt_length - 192], 192);
   uint64_t* state = (uint64_t*)keccak.data;
 
   //add a block hash
@@ -2270,28 +2270,22 @@ uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed)
   mdb_block_info* bi;
 
   uint32_t min = 1, max = (uint32_t)(height - 1);
-  uint32_t salt_length = 128;
+  uint32_t salt_length = 192;
 
   //we keccak hash the entire state, then increment the pointer 8 bytes and 
   //xor the keccak result back against the state. Rinse and repeat till all 128 bytes are filled
   //the first 32 bytes are already populated with the block blob hash and the rest are zeroed out
   crypto::hash keccak = crypto::null_hash;
   uint32_t i = 0;
-  for (i = 8; i <= 96; i += 8)
+  for (i = 8; i <= 160; i += 8)
   {
     keccak = cn_fast_hash(salt, 128);
     xor_hash(salt + i, keccak.data);
   }
 
-  //the first iteration we use the previous 128 bytes only as at this point there are only 128 bytes in the salt
-  gen_salt_block(salt, salt_length, 128, min, max);
-  salt_length += 128;
-
   for (uint32_t i = 0; i < 2047; i++)
   {
-    //after the first loop, we look back 192 bytes for the keccak hash which is all of the last 
-    //iteration and half the one before it
-    r = gen_salt_block(salt, salt_length, 192, min, max);
+    r = gen_salt_block(salt, salt_length, min, max);
     salt_length += 128;
     seed = rng.rotl32(seed, 1) ^ r;
   }
