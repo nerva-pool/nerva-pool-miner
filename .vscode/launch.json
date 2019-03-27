@@ -12,7 +12,7 @@
             "args": [
                 "--stagenet",
                 "--data-dir", "${workspaceFolder}/db/n1",
-                "--fixed-difficulty", "100",
+                "--fixed-difficulty", "250",
                 "--p2p-bind-port", "28080", 
                 "--rpc-bind-port", "28081", 
                 "--zmq-rpc-bind-port", "28082", 
@@ -41,7 +41,7 @@
             "args": [
                 "--stagenet",
                 "--data-dir", "${workspaceFolder}/db/n2",
-                "--fixed-difficulty", "100",
+                "--fixed-difficulty", "250",
                 "--p2p-bind-port", "38080", 
                 "--rpc-bind-port", "38081", 
                 "--zmq-rpc-bind-port", "38082", 
