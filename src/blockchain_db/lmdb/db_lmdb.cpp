@@ -2281,11 +2281,11 @@ uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed)
   uint32_t i = 0;
   for (i = 8; i <= 160; i += 8)
   {
-    keccak = cn_fast_hash(salt, 128);
+    keccak = cn_fast_hash(salt, 192);
     xor_hash(salt + i, keccak.data);
   }
 
-  for (uint32_t i = 0; i < 2047; i++)
+  for (uint32_t i = 0; i < 2048; i++)
   {
     r = gen_salt_block(salt, salt_length, min, max);
     salt_length += 128;
