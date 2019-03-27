@@ -691,13 +691,9 @@ bool t_command_parser_executor::print_blockchain_dynamic_stats(const std::vector
 
 bool t_command_parser_executor::update(const std::vector<std::string>& args)
 {
-  if(args.size() != 1)
-  {
-    std::cout << "Exactly one parameter is needed: check, download, or update" << std::endl;
-    return false;
-  }
-
-  return m_executor.update(args.front());
+  if(args.size() != 0) return false;
+  
+  return m_executor.update();
 }
 
 bool t_command_parser_executor::relay_tx(const std::vector<std::string>& args)

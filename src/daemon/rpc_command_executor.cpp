@@ -1917,7 +1917,7 @@ bool t_rpc_command_executor::print_blockchain_dynamic_stats(uint64_t nblocks)
   return true;
 }
 
-bool t_rpc_command_executor::update(const std::string &command)
+bool t_rpc_command_executor::update()
 {
   cryptonote::COMMAND_RPC_UPDATE::request req;
   cryptonote::COMMAND_RPC_UPDATE::response res;
@@ -1925,7 +1925,6 @@ bool t_rpc_command_executor::update(const std::string &command)
 
   std::string fail_message = "Problem fetching info";
 
-  req.command = command;
   if (m_is_rpc)
   {
     if (!m_rpc_client->rpc_request(req, res, "/update", fail_message.c_str()))
@@ -1949,18 +1948,6 @@ bool t_rpc_command_executor::update(const std::string &command)
   }
 
   tools::msg_writer() << "Update available: v" << res.version << ENDL << res.uri << ENDL << "SHA256: " << res.hash;
-  if (command == "check")
-    return true;
-
-  if (!res.path.empty())
-    tools::msg_writer() << "Update downloaded to: " << res.path;
-  else
-    tools::msg_writer() << "Update download failed: " << res.status;
-  if (command == "download")
-    return true;
-
-  tools::msg_writer() << "'update' not implemented yet";
-
   return true;
 }
 

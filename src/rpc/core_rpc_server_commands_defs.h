@@ -2251,12 +2251,7 @@ namespace cryptonote
   {
     struct request
     {
-      std::string command;
-      std::string path;
-
       BEGIN_KV_SERIALIZE_MAP()
-        KV_SERIALIZE(command);
-        KV_SERIALIZE(path);
       END_KV_SERIALIZE_MAP()
     };
 
@@ -2267,7 +2262,6 @@ namespace cryptonote
       std::string version;
       std::string uri;
       std::string hash;
-      std::string path;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
@@ -2275,7 +2269,6 @@ namespace cryptonote
         KV_SERIALIZE(version)
         KV_SERIALIZE(uri)
         KV_SERIALIZE(hash)
-        KV_SERIALIZE(path)
       END_KV_SERIALIZE_MAP()
     };
   };

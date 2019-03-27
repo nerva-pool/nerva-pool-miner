@@ -2265,12 +2265,6 @@ namespace cryptonote
     static const char buildtag[] = "x64";
 #endif
 
-    if (req.command != "check" && req.command != "download" && req.command != "update")
-    {
-      res.status = std::string("unknown command: '") + req.command + "'";
-      return true;
-    }
-
     std::string version, hash;
     if (!tools::check_updates(software, buildtag, version, hash))
     {
@@ -2287,63 +2281,8 @@ namespace cryptonote
     res.version = version;
     res.uri = tools::get_update_url(software, buildtag, version);
     res.hash = hash;
-    if (req.command == "check")
-    {
-      res.status = CORE_RPC_STATUS_OK;
-      return true;
-    }
-
-    boost::filesystem::path path;
-    if (req.path.empty())
-    {
-      std::string filename;
-      const char *slash = strrchr(res.uri.c_str(), '/');
-      if (slash)
-        filename = slash + 1;
-      else
-        filename = std::string(software) + "-update-" + version;
-      path = epee::string_tools::get_current_module_folder();
-      path /= filename;
-    }
-    else
-    {
-      path = req.path;
-    }
-
-    crypto::hash file_hash;
-    if (!tools::sha256sum(path.string(), file_hash) || (hash != epee::string_tools::pod_to_hex(file_hash)))
-    {
-      MDEBUG("We don't have that file already, downloading");
-      if (!tools::download(path.string(), res.uri))
-      {
-        MERROR("Failed to download " << res.uri);
-        return false;
-      }
-      if (!tools::sha256sum(path.string(), file_hash))
-      {
-        MERROR("Failed to hash " << path);
-        return false;
-      }
-      if (hash != epee::string_tools::pod_to_hex(file_hash))
-      {
-        MERROR("Download from " << res.uri << " does not match the expected hash");
-        return false;
-      }
-      MINFO("New version downloaded to " << path);
-    }
-    else
-    {
-      MDEBUG("We already have " << path << " with expected hash");
-    }
-    res.path = path.string();
-
-    if (req.command == "download")
-    {
-      res.status = CORE_RPC_STATUS_OK;
-      return true;
-    }
-
-    res.status = "'update' not implemented yet";
+    
+    res.status = CORE_RPC_STATUS_OK;
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------
