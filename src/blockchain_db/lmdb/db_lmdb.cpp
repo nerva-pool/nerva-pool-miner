@@ -2179,120 +2179,96 @@ void BlockchainLMDB::get_v4_data(char* salt, uint64_t height, uint32_t seed) con
   }
 }
 
-static void print_char_hex(const char *bytes, int size)
+void BlockchainLMDB::get_v5_data(HC128_State* rng_state, uint64_t height, char* out) const
 {
-  for (int i = 0; i < size; ++i)
-  {
-    const char ch = bytes[i];
-    printf("%02X", ch & 0xFF);
-  }
-
-  printf("\n");
-}
-
-static void xor_hash(char* dest, char* src)
-{
-  uint64_t* aa = (uint64_t*)dest;
-  uint64_t* bb = (uint64_t*)src;
-
-  for (uint32_t i = 0; i < 4; i++)
-    aa[i] ^= bb[i];
-}
-
-uint32_t gen_salt_block(char* salt, uint32_t salt_length, uint32_t min, uint32_t max)
-{
-  angrywasp::xoshiro256 rng;
-  char* dat = (char*)malloc(128);
-  crypto::hash keccak = crypto::null_hash;
-  uint32_t t = 0, r = 0;
-  mdb_block_info* bi;
-  uint32_t offset = 0;
-
-  //take the keccak of the last 192 bytes of data added to the salt
-  //(the last added iteration and half the one before it)
-  //that becomes the rng state for this iteration
-  keccak = cn_fast_hash(&salt[salt_length - 192], 192);
-  uint64_t* state = (uint64_t*)keccak.data;
-
-  //add a block hash
-  r = rng.u32(state, min, max);
-  bi = &_cache[r];
-  memcpy(dat + offset, bi->bi_hash.data, 32);
-  offset += 32;
-
-  //add 4x16 bytes consisting of
-  //timestamp, diff, coins
-  for (uint32_t j = 0; j < 4; j++)
-  {
-    r = rng.u32(state, min, max);
-    bi = &_cache[r];
-    t = (uint32_t)bi->bi_timestamp;
-    std::memcpy(dat + offset, &t, 4);
-    offset += 4;
-
-    r = rng.u32(state, min, max);
-    bi = &_cache[r];
-    t = (uint32_t)bi->bi_diff;
-    std::memcpy(dat + offset, &t, 4);
-    offset += 4;
-
-    r = rng.u32(state, min, max);
-    bi = &_cache[r];
-    t = (uint32_t)(bi->bi_coins >> 32U);
-    std::memcpy(dat + offset, &t, 4);
-    offset += 4;
-
-    r = rng.u32(state, min, max);
-    bi = &_cache[r];
-    t = (uint32_t)bi->bi_coins;
-    std::memcpy(dat + offset, &t, 4);
-    offset += 4;
-  }
-
-  //add the state used as the random number generator into the last 32 bytes
-  memcpy(dat + offset, state, 32);
-  //copy the data for this iter to the salt
-  memcpy(salt + salt_length, dat, 128);
-
-  //use the first 32 bytes of dat (a block hash) as the input state to 
-  //generate a new number to mod the seed with. this will do a further
-  //modification on the first 32 bytes
-  uint32_t ret = rng.u32((uint64_t*)&dat[0]);
-  free(dat);
-  return ret;
-}
-
-uint32_t BlockchainLMDB::get_v5_data(char* salt, uint64_t height, uint32_t seed) const
-{
-  angrywasp::xoshiro256 rng;
-  
-  int err = 0;
-  uint32_t r = 0;
+  // TODO: Do not assume little-endian architecture
   build_cache(height);
   mdb_block_info* bi;
-
-  uint32_t min = 1, max = (uint32_t)(height - 1);
-  uint32_t salt_length = 192;
-
-  //we keccak hash the entire state, then increment the pointer 8 bytes and 
-  //xor the keccak result back against the state. Rinse and repeat till all 128 bytes are filled
-  //the first 32 bytes are already populated with the block blob hash and the rest are zeroed out
-  crypto::hash keccak = crypto::null_hash;
-  uint32_t i = 0;
-  for (i = 8; i <= 160; i += 8)
+  size_t rng_key_idx = 0;
+  unsigned char msg[64];
+  size_t msgpos;
+  unsigned char* optr = (unsigned char*)out;
+  uint64_t count = 0;
+  while (count < 2048)
   {
-    keccak = cn_fast_hash(salt, 192);
-    xor_hash(salt + i, keccak.data);
-  }
+    HC128_NextKeys(rng_state);
+ 
+    for (size_t k = 0; k < 16; k++) {
+        bi = &_cache[HC128_U32(rng_state, &rng_key_idx, height)];
+        std::memcpy(msg, bi->bi_hash.data, sizeof(crypto::hash));
+        msgpos = sizeof(crypto::hash);
+ 
+        bi = &_cache[HC128_U32(rng_state, &rng_key_idx, height)];
+        std::memcpy(msg + msgpos, &(bi->bi_timestamp), sizeof(uint64_t));
+        msgpos += sizeof(uint64_t);
+ 
+        bi = &_cache[HC128_U32(rng_state, &rng_key_idx, height)];
+        std::memcpy(msg + msgpos, &(bi->bi_diff), sizeof(uint64_t));
+        msgpos += sizeof(uint64_t);
+ 
+        bi = &_cache[HC128_U32(rng_state, &rng_key_idx, height)];
+        std::memcpy(msg + msgpos, &(bi->bi_coins), sizeof(uint64_t));
+        msgpos += sizeof(uint64_t);
+ 
+        std::memcpy(msg + msgpos, &count, sizeof(uint64_t));
+ 
+        HC128_EncryptMessage(rng_state, msg, optr, sizeof(msg));
+        optr += 16 * sizeof(uint32_t);
 
-  for (uint32_t i = 0; i < 2048; i++)
+        count++;
+    }
+ 
+    // Reseed, but don't reset the RNG key index, making the next used key
+    // effectively random at the start of each loop iteration (except the first)
+    HC128_Init(
+        rng_state,
+        optr - (16 * 16 * sizeof(uint32_t)) + HC128_U32(rng_state, &rng_key_idx, (8 * 16 * sizeof(uint32_t)) - 16),
+        optr - (8 * 16 * sizeof(uint32_t)) + HC128_U32(rng_state, &rng_key_idx, (8 * 16 * sizeof(uint32_t)) - 16));
+   }
+ 
+  std::memcpy(msg, optr - 131072 + HC128_U32(rng_state, &rng_key_idx, 131072U - 16U), 16);
+  std::memcpy(msg, optr - 131072 + HC128_U32(rng_state, &rng_key_idx, 131072U - 16U), 16);
+  std::memcpy(msg, optr - 131072 + HC128_U32(rng_state, &rng_key_idx, 131072U - 16U), 16);
+  std::memcpy(msg, optr - 131072 + HC128_U32(rng_state, &rng_key_idx, 131072U - 16U), 16);
+  HC128_EncryptMessage(rng_state, msg, optr, sizeof(msg));
+  HC128_Init(rng_state, optr, optr+16);
+
+  while (count < 4096)
   {
-    r = gen_salt_block(salt, salt_length, min, max);
-    salt_length += 128;
-    seed = rng.rotl32(seed, 1) ^ r;
-  }
+    HC128_NextKeys(rng_state);
 
-  return seed;
+    for (size_t k = 0; k < 16; k++) {
+        bi = &_cache[HC128_U32(rng_state, &rng_key_idx, height)];
+        std::memcpy(msg, bi->bi_hash.data, sizeof(crypto::hash));
+        msgpos = sizeof(crypto::hash);
+
+        bi = &_cache[HC128_U32(rng_state, &rng_key_idx, height)];
+        std::memcpy(msg + msgpos, &(bi->bi_timestamp), sizeof(uint64_t));
+        msgpos += sizeof(uint64_t);
+
+        bi = &_cache[HC128_U32(rng_state, &rng_key_idx, height)];
+        std::memcpy(msg + msgpos, &(bi->bi_diff), sizeof(uint64_t));
+        msgpos += sizeof(uint64_t);
+
+        bi = &_cache[HC128_U32(rng_state, &rng_key_idx, height)];
+        std::memcpy(msg + msgpos, &(bi->bi_coins), sizeof(uint64_t));
+        msgpos += sizeof(uint64_t);
+
+        std::memcpy(msg + msgpos, &count, sizeof(uint64_t));
+
+        HC128_EncryptMessage(rng_state, msg, optr, sizeof(msg));
+        optr += 16 * sizeof(uint32_t);
+
+        count++;
+    }
+
+    // Reseed, but don't reset the RNG key index, making the next used key
+    // effectively random at the start of each loop iteration (except the first)
+    HC128_Init(
+        rng_state,
+        optr - (16 * 16 * sizeof(uint32_t)) + HC128_U32(rng_state, &rng_key_idx, (8 * 16 * sizeof(uint32_t)) - 16),
+        optr - (8 * 16 * sizeof(uint32_t)) + HC128_U32(rng_state, &rng_key_idx, (8 * 16 * sizeof(uint32_t)) - 16));
+  }
 }
 
 cryptonote::blobdata BlockchainLMDB::get_uncle_blob_from_height(const uint64_t& height) const

@@ -15,42 +15,42 @@ datadir=${dir}/db
 function wallet1()
 {
 	rm -f ${dir}/t1.cache
-	nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:28081 --wallet-file ${dir}/t1 --password ""
+	${dir}/builder/build/release/bin/nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:28081 --wallet-file ${dir}/t1 --password ""
 }
 
 function wallet2()
 {
 	rm -f ${dir}/t2.cache
-	nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:38081 --wallet-file ${dir}/t2 --password ""
+	${dir}/builder/build/release/bin/nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:38081 --wallet-file ${dir}/t2 --password ""
 }
 
 function createhwwallet()
 {
 	rm -f ${dir}/hw.cache
 	rm -f ${dir}/hw.keys
-	nerva-wallet-cli --restore-height 1 --stagenet --daemon-address 127.0.0.1:28081 --generate-from-device ${dir}/hw --password "" --log-level 2
+	${dir}/builder/build/release/bin/nerva-wallet-cli --restore-height 1 --stagenet --daemon-address 127.0.0.1:28081 --generate-from-device ${dir}/hw --password "" --log-level 2
 }
 
 function hwwallet()
 {
-	nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:28081 --hw-device "Ledger" --wallet-file ${dir}/hw --password ""
+	${dir}/builder/build/release/bin/nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:28081 --hw-device "Ledger" --wallet-file ${dir}/hw --password ""
 }
 
 function hwrwallet()
 {
-	nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:28081 --wallet-file ${dir}/hwr --password ""
+	${dir}/builder/build/release/bin/nerva-wallet-cli --stagenet --daemon-address 127.0.0.1:28081 --wallet-file ${dir}/hwr --password ""
 }
 
 function n1()
 {
-	nervad --stagenet --data-dir ${datadir}/n1 --p2p-bind-port 28080 --rpc-bind-port 28081 --zmq-rpc-bind-port 28082 --rpc-restricted-bind-port 28083 \
+	${dir}/builder/build/release/bin/nervad --stagenet --data-dir ${datadir}/n1 --p2p-bind-port 28080 --rpc-bind-port 28081 --zmq-rpc-bind-port 28082 --rpc-restricted-bind-port 28083 \
 	--add-exclusive-node 127.0.0.1:38080 \
 	--fixed-difficulty ${DIFF} --block-sync-size 10
 }
 
 function n2()
 {
-	nervad --stagenet --data-dir ${datadir}/n2 --p2p-bind-port 38080 --rpc-bind-port 38081 --zmq-rpc-bind-port 38082 --rpc-restricted-bind-port 38083 \
+	${dir}/builder/build/release/bin/nervad --stagenet --data-dir ${datadir}/n2 --p2p-bind-port 38080 --rpc-bind-port 38081 --zmq-rpc-bind-port 38082 --rpc-restricted-bind-port 38083 \
 	--add-exclusive-node 127.0.0.1:28080 \
 	--fixed-difficulty ${DIFF}  --block-sync-size 10
 }

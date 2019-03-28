@@ -44,6 +44,10 @@
 #include "span.h"
 #include "hash.h"
 
+extern "C" {
+#include "hc128.h"
+}
+
 namespace crypto {
 
   extern "C" {

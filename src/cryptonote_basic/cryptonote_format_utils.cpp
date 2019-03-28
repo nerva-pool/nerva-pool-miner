@@ -42,9 +42,11 @@ using namespace epee;
 #include "cryptonote_config.h"
 #include "crypto/crypto.h"
 #include "crypto/hash.h"
+#include "crypto/hc128.h"
 #include "ringct/rctSigs.h"
 #include "cryptonote_core/blockchain.h"
 #include "random_numbers.h"
+
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -1021,98 +1023,51 @@ namespace cryptonote
     }
   }
 
-  uint8_t lookup[3] { 2, 4, 8 };
-
-  static void print_char_hex(const char *bytes, int size)
-  {
-      for (int i = 0; i < size; ++i)
-      {
-          const char ch = bytes[i];
-          printf("%02X", ch & 0xFF);
-      }
-
-      printf("\n");
-  }
-
-#define INIT_TIMER() \
-   struct timeval  tv1, tv2;
-
-#define START_TIMER() \
-  gettimeofday(&tv1, NULL);
-
-#define STOP_TIMER(msg) \
-  gettimeofday(&tv2, NULL); \
-  printf(msg); \
-	printf (" = %f seconds\n", (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec));
-
   bool get_block_longhash_v11(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {
-    blobdata bd = get_block_hashing_blob(b);
-    uint64_t ht = height - 256;
+    // Guard against chain splits by only taking data from blocks with at least
+    // 256 ancestors.
+    assert(height > 257);
+    uint64_t stable_height = height - 256;
 
     if (height != cached_height || !v2_initialized)
     {
       CRITICAL_REGION_BEGIN(m_v2_lock);
         cached_height = height;
-        generate_v2_data(ht, 1048576, bc);
+        generate_v2_data(stable_height, 1048576, bc);
       CRITICAL_REGION_END();
     }
 
-    uint32_t seed = b.nonce ^ height;
-
+    // Make the hashing context unique per nonce by seeding it with a hash
+    // of the hashing blob for a given nonce.
+    blobdata bd = get_block_hashing_blob(b);
     crypto::hash h;
     get_blob_hash(bd, h);
 
-    for (int i = 0; i < 32; i += 4)
-      seed ^= *(uint32_t*)&h.data[i];
+    HC128_State rng_state;
+    HC128_Init(&rng_state, (unsigned char*)h.data, (unsigned char*)h.data+16);
 
-    char* salt = crypto::get_salt();
-    memset(salt, 0, 192);
-    memcpy(salt, h.data, 32);
-    memcpy(salt + 64, h.data, 32);
-    memcpy(salt + 128, h.data, 32);
-    seed = bc->get_db().get_v5_data(salt, (uint32_t)ht, seed);
+    char *salt = crypto::get_salt();
+    bc->get_db().get_v5_data(&rng_state, stable_height, salt);
 
-    angrywasp::xoshiro256 rng;
-    uint32_t r1 = 0, r2 = 0, r3 = 0, r4 = 0, r5 = 0;
+    HC128_NextKeys(&rng_state);
+    size_t rng_key_idx = 0;
+    // xx: [4, 8]
+    const uint32_t xx = (uint32_t)4U + HC128_U32(&rng_state, &rng_key_idx, 5U);
+    // yy: [4, 8]
+    const uint32_t yy = (uint32_t)4U + HC128_U32(&rng_state, &rng_key_idx, 5U);
+    // init_size_blk: 2, 4, or 8  (2 << [0, 2])
+    const uint8_t init_size_blk = (uint8_t)2U << ((uint8_t)HC128_U32(&rng_state, &rng_key_idx, 3U));
+    // iters_divisor: [1, 64]
+    const uint32_t iters_divisor = (uint32_t)1U + HC128_U32(&rng_state, &rng_key_idx, 64U);
+    const uint32_t iters = ((height + 1) % iters_divisor);
 
-    uint8_t temp_lookup_1[3];
-    for (int i = 0; i < 3; i++)
-    {
-      r1 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024]);
-      seed = rng.rotl32(seed, 1) ^ r1;
-      temp_lookup_1[i] = lookup[r1 % 3];
-    } 
-
-    //salt offset
-    r2 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 0, 191);
-    seed = rng.rotl32(seed, 1) ^ r2;
-
-    //rand iters
-    r3 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 1, 64);
-    seed = rng.rotl32(seed, 1) ^ r3;
-
-    //xx
-    r4 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
-    seed = rng.rotl32(seed, 1) ^ r4;
-    r5 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
-    seed = rng.rotl32(seed, 1) ^ r5;
-    uint16_t xx = (uint16_t)(r4 + r5);
-
-    //yy
-    r4 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
-    seed = rng.rotl32(seed, 1) ^ r4;
-    r5 = rng.u32((uint64_t*)&salt[(seed % 257) * 1024], 2, 4);
-    seed = rng.rotl32(seed, 1) ^ r5;
-    uint16_t yy = (uint16_t)(r4 + r5);
-
-    uint8_t init_size_blk = temp_lookup_1[(r4 ^ r5) % 3];
-    uint32_t iters = ((height + 1) % r3);
-
-    crypto::cn_slow_hash_v11(bd.data(), bd.size(), res, iters, r, salt + r2, init_size_blk, xx, yy);
+    crypto::cn_slow_hash_v11(bd.data(), bd.size(), res, iters, r, salt, init_size_blk, xx, yy);
 
     return true;
   }
+
+  uint8_t lookup[3] { 2, 4, 8 };
 
   bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
   {

@@ -1361,16 +1361,6 @@ namespace cryptonote
     void get_last_n_blocks_sizes(std::vector<size_t>& sz, size_t count) const;
 
     /**
-     * @brief adds the given output to the requested set of random outputs
-     *
-     * @param result_outs return-by-reference the set the output is to be added to
-     * @param amount the output amount
-     * @param i the output index (indexed to amount)
-     */
-    //todo: delete
-    //void add_out_to_get_random_outs(COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& result_outs, uint64_t amount, size_t i) const;
-
-    /**
      * @brief adds the given output to the requested set of random ringct outputs
      *
      * @param outs return-by-reference the set the output is to be added to

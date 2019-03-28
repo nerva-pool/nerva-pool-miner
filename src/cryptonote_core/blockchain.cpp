@@ -2096,20 +2096,6 @@ size_t Blockchain::get_alternative_blocks_count() const
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
   return m_alternative_chains.size();
 }
-//------------------------------------------------------------------
-// This function adds the output specified by <amount, i> to the result_outs container
-// unlocked and other such checks should be done by here.
-//todo: delete
-/*void Blockchain::add_out_to_get_random_outs(COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& result_outs, uint64_t amount, size_t i) const
-{
-  LOG_PRINT_L3("Blockchain::" << __func__);
-  CRITICAL_REGION_LOCAL(m_blockchain_lock);
-
-  COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry& oen = *result_outs.outs.insert(result_outs.outs.end(), COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry());
-  oen.global_amount_index = i;
-  output_data_t data = m_db->get_output_key(amount, i);
-  oen.out_key = data.pubkey;
-}*/
 
 uint64_t Blockchain::get_num_mature_outputs(uint64_t amount) const
 {
@@ -3862,14 +3848,6 @@ leave:
   else
 #endif
 
-  /*bool quicksync_verified = false;
-  auto it = m_blocks_longhash_table.find(id);
-  if (it != m_blocks_longhash_table.end())
-  {
-      if (it->second == crypto::null_hash)
-        quicksync_verified = m_quicksync.check_block(m_db->height(), bl.hash);
-  }*/
-
   bool quicksync_verified = m_quicksync.check_block(m_db->height(), bl.hash);
 
   if (!quicksync_verified)
@@ -4637,28 +4615,6 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
       blocks[i].push_back(std::move(block));
       std::advance(it, 1);
     }
-
-    /*if (!blocks_exist)
-    {
-      m_blocks_longhash_table.clear();
-      uint64_t thread_height = height;
-      tools::threadpool::waiter waiter;
-      for (uint64_t i = 0; i < threads; i++)
-      {
-        tpool.submit(&waiter, boost::bind(&Blockchain::block_longhash_worker, this, thread_height, std::cref(blocks[i]), std::ref(maps[i])), true);
-        thread_height += blocks[i].size();
-      }
-
-      waiter.wait(&tpool);
-
-      if (m_cancel)
-         return false;
-
-      for (const auto & map : maps)
-      {
-        m_blocks_longhash_table.insert(map.begin(), map.end());
-      }
-    }*/
   }
 
   if (m_cancel)

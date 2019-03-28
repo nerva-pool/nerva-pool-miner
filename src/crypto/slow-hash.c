@@ -158,7 +158,7 @@ char* get_salt_state(void)
 
 void cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy)
 {
-    char *salt_hash = (char *)malloc(32);
+    char salt_hash[32];
     init_hash();
     expand_key();
     randomize_scratchpad_256k(r, sp_bytes, hp_state);
@@ -196,7 +196,6 @@ void cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters,
     }
 
     finalize_hash();
-    free(salt_hash);
 }
 
 void cn_slow_hash_v10(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww)
@@ -375,7 +374,7 @@ char* get_salt_state(void)
 
 void cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy)
 {
-    char *salt_hash = (char *)malloc(32);
+    char salt_hash[32];
     init_hash();
     expand_key();
     randomize_scratchpad_256k(r, sp_bytes, hp_state);

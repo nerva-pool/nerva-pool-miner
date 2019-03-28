@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The Nerva Project
 // Copyright (c) 2018, The Masari Project
 // Copyright (c) 2014-2018, The Monero Project
 //
@@ -36,6 +37,7 @@
 #include <exception>
 #include <boost/program_options.hpp>
 #include "common/command_line.h"
+#include "crypto/crypto.h"
 #include "crypto/hash.h"
 #include "cryptonote_basic/blobdatatype.h"
 #include "cryptonote_basic/cryptonote_basic.h"
@@ -938,7 +940,7 @@ public:
 
   virtual void get_v3_data(char* salt, uint64_t height, uint32_t seed) const = 0;
   virtual void get_v4_data(char* salt, uint64_t height, uint32_t seed) const = 0;
-  virtual uint32_t get_v5_data(char* salt, uint64_t height, uint32_t seed) const = 0;
+  virtual void get_v5_data(HC128_State* rng_state, uint64_t height, char* out) const = 0;
 
   virtual void build_cache(uint64_t height) const = 0;
 

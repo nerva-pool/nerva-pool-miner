@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The Nerva Project
 // Copyright (c) 2018, The Masari Project
 // Copyright (c) 2014-2018, The Monero Project
 // All rights reserved.
@@ -228,7 +229,7 @@ public:
 
   virtual void get_v3_data(char* salt, uint64_t height, uint32_t seed) const;
   virtual void get_v4_data(char* salt, uint64_t height, uint32_t seed) const;
-  virtual uint32_t get_v5_data(char* salt, uint64_t height, uint32_t seed) const;
+  virtual void get_v5_data(HC128_State* rng_state, uint64_t height, char* out) const;
 
   virtual void build_cache(uint64_t height) const;
 
