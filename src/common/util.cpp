@@ -770,6 +770,20 @@ std::string get_nix_version_display_string()
 #endif
   }
 
+  bool check_aesni()
+  {
+#if !defined NO_AES
+    if (!crypto::has_aesni())
+    {
+        MERROR(
+            "This executable requires AES-NI support, which is not available on your machine."
+            " To correct this issue, try rebuilding with compilation flag -DNO_AES.");
+        return false;
+    }
+#endif // !defined NO_AES
+    return true;
+  }
+
   bool on_startup()
   {
     mlog_configure("", true);

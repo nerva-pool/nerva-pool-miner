@@ -149,6 +149,7 @@ namespace crypto {
       const public_key *const *, std::size_t, const signature *);
   };
 
+  bool has_aesni();
   void generate_random_bytes_thread_safe(size_t N, uint8_t *bytes);
 
   /* Generate N random bytes

@@ -598,6 +598,9 @@ int main(int argc, char* argv[])
     return 1;
   }
 
+  if (!tools::check_aesni())
+    return 1;
+
   if (! opt_batch && !command_line::is_arg_defaulted(vm, arg_batch_size))
   {
     std::cerr << "Error: batch-size set, but batch option not enabled" << ENDL;

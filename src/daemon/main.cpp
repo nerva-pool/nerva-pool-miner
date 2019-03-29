@@ -279,6 +279,9 @@ int main(int argc, char const * argv[])
       }
     }
 
+    if (!tools::check_aesni())
+      return 1;
+
     if (noanalytics)
       MGINFO_CYAN("Analytics disabled. Please consider helping us build the node map");
     else

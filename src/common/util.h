@@ -151,6 +151,8 @@ namespace tools
 
   bool disable_core_dumps();
 
+  bool check_aesni();
+
   bool on_startup();
 
   /*! \brief Defines a signal handler for win32 and *nix
