@@ -85,6 +85,14 @@
 #define MGINFO_MAGENTA(x) MCLOG_MAGENTA(el::Level::Info, "global",x)
 #define MGINFO_CYAN(x) MCLOG_CYAN(el::Level::Info, "global",x)
 
+#define MGUSER(x) MCINFO("user",x)
+#define MGUSER_RED(x) MCLOG_RED(el::Level::Info, "user",x)
+#define MGUSER_GREEN(x) MCLOG_GREEN(el::Level::Info, "user",x)
+#define MGUSER_YELLOW(x) MCLOG_YELLOW(el::Level::Info, "user",x)
+#define MGUSER_BLUE(x) MCLOG_BLUE(el::Level::Info, "user",x)
+#define MGUSER_MAGENTA(x) MCLOG_MAGENTA(el::Level::Info, "user",x)
+#define MGUSER_CYAN(x) MCLOG_CYAN(el::Level::Info, "user",x)
+
 #define LOG_ERROR(x) MERROR(x)
 #define LOG_PRINT_L0(x) MWARNING(x)
 #define LOG_PRINT_L1(x) MINFO(x)

@@ -1518,7 +1518,7 @@ namespace cryptonote
       else
         main_message = "The daemon will start synchronizing with the network. This may take a long time to complete.";
 
-      MGINFO_GREEN(ENDL << ENDL
+      MGUSER_GREEN(ENDL << ENDL
         << R"(   |  |  |  |  |  |                                  )" << ENDL
         << R"(  ==================                                 )" << ENDL
         << R"(--|     /\      ___|--   _ __   ___ _ ____   ____ _  )" << ENDL
@@ -1530,7 +1530,7 @@ namespace cryptonote
         << R"(  ==================                                 )" << ENDL
         << R"(   |  |  |  |  |  |                                  )" << ENDL);
 
-      MGINFO_YELLOW(ENDL
+      MGUSER_YELLOW(ENDL
         << main_message << ENDL
         << "Use the \"help\" command to see the list of available commands." << ENDL
         << "Use \"help <command>\" to see a command's documentation." << ENDL);
@@ -1589,7 +1589,7 @@ namespace cryptonote
       return true;
 
     std::string url = tools::get_update_url(software, buildtag, version);
-    MCLOG_CYAN(el::Level::Info, "global", ENDL
+    MGUSER_CYAN(ENDL
     << "Version " << version << " of " << software << " for " << buildtag << " is available" << ENDL
     << url << ENDL
     << "SHA256: " << hash);

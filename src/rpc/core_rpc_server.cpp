@@ -2101,8 +2101,9 @@ namespace cryptonote
   bool core_rpc_server::on_get_min_version(const COMMAND_RPC_MIN_VERSION::request& req, COMMAND_RPC_MIN_VERSION::response& res, epee::json_rpc::error& error_resp)
   {
     PERF_TIMER(on_get_min_version);
-    CHECK_CORE_READY();
-    res.version_int = m_core.get_blockchain_storage().get_minimum_version_for_fork(SUPPORTED_MIN_VERSION);
+    cryptonote::network_type net_type = nettype();
+    res.version_int = m_core.get_blockchain_storage().get_minimum_version_for_fork(net_type);
+
     uint8_t a, b, c, d;
     a = (uint8_t)(res.version_int >> 24);
     b = (uint8_t)(res.version_int >> 16);

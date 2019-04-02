@@ -302,8 +302,8 @@ namespace cryptonote
     m_core.set_target_blockchain_height((hshd.current_height));
     int64_t diff = static_cast<int64_t>(hshd.current_height) - static_cast<int64_t>(m_core.get_current_blockchain_height());
     uint64_t max_block_height = std::max(hshd.current_height,m_core.get_current_blockchain_height());
-    MCLOG(is_inital ? el::Level::Info : el::Level::Debug, "global", context <<  "Sync data returned a new top block candidate: " << m_core.get_current_blockchain_height() << " -> " << hshd.current_height
-      << " [Your node is " << std::abs(diff) << " blocks (" << (abs(diff)  / (24 * 60 * 60 / DIFFICULTY_TARGET))  << " days) "
+    MGUSER_BLUE(context <<  "New top block candidate: " << m_core.get_current_blockchain_height() << " -> " << hshd.current_height
+      << " [Your node is " << std::abs(diff) << " blocks "
       << (0 <= diff ? std::string("behind") : std::string("ahead"))
       << "] " << ENDL << "SYNCHRONIZATION started");
       m_core.safesyncmode(false);
@@ -1222,11 +1222,11 @@ skip:
             } else {
               const int completition_percent = (m_core.get_current_blockchain_height() * 100 / m_core.get_target_blockchain_height());
               if(completition_percent < 99) {//printing completion percent only if % is < of 99 cause for 99 >= this is useless
-                MGINFO_YELLOW(context << " Synced " << m_core.get_current_blockchain_height() << "/" << m_core.get_target_blockchain_height()
+                MGUSER_YELLOW(context << " Synced " << m_core.get_current_blockchain_height() << "/" << m_core.get_target_blockchain_height()
                   << " (" << completition_percent << "% " << (m_core.get_target_blockchain_height() - m_core.get_current_blockchain_height())
                   << " blocks remaining)" << timing_message);
               } else {
-                MGINFO_YELLOW(context << " Synced " << m_core.get_current_blockchain_height() << "/" << m_core.get_target_blockchain_height()
+                MGUSER_YELLOW(context << " Synced " << m_core.get_current_blockchain_height() << "/" << m_core.get_target_blockchain_height()
                   << timing_message);
               }
             }
@@ -1658,7 +1658,7 @@ skip:
       {
         if (m_core.get_current_blockchain_height() >= m_core.get_target_blockchain_height())
         {
-          MGINFO_GREEN("SYNCHRONIZED OK");
+          MGUSER_GREEN("SYNCHRONIZED OK");
           on_connection_synchronized();
         }
       }
@@ -1676,7 +1676,7 @@ skip:
     bool val_expected = false;
     if(m_synchronized.compare_exchange_strong(val_expected, true))
     {
-      MGINFO_YELLOW(ENDL << "**********************************************************************" << ENDL
+      MGUSER_YELLOW(ENDL << "**********************************************************************" << ENDL
         << "You are now synchronized with the network. You may now start nerva-wallet-cli." << ENDL
         << ENDL
         << "Use the \"help\" command to see the list of available commands." << ENDL

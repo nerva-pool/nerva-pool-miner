@@ -802,7 +802,7 @@ namespace nodetool
       {
         if (i == host_compare)
         {
-          MGINFO_CYAN("Host " << i << " is on blacklist");
+          MGUSER_CYAN("Host " << i << " is on blacklist");
           block_host(context.m_remote_address);
           return;
         }
@@ -810,7 +810,7 @@ namespace nodetool
 
       if (rsp.node_data.version.size() == 0)
       {
-        MGINFO_CYAN("Host " << context.m_remote_address.str() << " did not provide version information");
+        MGUSER_CYAN("Host " << context.m_remote_address.str() << " did not provide version information");
         block_host(context.m_remote_address);
         return;
       }
@@ -819,7 +819,7 @@ namespace nodetool
       m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
       if (rsp_ver < m_minimum_version)
       {
-        MGINFO_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
+        MGUSER_CYAN("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
         block_host(context.m_remote_address);
         return;
       }

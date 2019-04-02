@@ -127,9 +127,6 @@
 #define P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT 70
 #define P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT 2
 
-#define HF_SUPPORTED_MIN_VERSION version_string_to_integer("0.1.6.3")
-#define SUPPORTED_MIN_VERSION    version_string_to_integer("0.1.5.6")
-
 #define P2P_FAILED_ADDR_FORGET_SECONDS (60 * 60) //1 hour
 #define P2P_IP_BLOCKTIME_MAINNET (60 * 60 * 24)  //24 hour
 #define P2P_IP_BLOCKTIME_TESTNET (60 * 5)        //5 minutes
@@ -179,6 +176,9 @@ namespace config
 
     uint32_t const GENESIS_NONCE = 10000;
 
+    std::string const HF_MIN_VERSION = "0.1.6.3";
+    std::string const MIN_VERSION    = "0.1.5.6";
+
     std::set<std::string> const seed_nodes = {
         "206.81.2.15:17565",
         "206.81.2.16:17565",
@@ -210,6 +210,9 @@ namespace config
         uint16_t const RPC_DEFAULT_PORT = 18566;
         uint16_t const ZMQ_RPC_DEFAULT_PORT = 18567;
         boost::uuids::uuid const NETWORK_ID = {{0x13, 0x22, 0xF0, 0x55, 0x42, 0x18, 0x40, 0x33, 0x16, 0x88, 0x01, 0x92, 0xAA, 0xBC, 0xFF, 0x13}};
+
+        std::string const HF_MIN_VERSION = "0.1.6.4";
+        std::string const MIN_VERSION    = "0.1.6.3";//version_string_to_integer();
 
         std::set<std::string> const seed_nodes = {
             "204.48.17.173:18565",
@@ -304,6 +307,8 @@ namespace cryptonote
         boost::uuids::uuid const NETWORK_ID;
         std::string const GENESIS_TX;
         uint32_t const GENESIS_NONCE;
+        std::string const HF_MIN_VERSION;
+        std::string const MIN_VERSION;
     };
 
     inline const config_t &get_config(network_type nettype)
@@ -317,7 +322,9 @@ namespace cryptonote
             ::config::ZMQ_RPC_DEFAULT_PORT,
             ::config::NETWORK_ID,
             ::config::GENESIS_TX,
-            ::config::GENESIS_NONCE
+            ::config::GENESIS_NONCE,
+            ::config::HF_MIN_VERSION,
+            ::config::MIN_VERSION
             };
         static const config_t testnet = {
             ::config::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
@@ -328,7 +335,9 @@ namespace cryptonote
             ::config::testnet::ZMQ_RPC_DEFAULT_PORT,
             ::config::testnet::NETWORK_ID,
             ::config::GENESIS_TX,
-            ::config::GENESIS_NONCE
+            ::config::GENESIS_NONCE,
+            ::config::testnet::HF_MIN_VERSION,
+            ::config::testnet::MIN_VERSION
             };
         static const config_t stagenet = {
             ::config::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
@@ -339,7 +348,8 @@ namespace cryptonote
             ::config::stagenet::ZMQ_RPC_DEFAULT_PORT,
             ::config::stagenet::NETWORK_ID,
             ::config::GENESIS_TX,
-            ::config::GENESIS_NONCE
+            ::config::GENESIS_NONCE,
+            "", ""
             };
 
         switch (nettype)

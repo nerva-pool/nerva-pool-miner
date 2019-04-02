@@ -252,17 +252,20 @@ bool Blockchain::scan_outputkeys_for_indexes(size_t tx_version, const txin_to_ke
 
 uint32_t Blockchain::get_minimum_version_for_fork(uint32_t min_ver) const
 {
+  if (m_nettype == STAGENET || m_nettype == FAKECHAIN) return 0;
+
   const uint64_t top_height = m_db->height() - 1;
   const block top_block = m_db->get_top_block();
   const uint8_t hf_version = get_hardfork()->get_last_version();
   if (hf_version <= 1 || hf_version == top_block.major_version)
   {
+    uint32_t min_hf_ver = version_string_to_integer(cryptonote::get_config(m_nettype).HF_MIN_VERSION);
     //we are at the top block. So if the HF_SUPPORTED_MIN_VERSION > SUPPORTED_MIN_VERSION, that becomes our new minimum version
-    if (HF_SUPPORTED_MIN_VERSION > min_ver)
-      return HF_SUPPORTED_MIN_VERSION;
+    if (min_hf_ver > min_ver)
+      return min_hf_ver;
   }
 
-  return min_ver;
+  return version_string_to_integer(cryptonote::get_config(m_nettype).MIN_VERSION);
 }
 
 HardFork* Blockchain::get_hardfork() const

@@ -85,7 +85,7 @@ namespace tools
       version = fields[2];
       hash = fields[3];
 
-      MINFO("Found new version " << version << " with hash " << hash);
+      LOG_PRINT_L1("Found new version " << version << " with hash " << hash);
       found = true;
     }
     return found;

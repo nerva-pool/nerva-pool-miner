@@ -91,7 +91,7 @@ namespace nodetool
     m_offline(false),
     m_save_graph(false),
     is_closing(false),
-    m_minimum_version(SUPPORTED_MIN_VERSION),
+    m_minimum_version(0),
     m_min_version_override(false),
     m_net_server( epee::net_utils::e_connection_type_P2P ) // this is a P2P connection of the main p2p node server, because this is class node_server<>
     {}
