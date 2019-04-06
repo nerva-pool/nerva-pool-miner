@@ -395,9 +395,9 @@ namespace cryptonote
     }
 
     if (threads_count == 0)
-      LOG_PRINT_L0("Mining has started, autodetecting optimal number of threads, good luck!" );
+      MGUSER_CYAN("Mining has started, autodetecting optimal number of threads, good luck!" );
     else
-      LOG_PRINT_L0("Mining has started with " << threads_count << " threads, good luck!" );
+      MGUSER_CYAN("Mining has started with " << threads_count << " threads, good luck!" );
 
     if( get_is_background_mining_enabled() )
     {
