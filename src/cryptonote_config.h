@@ -176,8 +176,8 @@ namespace config
 
     uint32_t const GENESIS_NONCE = 10000;
 
-    std::string const HF_MIN_VERSION = "0.1.6.3";
-    std::string const MIN_VERSION    = "0.1.5.6";
+    std::string const HF_MIN_VERSION = "0.1.6.4";
+    std::string const MIN_VERSION    = "0.1.6.3";
 
     std::set<std::string> const seed_nodes = {
         "206.81.2.15:17565",
@@ -213,7 +213,7 @@ namespace config
         boost::uuids::uuid const NETWORK_ID = {{0x13, 0x22, 0xF0, 0x55, 0x42, 0x18, 0x40, 0x33, 0x16, 0x88, 0x01, 0x92, 0xAA, 0xBC, 0xFF, 0x13}};
 
         std::string const HF_MIN_VERSION = "0.1.6.4";
-        std::string const MIN_VERSION    = "0.1.6.3";//version_string_to_integer();
+        std::string const MIN_VERSION    = "0.1.6.3";
 
         std::set<std::string> const seed_nodes = {
             "204.48.17.173:18565",
