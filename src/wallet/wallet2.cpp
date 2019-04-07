@@ -7077,7 +7077,6 @@ void wallet2::transfer_selected_rct(std::vector<cryptonote::tx_destination_entry
       cryptonote::account_base dummy;
       dummy.generate();
       change_dts.addr = dummy.get_keys().m_account_address;
-      LOG_PRINT_L2("generated dummy address for 0 change");
       splitted_dsts.push_back(change_dts);
     }
   }
