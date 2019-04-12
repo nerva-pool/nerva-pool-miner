@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2018, The Monero Project
+# Copyright (c) 2014-2019, The Monero Project
 # 
 # All rights reserved.
 # 
@@ -27,7 +27,7 @@
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 if (NOT CMAKE_HOST_WIN32)
-set (CMAKE_SYSTEM_NAME Windows)
+  set (CMAKE_SYSTEM_NAME Windows)
 endif()
 
 set (GCC_PREFIX i686-w64-mingw32)
