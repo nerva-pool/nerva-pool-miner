@@ -267,7 +267,7 @@ namespace cryptonote
           ar.end_object();
         }
       }
-      return true;
+      return ar.stream().good();
     }
 
   private:
