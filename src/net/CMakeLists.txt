@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2019, The Monero Project
+# Copyright (c) 2018, The Monero Project
 #
 # All rights reserved.
 #
@@ -26,46 +26,9 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(cn_deserialize_sources
-  cn_deserialize.cpp
-  )
+set(net_sources error.cpp i2p_address.cpp parse.cpp socks.cpp socks_connect.cpp tor_address.cpp)
+set(net_headers error.h i2p_address.h parse.h socks.h socks_connect.h tor_address.h)
 
-monero_add_executable(cn_deserialize
-  ${cn_deserialize_sources}
-  ${cn_deserialize_private_headers})
-
-target_link_libraries(cn_deserialize
-  LINK_PRIVATE
-    cryptonote_core
-    blockchain_db
-    device
-    ringct
-    p2p
-    epee
-    ${CMAKE_THREAD_LIBS_INIT})
-
-set_property(TARGET cn_deserialize
-	PROPERTY
-	OUTPUT_NAME "monero-utils-deserialize")
-
-
-set(object_sizes_sources
-  object_sizes.cpp
-  )
-
-monero_add_executable(object_sizes
-  ${object_sizes_sources}
-  ${object_sizes_private_headers})
-
-target_link_libraries(object_sizes
-  LINK_PRIVATE
-    cryptonote_core
-    blockchain_db
-    p2p
-    epee
-    ${CMAKE_THREAD_LIBS_INIT})
-
-set_property(TARGET object_sizes
-	PROPERTY
-	OUTPUT_NAME "monero-utils-object-sizes")
+monero_add_library(net ${net_sources} ${net_headers})
+target_link_libraries(net common epee ${Boost_ASIO_LIBRARY})
 

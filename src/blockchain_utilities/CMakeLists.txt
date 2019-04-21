@@ -91,12 +91,9 @@ set(blockchain_usage_private_headers)
 monero_private_headers(blockchain_usage
 	  ${blockchain_usage_private_headers})
 
-
-
 monero_add_executable(blockchain_import
   ${blockchain_import_sources}
-  ${blockchain_import_private_headers}
-  ${blocksdat})
+  ${blockchain_import_private_headers})
 
 target_link_libraries(blockchain_import
   PRIVATE
@@ -108,7 +105,8 @@ target_link_libraries(blockchain_import
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
-    ${EXTRA_LIBRARIES})
+    ${EXTRA_LIBRARIES}
+    ${Blocks})
 
 if(ARCH_WIDTH)
   target_compile_definitions(blockchain_import
@@ -161,48 +159,4 @@ set_property(TARGET quicksync_export
 	PROPERTY
 	OUTPUT_NAME "nerva-quicksync-export")
 install(TARGETS quicksync_export DESTINATION bin)
-
-monero_add_executable(blockchain_blackball
-  ${blockchain_blackball_sources}
-  ${blockchain_blackball_private_headers})
-
-target_link_libraries(blockchain_blackball
-  PRIVATE
-    wallet
-    cryptonote_core
-    blockchain_db
-    p2p
-    version
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${EXTRA_LIBRARIES})
-
-set_property(TARGET blockchain_blackball
-	PROPERTY
-	OUTPUT_NAME "nerva-blockchain-mark-spent-outputs")
-install(TARGETS blockchain_blackball DESTINATION bin)
-
-
-monero_add_executable(blockchain_usage
-  ${blockchain_usage_sources}
-  ${blockchain_usage_private_headers})
-
-target_link_libraries(blockchain_usage
-  PRIVATE
-    cryptonote_core
-    blockchain_db
-    p2p
-    version
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${EXTRA_LIBRARIES})
-
-set_property(TARGET blockchain_usage
-	PROPERTY
-	OUTPUT_NAME "nerva-blockchain-usage")
-install(TARGETS blockchain_usage DESTINATION bin)
 

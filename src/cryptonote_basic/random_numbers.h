@@ -139,7 +139,7 @@ namespace angrywasp
                 double d;
             };
 
-            static inline double to_double(uint64_t x)
+            inline double to_double(uint64_t x)
             {
                 union d64 u = { .i = UINT64_C(0x3FF) << 52 | x >> 12 };
                 return u.d - 1.0;
@@ -147,17 +147,17 @@ namespace angrywasp
 
         public:
 
-            static inline uint64_t rotl64(const uint64_t x, int k)
+            inline uint64_t rotl64(const uint64_t x, int k)
             {
                 return (x << k) | (x >> (64 - k));
             }
 
-            static inline uint32_t rotl32(const uint32_t x, int k)
+            inline uint32_t rotl32(const uint32_t x, int k)
             {
                 return (x << k) | (x >> (32 - k));
             }
             
-            static inline uint64_t u64(uint64_t* state)
+            inline uint64_t u64(uint64_t* state)
             {
                 const uint64_t result = rotl64(state[1] * 5, 7) * 9;
                 const uint64_t t = state[1] << 17;

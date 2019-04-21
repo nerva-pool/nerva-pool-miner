@@ -68,7 +68,7 @@ public:
 
   ~t_rpc_command_executor();
 
-  bool print_peer_list();
+  bool print_peer_list(bool white = true, bool gray = true, size_t limit = 0);
 
   bool print_peer_list_stats();
 
@@ -96,8 +96,6 @@ public:
 
   bool print_block_by_height(uint64_t height);
 
-  bool print_uncle_block(crypto::hash uncle_hash);
-
   bool print_transaction(crypto::hash transaction_hash, bool include_hex, bool include_json, bool prune);
 
   bool is_key_image_spent(const crypto::key_image &ki);
@@ -108,9 +106,11 @@ public:
 
   bool print_transaction_pool_stats();
 
-  bool start_mining(std::string address, uint64_t num_threads, cryptonote::network_type nettype, bool do_background_mining = false, bool ignore_battery = false);
+  bool start_mining(cryptonote::account_public_address address, uint64_t num_threads, cryptonote::network_type nettype, bool do_background_mining = false, bool ignore_battery = false);
 
   bool stop_mining();
+
+  bool mining_status();
 
   bool stop_daemon();
 
@@ -163,6 +163,8 @@ public:
   bool sync_info();
 
   bool pop_blocks(uint64_t num_blocks);
+
+  bool print_net_stats();
 };
 
 } // namespace daemonize

@@ -126,7 +126,7 @@ namespace tools
       get_blocks_error_message_index,
       get_hashes_error_message_index,
       get_out_indices_error_message_index,
-      get_random_outs_error_message_index
+      get_outs_error_message_index
     };
 
     template<typename Base, int msg_index>
@@ -438,7 +438,7 @@ namespace tools
       }
     };
     //----------------------------------------------------------------------------------------------------
-    typedef failed_rpc_request<transfer_error, get_random_outs_error_message_index> get_random_outs_error;
+    typedef failed_rpc_request<transfer_error, get_outs_error_message_index> get_outs_error;
     //----------------------------------------------------------------------------------------------------
     struct not_enough_unlocked_money : public transfer_error
     {
@@ -813,6 +813,31 @@ namespace tools
     private:
       std::string m_keys_file;
       std::string m_wallet_file;
+    };
+    //----------------------------------------------------------------------------------------------------
+    struct mms_error : public wallet_logic_error
+    {
+    protected:
+      explicit mms_error(std::string&& loc, const std::string& message)
+        : wallet_logic_error(std::move(loc), message)
+      {
+      }
+    };
+    //----------------------------------------------------------------------------------------------------
+    struct no_connection_to_bitmessage : public mms_error
+    {
+      explicit no_connection_to_bitmessage(std::string&& loc, const std::string& address)
+        : mms_error(std::move(loc), "no connection to PyBitmessage at address " + address)
+      {
+      }
+    };
+    //----------------------------------------------------------------------------------------------------
+    struct bitmessage_api_error : public mms_error
+    {
+      explicit bitmessage_api_error(std::string&& loc, const std::string& error_string)
+        : mms_error(std::move(loc), "PyBitmessage returned " + error_string)
+      {
+      }
     };
     //----------------------------------------------------------------------------------------------------
 

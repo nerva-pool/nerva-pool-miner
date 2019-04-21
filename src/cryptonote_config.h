@@ -86,11 +86,6 @@
 #define DIFFICULTY_CUT 60     // timestamps to cut after sorting
 #define DIFFICULTY_BLOCKS_COUNT DIFFICULTY_WINDOW + DIFFICULTY_LAG
 
-#define UNCLE_DIFFICULTY_TARGET DIFFICULTY_TARGET / 4
-#define UNCLE_REWARD_RATIO 2
-#define NEPHEW_REWARD_RATIO 20
-#define UNCLE_MINING_FORK_HEIGHT 12
-
 #define DIFFICULTY_BLOCKS_ESTIMATE_TIMESPAN DIFFICULTY_TARGET //just alias; used by tests
 #define DIFFICULTY_WINDOW_V2 17
 #define DIFFICULTY_CUT_V2 6
@@ -132,6 +127,10 @@
 #define P2P_IP_BLOCKTIME_TESTNET (60 * 5)        //5 minutes
 #define P2P_IP_FAILS_BEFORE_BLOCK 10
 #define P2P_IDLE_CONNECTION_KILL_INTERVAL (5 * 60) //5 minutes
+#define P2P_DEFAULT_SOCKS_CONNECT_TIMEOUT               45         // seconds
+#define P2P_DEFAULT_SYNC_SEARCH_CONNECTIONS_COUNT       2
+#define P2P_DEFAULT_LIMIT_RATE_UP                       2048       // kB/s
+#define P2P_DEFAULT_LIMIT_RATE_DOWN                     8192       // kB/s
 
 #define P2P_SUPPORT_FLAG_FLUFFY_BLOCKS 0x01
 #define P2P_SUPPORT_FLAGS P2P_SUPPORT_FLAG_FLUFFY_BLOCKS
@@ -248,6 +247,9 @@ namespace config
         uint16_t const RPC_DEFAULT_PORT = 19566;
         uint16_t const ZMQ_RPC_DEFAULT_PORT = 19567;
         boost::uuids::uuid const NETWORK_ID = {{0x14, 0x31, 0xF1, 0x22, 0x54, 0x86, 0x36, 0xFF, 0xAB, 0x51, 0x00, 0x4F, 0x3C, 0x3D, 0xAA, 0x16}};
+
+        std::set<std::string> const seed_nodes = { };
+        std::set<std::string> const seed_node_aliases = { };
 
         static const hard_fork hard_forks[] = {
             { 1,   1},

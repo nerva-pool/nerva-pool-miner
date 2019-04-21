@@ -150,7 +150,7 @@
             "args": [
                 //"--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
                 "--block-sync-size", "20",
-                "--testnet", "--log-level", "0"
+                "--testnet"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -172,7 +172,55 @@
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
             "args": [
                 "--testnet",
-                "--wallet-file", "",
+                "--wallet-file", "~/.nerva/wallets/angrywasp-testnet",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Testnet-Wallet-MS-1",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "args": [
+                "--testnet",
+                "--wallet-file", "${workspaceFolder}/builder/build/dev/debug/bin/ms_1",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Testnet-Wallet-MS-2",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "args": [
+                "--testnet",
+                "--wallet-file", "${workspaceFolder}/builder/build/dev/debug/bin/ms_2",
                 "--password", "''",
             ],
             "stopAtEntry": false,
@@ -195,7 +243,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
-                "--quicksync", "~/.nerva/export/quicksync.raw", "--block-sync-size", "100"
+                "--quicksync", "~/.nerva/quicksync.raw", "--block-sync-size", "100", "--log-level", "1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

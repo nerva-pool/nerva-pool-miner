@@ -64,6 +64,7 @@ namespace cryptonote
   extern const command_line::arg_descriptor<bool, false> arg_regtest_on;
   extern const command_line::arg_descriptor<difficulty_type> arg_fixed_difficulty;
   extern const command_line::arg_descriptor<bool> arg_offline;
+  extern const command_line::arg_descriptor<size_t> arg_block_download_max_size;
 
   /************************************************************************/
   /*                                                                      */
@@ -371,13 +372,6 @@ namespace cryptonote
      bool get_block_by_hash(const crypto::hash &h, block &blk, bool *orphan = NULL) const;
 
      /**
-      * @copydoc fetch an uncle block from the DB
-      *
-      * @note returns false if block DNE
-      */
-      bool get_uncle_by_hash(const crypto::hash &h, block &uncle) const;
-
-     /**
       * @copydoc Blockchain::get_alternative_blocks
       *
       * @note see Blockchain::get_alternative_blocks(std::vector<block>&) const
@@ -545,6 +539,7 @@ namespace cryptonote
       * @note see Blockchain::get_tx_outputs_gindexs
       */
      bool get_tx_outputs_gindexs(const crypto::hash& tx_id, std::vector<uint64_t>& indexs) const;
+     bool get_tx_outputs_gindexs(const crypto::hash& tx_id, size_t n_txes, std::vector<std::vector<uint64_t>>& indexs) const;
 
      /**
       * @copydoc Blockchain::get_tail_id
@@ -564,18 +559,6 @@ namespace cryptonote
       * @brief get a single block's weight
       */
      difficulty_type get_block_weight(uint64_t height) const;
-     
-     /**
-      * @brief get an uncle block's individual weight
-      */
-     difficulty_type get_uncle_weight(uint64_t height) const;
-
-     /**
-      * @copydoc Blockchain::get_random_outs_for_amounts
-      *
-      * @note see Blockchain::get_random_outs_for_amounts
-      */
-     bool get_random_outs_for_amounts(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::request& req, COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::response& res) const;
 
      /**
       * @copydoc Blockchain::get_outs
@@ -583,14 +566,6 @@ namespace cryptonote
       * @note see Blockchain::get_outs
       */
      bool get_outs(const COMMAND_RPC_GET_OUTPUTS_BIN::request& req, COMMAND_RPC_GET_OUTPUTS_BIN::response& res) const;
-
-     /**
-      *
-      * @copydoc Blockchain::get_random_rct_outs
-      *
-      * @note see Blockchain::get_random_rct_outs
-      */
-     bool get_random_rct_outs(const COMMAND_RPC_GET_RANDOM_RCT_OUTPUTS::request& req, COMMAND_RPC_GET_RANDOM_RCT_OUTPUTS::response& res) const;
 
      /**
       * @copydoc Blockchain::get_output_distribution
@@ -782,6 +757,13 @@ namespace cryptonote
       * @return which network are we on?
       */     
      network_type get_nettype() const { return m_nettype; };
+
+     /**
+      * @brief get whether transaction relay should be padded
+      *
+      * @return whether transaction relay should be padded
+      */
+     bool pad_transactions() const { return m_pad_transactions; }
 
      /**
       * @brief check a set of hashes against the precompiled hash set
@@ -1019,6 +1001,7 @@ namespace cryptonote
      boost::mutex m_update_mutex;
 
      bool m_offline;
+	 bool m_pad_transactions;
    };
 }
 

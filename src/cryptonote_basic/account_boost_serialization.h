@@ -52,6 +52,5 @@ namespace boost
       a & x.m_spend_public_key;
       a & x.m_view_public_key;
     }
-
   }
 }

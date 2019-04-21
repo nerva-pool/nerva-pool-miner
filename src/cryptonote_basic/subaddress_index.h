@@ -86,8 +86,6 @@ namespace std
   };
 }
 
-BOOST_CLASS_VERSION(cryptonote::subaddress_index, 0)
-
 namespace boost
 {
   namespace serialization

@@ -77,6 +77,7 @@ namespace rpc
     uint64_t id;
     uint32_t ip;
     uint16_t port;
+    uint16_t rpc_port;
     uint64_t last_seen;
   };
 
@@ -185,8 +186,8 @@ namespace rpc
     uint64_t cumulative_difficulty;
     uint64_t block_size_limit;
     uint64_t start_time;
+    std::string version;
   };
-
 }  // namespace rpc
 
 }  // namespace cryptonote

@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -246,4 +246,6 @@ namespace tools
   void closefrom(int fd);
 
   std::string get_human_readable_timestamp(uint64_t ts);
+
+  std::string get_human_readable_bytes(uint64_t bytes);
 }

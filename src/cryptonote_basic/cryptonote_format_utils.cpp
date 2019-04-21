@@ -31,8 +31,6 @@
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
 #include "include_base_utils.h"
-using namespace epee;
-
 #include <atomic>
 #include <boost/algorithm/string.hpp>
 #include "wipeable_string.h"
@@ -47,6 +45,7 @@ using namespace epee;
 #include "cryptonote_core/blockchain.h"
 #include "random_numbers.h"
 
+using namespace epee;
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -922,9 +921,6 @@ namespace cryptonote
     crypto::hash tree_root_hash = get_tx_tree_hash(b);
     blob.append(reinterpret_cast<const char*>(&tree_root_hash), sizeof(tree_root_hash));
     blob.append(tools::get_varint_data(b.tx_hashes.size()+1));
-    if (b.major_version >= UNCLE_MINING_FORK_HEIGHT) {
-      blob.append(reinterpret_cast<const char*>(&b.uncle), sizeof(b.uncle));
-    }
     return blob;
   }
   //---------------------------------------------------------------
@@ -1204,7 +1200,7 @@ namespace cryptonote
     return p;
   }
   //---------------------------------------------------------------
-  bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b)
+  bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b, crypto::hash *block_hash)
   {
     std::stringstream ss;
     ss << b_blob;
@@ -1213,7 +1209,24 @@ namespace cryptonote
     CHECK_AND_ASSERT_MES(r, false, "Failed to parse block from blob");
     b.invalidate_hashes();
     b.miner_tx.invalidate_hashes();
+    if (block_hash)
+    {
+      calculate_block_hash(b, *block_hash);
+      ++block_hashes_calculated_count;
+      b.hash = *block_hash;
+      b.set_hash_valid(true);
+    }
     return true;
+  }
+  //---------------------------------------------------------------
+  bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b)
+  {
+    return parse_and_validate_block_from_blob(b_blob, b, NULL);
+  }
+  //---------------------------------------------------------------
+  bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b, crypto::hash &block_hash)
+  {
+    return parse_and_validate_block_from_blob(b_blob, b, &block_hash);
   }
   //---------------------------------------------------------------
   blobdata block_to_blob(const block& b)
@@ -1251,6 +1264,7 @@ namespace cryptonote
   crypto::hash get_tx_tree_hash(const block& b)
   {
     std::vector<crypto::hash> txs_ids;
+    txs_ids.reserve(1 + b.tx_hashes.size());
     crypto::hash h = null_hash;
     size_t bl_sz = 0;
     get_transaction_hash(b.miner_tx, h, bl_sz);

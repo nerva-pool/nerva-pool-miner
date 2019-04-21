@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -64,6 +64,7 @@ t_command_server::t_command_server(
   m_command_lookup.set_handler(
       "print_pl"
     , std::bind(&t_command_parser_executor::print_peer_list, &m_parser, p::_1)
+    , "print_pl [white] [gray] [<limit>]"
     , "Print the current peer list."
     );
   m_command_lookup.set_handler(
@@ -77,6 +78,11 @@ t_command_server::t_command_server(
     , "Print the current connections."
     );
   m_command_lookup.set_handler(
+      "print_net_stats"
+    , std::bind(&t_command_parser_executor::print_net_stats, &m_parser, p::_1)
+    , "Print network statistics."
+    );
+  m_command_lookup.set_handler(
       "print_bc"
     , std::bind(&t_command_parser_executor::print_blockchain_info, &m_parser, p::_1)
     , "print_bc <begin_height> [<end_height>]"
@@ -87,12 +93,6 @@ t_command_server::t_command_server(
     , std::bind(&t_command_parser_executor::print_block, &m_parser, p::_1)
     , "print_block <block_hash> | <block_height>"
     , "Print a given block."
-    );
-  m_command_lookup.set_handler(
-      "print_uncle_block"
-    , std::bind(&t_command_parser_executor::print_uncle_block, &m_parser, p::_1)
-    , "print_uncle_block <uncle_block_hash>"
-    , "Print an uncle block."
     );
   m_command_lookup.set_handler(
       "print_tx"
@@ -116,6 +116,11 @@ t_command_server::t_command_server(
       "stop_mining"
     , std::bind(&t_command_parser_executor::stop_mining, &m_parser, p::_1)
     , "Stop mining."
+    );
+  m_command_lookup.set_handler(
+      "mining_status"
+    , std::bind(&t_command_parser_executor::mining_status, &m_parser, p::_1)
+    , "Show current mining status."
     );
   m_command_lookup.set_handler(
       "print_pool"
@@ -279,6 +284,7 @@ t_command_server::t_command_server(
     m_command_lookup.set_handler(
       "alt_chain_info"
     , std::bind(&t_command_parser_executor::alt_chain_info, &m_parser, p::_1)
+    , "alt_chain_info [blockhash]"
     , "Print the information about alternative chains."
     );
     m_command_lookup.set_handler(

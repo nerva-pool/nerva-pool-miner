@@ -75,4 +75,5 @@ target_link_libraries(device
     ${OPENSSL_CRYPTO_LIBRARIES}
     ${Boost_SERIALIZATION_LIBRARY}
   PRIVATE
+    version
     ${EXTRA_LIBRARIES})

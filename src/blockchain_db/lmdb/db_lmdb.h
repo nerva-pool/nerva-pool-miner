@@ -42,15 +42,16 @@
 namespace cryptonote
 {
 
+typedef struct txindex {
+    crypto::hash key;
+    tx_data_t data;
+} txindex;
+
 typedef struct mdb_txn_cursors
 {
   MDB_cursor *m_txc_blocks;
   MDB_cursor *m_txc_block_heights;
   MDB_cursor *m_txc_block_info;
-
-  MDB_cursor *m_txc_uncles;
-  MDB_cursor *m_txc_uncle_heights;
-  MDB_cursor *m_txc_uncle_info;
 
   MDB_cursor *m_txc_output_txs;
   MDB_cursor *m_txc_output_amounts;
@@ -70,9 +71,6 @@ typedef struct mdb_txn_cursors
 #define m_cur_blocks	m_cursors->m_txc_blocks
 #define m_cur_block_heights	m_cursors->m_txc_block_heights
 #define m_cur_block_info	m_cursors->m_txc_block_info
-#define m_cur_uncles	m_cursors->m_txc_uncles
-#define m_cur_uncle_heights	m_cursors->m_txc_uncle_heights
-#define m_cur_uncle_info	m_cursors->m_txc_uncle_info
 #define m_cur_output_txs	m_cursors->m_txc_output_txs
 #define m_cur_output_amounts	m_cursors->m_txc_output_amounts
 #define m_cur_txs	m_cursors->m_txc_txs
@@ -83,22 +81,14 @@ typedef struct mdb_txn_cursors
 #define m_cur_txpool_blob	m_cursors->m_txc_txpool_blob
 #define m_cur_hf_versions	m_cursors->m_txc_hf_versions
 
-#define block_info_v1 \
-  uint64_t bi_height; \
-  uint64_t bi_timestamp; \
-  uint64_t bi_coins; \
-  uint64_t bi_size; \
-  difficulty_type bi_diff; \
-  crypto::hash bi_hash;
-
 typedef struct mdb_block_info_v1
 {
-  block_info_v1;
-} mdb_block_info_v1;
-
-typedef struct mdb_block_info
-{
-  block_info_v1;
+  uint64_t bi_height;
+  uint64_t bi_timestamp;
+  uint64_t bi_coins;
+  uint64_t bi_size;
+  difficulty_type bi_diff;
+  crypto::hash bi_hash;
   difficulty_type bi_weight;
 } mdb_block_info;
 
@@ -108,9 +98,6 @@ typedef struct mdb_rflags
   bool m_rf_blocks;
   bool m_rf_block_heights;
   bool m_rf_block_info;
-  bool m_rf_uncles;
-  bool m_rf_uncle_heights;
-  bool m_rf_uncle_info;
   bool m_rf_output_txs;
   bool m_rf_output_amounts;
   bool m_rf_txs;
@@ -188,7 +175,7 @@ struct mdb_txn_safe
 class BlockchainLMDB : public BlockchainDB
 {
 public:
-  BlockchainLMDB(bool batch_transactions=false);
+  BlockchainLMDB(bool batch_transactions=true);
   ~BlockchainLMDB();
 
   virtual void open(const std::string& filename, const int mdb_flags=0, uint32_t db_readers=126);
@@ -203,27 +190,21 @@ public:
 
   virtual std::vector<std::string> get_filenames() const;
 
+  virtual bool remove_data_file(const std::string& folder) const;
+
   virtual std::string get_db_name() const;
 
   virtual bool lock();
 
   virtual void unlock();
 
-  virtual bool uncle_exists(const crypto::hash& h, uint64_t *height = NULL) const;
-
   virtual bool block_exists(const crypto::hash& h, uint64_t *height = NULL) const;
-
-  virtual uint64_t get_uncle_height(const crypto::hash& h) const;
 
   virtual uint64_t get_block_height(const crypto::hash& h) const;
 
   virtual block_header get_block_header(const crypto::hash& h) const;
 
-  virtual cryptonote::blobdata get_uncle_blob(const crypto::hash& h) const;
-
   virtual cryptonote::blobdata get_block_blob(const crypto::hash& h) const;
-
-  virtual cryptonote::blobdata get_uncle_blob_from_height(const uint64_t& height) const;
 
   virtual cryptonote::blobdata get_block_blob_from_height(const uint64_t& height) const;
 
@@ -232,6 +213,8 @@ public:
   virtual void get_v5_data(HC128_State* rng_state, uint64_t height, char* out) const;
 
   virtual void build_cache(uint64_t height) const;
+
+  virtual std::vector<uint64_t> get_block_cumulative_rct_outputs(const std::vector<uint64_t> &heights) const;
 
   virtual uint64_t get_block_timestamp(const uint64_t& height) const;
 
@@ -243,15 +226,9 @@ public:
 
   virtual difficulty_type get_block_cumulative_difficulty(const uint64_t& height) const;
 
-  virtual void get_uncle_height_info(const uint64_t& height, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const;
-
   virtual void get_height_info(const uint64_t& height, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const;
 
-  virtual void get_uncle_height_info(const crypto::hash& h, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const;
-
   virtual void get_height_info(const crypto::hash& h, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const;
-
-  virtual mdb_block_info get_uncle_info(const uint64_t& height) const;
 
   virtual mdb_block_info get_block_info(const uint64_t& height) const;
 
@@ -265,7 +242,7 @@ public:
 
   virtual std::vector<crypto::hash> get_hashes_range(const uint64_t& h1, const uint64_t& h2) const;
 
-  virtual crypto::hash top_block_hash() const;
+  virtual crypto::hash top_block_hash(uint64_t *block_height = NULL) const;
 
   virtual block get_top_block() const;
 
@@ -286,9 +263,8 @@ public:
 
   virtual uint64_t get_num_outputs(const uint64_t& amount) const;
 
-  virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool v2);
-  virtual output_data_t get_output_key(const uint64_t& global_index) const;
-  virtual void get_output_key(const uint64_t &amount, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool v2, bool allow_partial = false);
+  virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool v2, bool include_commitment) const;
+  virtual void get_output_key(const epee::span<const uint64_t> &amounts, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool v2, bool allow_partial = false) const;
 
   virtual tx_out_index get_output_tx_and_index_from_global(const uint64_t& index) const;
   virtual void get_output_tx_and_index_from_global(const std::vector<uint64_t> &global_indices,
@@ -297,7 +273,7 @@ public:
   virtual tx_out_index get_output_tx_and_index(const uint64_t& amount, const uint64_t& index) const;
   virtual void get_output_tx_and_index(const uint64_t& amount, const std::vector<uint64_t> &offsets, std::vector<tx_out_index> &indices) const;
 
-  virtual std::vector<uint64_t> get_tx_amount_output_indices(const uint64_t tx_id) const;
+  virtual std::vector<std::vector<uint64_t>> get_tx_amount_output_indices(const uint64_t tx_id, size_t n_txes) const;
 
   virtual bool has_key_image(const crypto::key_image& img) const;
 
@@ -325,14 +301,6 @@ public:
                             , const std::vector<transaction>& txs
                             );
 
-  virtual void add_uncle(const block& uncle,
-                         const size_t& uncle_size,
-                         const difficulty_type& cumulative_difficulty,
-                         const difficulty_type& cumulative_weight,
-                         const uint64_t& coins_generated,
-                         const crypto::hash& uncle_hash,
-                         uint64_t height);
-
   virtual void set_batch_transactions(bool batch_transactions);
   virtual bool batch_start(uint64_t batch_num_blocks=0, uint64_t batch_bytes=0);
   virtual void batch_commit();
@@ -355,10 +323,11 @@ public:
    * @param amounts optional set of amounts to lookup
    * @param unlocked whether to restrict count to unlocked outputs
    * @param recent_cutoff timestamp to determine which outputs are recent
+   * @param min_count return only amounts with at least that many instances
    *
    * @return a set of amount/instances
    */
-  std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff) const;
+  std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff, uint64_t min_count) const;
 
 private:
   void do_resize(uint64_t size_increase=0);
@@ -367,7 +336,7 @@ private:
   void check_and_resize_for_batch(uint64_t batch_num_blocks, uint64_t batch_bytes);
   uint64_t get_estimated_batch_size(uint64_t batch_num_blocks, uint64_t batch_bytes) const;
 
-  virtual void add_block( const block& blk
+  virtual void add_block(const block& blk
                 , const size_t& block_size
                 , const difficulty_type& cumulative_difficulty
                 , const difficulty_type& cumulative_weight
@@ -408,42 +377,14 @@ private:
   virtual void check_hard_fork_info();
   virtual void drop_hard_fork_info();
 
-  /**
-   * @brief convert a tx output to a blob for storage
-   *
-   * @param output the output to convert
-   *
-   * @return the resultant blob
-   */
-  blobdata output_to_blob(const tx_out& output) const;
-
-  /**
-   * @brief convert a tx output blob to a tx output
-   *
-   * @param blob the blob to convert
-   *
-   * @return the resultant tx output
-   */
-  tx_out output_from_blob(const blobdata& blob) const;
-
-  void check_open() const;
+  inline void check_open() const;
 
   virtual bool is_read_only() const;
 
+  virtual uint64_t get_database_size() const;
+
   // fix up anything that may be wrong due to past bugs
   virtual void fixup();
-
-  // migrate from older DB version to current
-  void migrate(const uint32_t oldversion);
-
-  void update_version(const uint32_t version);
-
-  // migrate from DB version 0 to 1
-  void migrate_0_1();
-
-  void migrate_1_2();
-
-  void recreate_table(MDB_dbi table, const std::string table_name, const std::function<MDB_val(MDB_val &v)> &modify_payload);
 
   void cleanup_batch();
 
@@ -453,10 +394,6 @@ private:
   MDB_dbi m_blocks;
   MDB_dbi m_block_heights;
   MDB_dbi m_block_info;
-
-  MDB_dbi m_uncles;
-  MDB_dbi m_uncle_heights;
-  MDB_dbi m_uncle_info;
 
   MDB_dbi m_txs;
   MDB_dbi m_tx_indices;

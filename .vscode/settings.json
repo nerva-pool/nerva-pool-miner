@@ -69,7 +69,8 @@
         "forward_list": "cpp",
         "*.cuh": "cpp"
     },
-    "C_Cpp.dimInactiveRegions": false,
+    "C_Cpp.dimInactiveRegions": true,
+    "C_Cpp.intelliSenseEngine": "Default",
     "terminal.integrated.shell.windows": "C:\\msys64\\usr\\bin\\bash.exe",
     "terminal.integrated.shellArgs.windows": ["--login", "-i"],
     "terminal.integrated.env.windows":
@@ -79,5 +80,6 @@
         "MSYS2_PATH_TYPE": "inherit",
         "MSVSCODE": "1"
     },
-    "cmake.configureOnOpen": false,
+    "cmake.configureOnOpen": true,
+    
 }

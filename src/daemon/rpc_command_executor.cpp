@@ -61,7 +61,8 @@ namespace {
     peer_id_str >> id_str;
     epee::string_tools::xtype_to_string(peer.port, port_str);
     std::string addr_str = ip_str + ":" + port_str;
-    tools::msg_writer() << boost::format("%-10s %-25s %-25s %s") % prefix % id_str % addr_str % elapsed;
+	std::string rpc_port = peer.rpc_port ? std::to_string(peer.rpc_port) : "-";
+    tools::msg_writer() << boost::format("%-10s %-25s %-25s %-5s %s") % prefix % id_str % addr_str % rpc_port % elapsed;
   }
 
   void print_block_header(cryptonote::block_header_response const & header)
@@ -71,7 +72,6 @@ namespace {
       << "previous hash: " << header.prev_hash << std::endl
       << "nonce: " << boost::lexical_cast<std::string>(header.nonce) << std::endl
       << "is orphan: " << header.orphan_status << std::endl
-      << "is uncle: " << header.uncle_status << std::endl
       << "height: " << boost::lexical_cast<std::string>(header.height) << std::endl
       << "depth: " << boost::lexical_cast<std::string>(header.depth) << std::endl
       << "hash: " << header.hash << std::endl
@@ -79,17 +79,6 @@ namespace {
       << "block size: " << header.block_size << std::endl
       << "num txes: " << header.num_txes << std::endl
       << "reward: " << cryptonote::print_money(header.reward);
-  }
-  
-  void print_uncle_header(cryptonote::uncle_header_response const & header)
-  {
-    tools::success_msg_writer()
-      << "height: " << boost::lexical_cast<std::string>(header.height) << std::endl
-      << "depth: " << boost::lexical_cast<std::string>(header.depth) << std::endl
-      << "hash: " << header.hash << std::endl
-      << "difficulty: " << boost::lexical_cast<std::string>(header.difficulty) << std::endl
-      << "weight: " << boost::lexical_cast<std::string>(header.weight) << std::endl
-      << "reward: " << boost::lexical_cast<std::string>(header.reward);
   }
 
   std::string get_human_time_ago(time_t t, time_t now)
@@ -165,7 +154,7 @@ t_rpc_command_executor::~t_rpc_command_executor()
   }
 }
 
-bool t_rpc_command_executor::print_peer_list() {
+bool t_rpc_command_executor::print_peer_list(bool white, bool gray, size_t limit) {
   cryptonote::COMMAND_RPC_GET_PEER_LIST::request req;
   cryptonote::COMMAND_RPC_GET_PEER_LIST::response res;
 
@@ -186,14 +175,24 @@ bool t_rpc_command_executor::print_peer_list() {
     }
   }
 
-  for (auto & peer : res.white_list)
+  if (white)
   {
-    print_peer("white", peer);
+    auto peer = res.white_list.cbegin();
+    const auto end = limit ? peer + std::min(limit, res.white_list.size()) : res.white_list.cend();
+    for (; peer != end; ++peer)
+    {
+      print_peer("white", *peer);
+    }
   }
 
-  for (auto & peer : res.gray_list)
+  if (gray)
   {
-    print_peer("gray", peer);
+    auto peer = res.gray_list.cbegin();
+    const auto end = limit ? peer + std::min(limit, res.gray_list.size()) : res.gray_list.cend();
+    for (; peer != end; ++peer)
+    {
+      print_peer("gray", *peer);
+    }
   }
 
   return true;
@@ -474,6 +473,80 @@ bool t_rpc_command_executor::show_status() {
   return true;
 }
 
+bool t_rpc_command_executor::mining_status() {
+  cryptonote::COMMAND_RPC_MINING_STATUS::request mreq;
+  cryptonote::COMMAND_RPC_MINING_STATUS::response mres;
+  epee::json_rpc::error error_resp;
+  bool has_mining_info = true;
+
+  std::string fail_message = "Problem fetching info";
+
+  bool mining_busy = false;
+  if (m_is_rpc)
+  {
+    // mining info is only available non unrestricted RPC mode
+    has_mining_info = m_rpc_client->rpc_request(mreq, mres, "/mining_status", fail_message.c_str());
+  }
+  else
+  {
+    if (!m_rpc_server->on_mining_status(mreq, mres))
+    {
+      tools::fail_msg_writer() << fail_message.c_str();
+      return true;
+    }
+
+    if (mres.status == CORE_RPC_STATUS_BUSY)
+    {
+      mining_busy = true;
+    }
+    else if (mres.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << make_error(fail_message, mres.status);
+      return true;
+    }
+  }
+
+  if (!has_mining_info)
+  {
+    tools::fail_msg_writer() << "Mining info unavailable";
+    return true;
+  }
+
+  if (mining_busy || !mres.active)
+  {
+    tools::msg_writer() << "Not currently mining";
+  }
+  else
+  {
+    tools::msg_writer() << "Mining at " << get_mining_speed(mres.speed) << " with " << mres.threads_count << " threads";
+  }
+
+  if (mres.active || mres.is_background_mining_enabled)
+  {
+    tools::msg_writer() << "Mining address: " << mres.address;
+  }
+
+  if (mres.is_background_mining_enabled)
+  {
+    tools::msg_writer() << "Smart mining enabled:";
+    tools::msg_writer() << "  Target: " << (unsigned)mres.bg_target << "% CPU";
+    tools::msg_writer() << "  Idle threshold: " << (unsigned)mres.bg_idle_threshold << "% CPU";
+    tools::msg_writer() << "  Min idle time: " << (unsigned)mres.bg_min_idle_seconds << " seconds";
+    tools::msg_writer() << "  Ignore battery: " << (mres.bg_ignore_battery ? "yes" : "no");
+  }
+
+  if (!mining_busy && mres.active)
+  {
+    uint64_t daily = 86400ull / mres.block_target * mres.block_reward;
+    uint64_t monthly = 86400ull / mres.block_target * 30.5 * mres.block_reward;
+    uint64_t yearly = 86400ull / mres.block_target * 356 * mres.block_reward;
+    tools::msg_writer() << "Expected: " << cryptonote::print_money(daily) << " monero daily, "
+        << cryptonote::print_money(monthly) << " monero monthly, " << cryptonote::print_money(yearly) << " yearly";
+  }
+
+  return true;
+}
+
 bool t_rpc_command_executor::print_connections() {
   cryptonote::COMMAND_RPC_GET_CONNECTIONS::request req;
   cryptonote::COMMAND_RPC_GET_CONNECTIONS::response res;
@@ -498,6 +571,7 @@ bool t_rpc_command_executor::print_connections() {
   }
 
   tools::msg_writer() << std::setw(30) << std::left << "Remote Host"
+      << std::setw(6) << "SSL"
       << std::setw(20) << "Peer id"
       << std::setw(20) << "Support Flags"      
       << std::setw(30) << "Recv/Sent (inactive,sec)"
@@ -517,6 +591,7 @@ bool t_rpc_command_executor::print_connections() {
     tools::msg_writer() 
      //<< std::setw(30) << std::left << in_out
      << std::setw(30) << std::left << address
+     << std::setw(6) << (info.ssl ? "yes" : "no")
      << std::setw(20) << epee::string_tools::pad_string(info.peer_id, 16, '0', true)
      << std::setw(20) << info.support_flags
      << std::setw(30) << std::to_string(info.recv_count) + "("  + std::to_string(info.recv_idle_time) + ")/" + std::to_string(info.send_count) + "(" + std::to_string(info.send_idle_time) + ")"
@@ -532,6 +607,66 @@ bool t_rpc_command_executor::print_connections() {
     //tools::msg_writer() << boost::format("%-25s peer_id: %-25s %s") % address % info.peer_id % in_out;
     
   }
+
+  return true;
+}
+
+bool t_rpc_command_executor::print_net_stats()
+{
+  cryptonote::COMMAND_RPC_GET_NET_STATS::request net_stats_req;
+  cryptonote::COMMAND_RPC_GET_NET_STATS::response net_stats_res;
+  cryptonote::COMMAND_RPC_GET_LIMIT::request limit_req;
+  cryptonote::COMMAND_RPC_GET_LIMIT::response limit_res;
+
+  std::string fail_message = "Unsuccessful";
+
+  if (m_is_rpc)
+  {
+    if (!m_rpc_client->json_rpc_request(net_stats_req, net_stats_res, "get_net_stats", fail_message.c_str()))
+    {
+      return true;
+    }
+    if (!m_rpc_client->json_rpc_request(limit_req, limit_res, "get_limit", fail_message.c_str()))
+    {
+      return true;
+    }
+  }
+  else
+  {
+    if (!m_rpc_server->on_get_net_stats(net_stats_req, net_stats_res) || net_stats_res.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << make_error(fail_message, net_stats_res.status);
+      return true;
+    }
+    if (!m_rpc_server->on_get_limit(limit_req, limit_res) || limit_res.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << make_error(fail_message, limit_res.status);
+      return true;
+    }
+  }
+
+  uint64_t seconds = (uint64_t)time(NULL) - net_stats_res.start_time;
+  uint64_t average = seconds > 0 ? net_stats_res.total_bytes_in / seconds : 0;
+  uint64_t limit = limit_res.limit_down * 1024;   // convert to bytes, as limits are always kB/s
+  double percent = (double)average / (double)limit * 100.0;
+  tools::success_msg_writer() << boost::format("Received %u bytes (%s) in %u packets, average %s/s = %.2f%% of the limit of %s/s")
+    % net_stats_res.total_bytes_in
+    % tools::get_human_readable_bytes(net_stats_res.total_bytes_in)
+    % net_stats_res.total_packets_in
+    % tools::get_human_readable_bytes(average)
+    % percent
+    % tools::get_human_readable_bytes(limit);
+
+  average = seconds > 0 ? net_stats_res.total_bytes_out / seconds : 0;
+  limit = limit_res.limit_up * 1024;
+  percent = (double)average / (double)limit * 100.0;
+  tools::success_msg_writer() << boost::format("Sent %u bytes (%s) in %u packets, average %s/s = %.2f%% of the limit of %s/s")
+    % net_stats_res.total_bytes_out
+    % tools::get_human_readable_bytes(net_stats_res.total_bytes_out)
+    % net_stats_res.total_packets_out
+    % tools::get_human_readable_bytes(average)
+    % percent
+    % tools::get_human_readable_bytes(limit);
 
   return true;
 }
@@ -566,9 +701,9 @@ bool t_rpc_command_executor::print_blockchain_info(uint64_t start_block_index, u
   for (auto & header : res.headers)
   {
     if (!first)
-      std::cout << std::endl;
-    std::cout
-      << "height: " << header.height << ", timestamp: " << header.timestamp << ", difficulty: " << header.difficulty
+      tools::msg_writer() << "" << std::endl;
+    tools::msg_writer()
+      << "height: " << header.height << ", timestamp: " << header.timestamp << " (" << tools::get_human_readable_timestamp(header.timestamp) << ")"
       << ", size: " << header.block_size << ", transactions: " << header.num_txes << std::endl
       << "major version: " << (unsigned)header.major_version << ", minor version: " << (unsigned)header.minor_version << std::endl
       << "block id: " << header.hash << ", previous block id: " << header.prev_hash << std::endl
@@ -724,37 +859,6 @@ bool t_rpc_command_executor::print_block_by_height(uint64_t height) {
   return true;
 }
 
-bool t_rpc_command_executor::print_uncle_block(crypto::hash uncle_hash) {
-  cryptonote::COMMAND_RPC_GET_UNCLE_BLOCK::request req;
-  cryptonote::COMMAND_RPC_GET_UNCLE_BLOCK::response res;
-  epee::json_rpc::error error_resp;
-
-  req.hash = epee::string_tools::pod_to_hex(uncle_hash);
-
-  std::string fail_message = "Unsuccessful";
-
-  if (m_is_rpc)
-  {
-    if (!m_rpc_client->json_rpc_request(req, res, "get_uncle_block", fail_message.c_str()))
-    {
-      return true;
-    }
-  }
-  else
-  {
-    if (!m_rpc_server->on_get_uncle_block(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
-    {
-      tools::fail_msg_writer() << make_error(fail_message, res.status);
-      return true;
-    }
-  }
-
-  print_uncle_header(res.header_response);
-  tools::success_msg_writer() << res.json << ENDL;
-
-  return true;
-}
-
 bool t_rpc_command_executor::print_transaction(crypto::hash transaction_hash,
   bool include_hex,
   bool include_json, bool prune) {
@@ -885,7 +989,7 @@ bool t_rpc_command_executor::print_transaction_pool_long() {
   }
   else
   {
-    if (!m_rpc_server->on_get_transaction_pool(req, res, false) || res.status != CORE_RPC_STATUS_OK)
+    if (!m_rpc_server->on_get_transaction_pool(req, res) || res.status != CORE_RPC_STATUS_OK)
     {
       tools::fail_msg_writer() << make_error(fail_message, res.status);
       return true;
@@ -970,7 +1074,7 @@ bool t_rpc_command_executor::print_transaction_pool_short() {
   }
   else
   {
-    if (!m_rpc_server->on_get_transaction_pool(req, res, false) || res.status != CORE_RPC_STATUS_OK)
+    if (!m_rpc_server->on_get_transaction_pool(req, res) || res.status != CORE_RPC_STATUS_OK)
     {
       tools::fail_msg_writer() << make_error(fail_message, res.status);
       return true;
@@ -1026,8 +1130,8 @@ bool t_rpc_command_executor::print_transaction_pool_stats() {
   }
   else
   {
-    memset(&res.pool_stats, 0, sizeof(res.pool_stats));
-    if (!m_rpc_server->on_get_transaction_pool_stats(req, res, false) || res.status != CORE_RPC_STATUS_OK)
+    res.pool_stats = {};
+    if (!m_rpc_server->on_get_transaction_pool_stats(req, res) || res.status != CORE_RPC_STATUS_OK)
     {
       tools::fail_msg_writer() << make_error(fail_message, res.status);
       return true;
@@ -1090,10 +1194,10 @@ bool t_rpc_command_executor::print_transaction_pool_stats() {
   return true;
 }
 
-bool t_rpc_command_executor::start_mining(std::string address, uint64_t num_threads, cryptonote::network_type nettype, bool do_background_mining, bool ignore_battery) {
+bool t_rpc_command_executor::start_mining(cryptonote::account_public_address address, uint64_t num_threads, cryptonote::network_type nettype, bool do_background_mining, bool ignore_battery) {
   cryptonote::COMMAND_RPC_START_MINING::request req;
   cryptonote::COMMAND_RPC_START_MINING::response res;
-  req.miner_address = address;
+  req.miner_address = cryptonote::get_account_address_as_str(nettype, false, address);
   req.threads_count = num_threads;
   req.do_background_mining = do_background_mining;
   req.ignore_battery = ignore_battery;
@@ -1230,8 +1334,8 @@ bool t_rpc_command_executor::get_limit()
     }
   }
 
-  tools::msg_writer() << "limit-down is " << res.limit_down/1024 << " kB/s";
-  tools::msg_writer() << "limit-up is " << res.limit_up/1024 << " kB/s";
+  tools::msg_writer() << "limit-down is " << res.limit_down << " kB/s";
+  tools::msg_writer() << "limit-up is " << res.limit_up << " kB/s";
   return true;
 }
 
@@ -1261,8 +1365,8 @@ bool t_rpc_command_executor::set_limit(int64_t limit_down, int64_t limit_up)
     }
   }
 
-  tools::msg_writer() << "Set limit-down to " << res.limit_down/1024 << " kB/s";
-  tools::msg_writer() << "Set limit-up to " << res.limit_up/1024 << " kB/s";
+  tools::msg_writer() << "Set limit-down to " << res.limit_down << " kB/s";
+  tools::msg_writer() << "Set limit-up to " << res.limit_up << " kB/s";
   return true;
 }
 
@@ -1289,7 +1393,7 @@ bool t_rpc_command_executor::get_limit_up()
     }
   }
 
-  tools::msg_writer() << "limit-up is " << res.limit_up/1024 << " kB/s";
+  tools::msg_writer() << "limit-up is " << res.limit_up << " kB/s";
   return true;
 }
 
@@ -1316,7 +1420,7 @@ bool t_rpc_command_executor::get_limit_down()
     }
   }
 
-  tools::msg_writer() << "limit-down is " << res.limit_down/1024 << " kB/s";
+  tools::msg_writer() << "limit-down is " << res.limit_down << " kB/s";
   return true;
 }
 
@@ -1347,7 +1451,7 @@ bool t_rpc_command_executor::out_peers(uint64_t limit)
 		}
 	}
 
-	std::cout << "Max number of out peers set to " << limit << std::endl;
+	tools::msg_writer() << "Max number of out peers set to " << limit << std::endl;
 
 	return true;
 }
@@ -1379,7 +1483,7 @@ bool t_rpc_command_executor::in_peers(uint64_t limit)
 		}
 	}
 
-	std::cout << "Max number of in peers set to " << limit << std::endl;
+	tools::msg_writer() << "Max number of in peers set to " << limit << std::endl;
 
 	return true;
 }

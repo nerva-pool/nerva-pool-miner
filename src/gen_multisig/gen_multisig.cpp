@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2018, The Monero Project
+// Copyright (c) 2017-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -91,7 +91,7 @@ static bool generate_multisig(uint32_t threshold, uint32_t total, const std::str
     for (size_t n = 0; n < total; ++n)
     {
       std::string name = basename + "-" + std::to_string(n + 1);
-      wallets[n].reset(new tools::wallet2(nettype));
+      wallets[n].reset(new tools::wallet2(nettype, 1, false));
       wallets[n]->init("");
       wallets[n]->generate(name, pwd_container->password(), rct::rct2sk(rct::skGen()), false, false, create_address_file);
     }
@@ -130,8 +130,8 @@ static bool generate_multisig(uint32_t threshold, uint32_t total, const std::str
       ss << "  " << name << std::endl;
     }
 
-    // finalize step if needed
-    if (!extra_info[0].empty())
+    //exchange keys unless exchange_multisig_keys returns no extra info
+    while (!extra_info[0].empty())
     {
       std::unordered_set<crypto::public_key> pkeys;
       std::vector<crypto::public_key> signers(total);
@@ -145,11 +145,7 @@ static bool generate_multisig(uint32_t threshold, uint32_t total, const std::str
       }
       for (size_t n = 0; n < total; ++n)
       {
-        if (!wallets[n]->finalize_multisig(pwd_container->password(), pkeys, signers))
-        {
-          tools::fail_msg_writer() << genms::tr("Error finalizing multisig");
-          return false;
-        }
+          extra_info[n] = wallets[n]->exchange_multisig_keys(pwd_container->password(), pkeys, signers);
       }
     }
 
@@ -168,6 +164,7 @@ static bool generate_multisig(uint32_t threshold, uint32_t total, const std::str
 int main(int argc, char* argv[])
 {
   TRY_ENTRY();
+
   po::options_description desc_params(wallet_args::tr("Wallet options"));
   command_line::add_arg(desc_params, arg_filename_base);
   command_line::add_arg(desc_params, arg_scheme);
@@ -245,11 +242,6 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  if (threshold != total-1 && threshold != total)
-  {
-    tools::fail_msg_writer() << genms::tr("Error: unsupported scheme: only N/N and N-1/N are supported");
-    return 1;
-  }
   bool create_address_file = command_line::get_arg(*vm, arg_create_address_file);
   if (!generate_multisig(threshold, total, basename, testnet ? TESTNET : stagenet ? STAGENET : MAINNET, create_address_file))
     return 1;

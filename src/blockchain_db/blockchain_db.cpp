@@ -168,7 +168,7 @@ uint64_t BlockchainDB::add_block( const block& blk
   uint64_t prev_height = height();
 
   // call out to add the transactions
-
+  
   time1 = epee::misc_utils::get_tick_count();
   add_transaction(blk_hash, blk.miner_tx);
   int tx_i = 0;
@@ -249,19 +249,9 @@ static block get_block_from_blob(const blobdata& bd, const std::string& type)
   return b;
 }
 
-block BlockchainDB::get_uncle_from_height(const uint64_t& height) const
-{
-  return get_block_from_blob(get_uncle_blob_from_height(height), "uncle");
-}
-
 block BlockchainDB::get_block_from_height(const uint64_t& height) const
 {
   return get_block_from_blob(get_block_blob_from_height(height), "block");
-}
-
-block BlockchainDB::get_uncle(const crypto::hash& h) const
-{
-  return get_block_from_blob(get_uncle_blob(h), "uncle");
 }
 
 block BlockchainDB::get_block(const crypto::hash& h) const
@@ -293,11 +283,6 @@ difficulty_type BlockchainDB::get_block_cumulative_difficulty(const crypto::hash
 difficulty_type BlockchainDB::get_block_difficulty(const crypto::hash& id) const
 {
   return get_block_difficulty(get_block_height(id));
-}
-
-difficulty_type BlockchainDB::get_uncle_difficulty(const crypto::hash& id) const
-{
-  return get_block_difficulty(get_uncle_height(id));
 }
 
 transaction BlockchainDB::get_tx(const crypto::hash& h) const

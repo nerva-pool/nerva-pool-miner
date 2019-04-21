@@ -111,6 +111,7 @@ target_link_libraries(rpc
     common
     cryptonote_core
     cryptonote_protocol
+    net
     version
     ${Boost_REGEX_LIBRARY}
     ${Boost_THREAD_LIBRARY}

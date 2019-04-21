@@ -1,5 +1,5 @@
-// Copyright (c) 2017-2018, The Masari Project
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2019, The NERVA Project
 // 
 // All rights reserved.
 // 
@@ -311,9 +311,12 @@ void HardFork::on_block_popped(uint64_t nblocks)
   uint64_t height;
   for (height = old_chain_height - 1; height >= new_chain_height; --height)
   {
+    version = versions.back();
+    last_versions[version]--;
     versions.pop_back();
     version = db.get_hard_fork_version(height);
     versions.push_front(version);
+    last_versions[version]++;
   }
 
   // does not take voting into account
@@ -326,7 +329,7 @@ int HardFork::get_voted_fork_index(uint64_t height) const
 {
   CRITICAL_REGION_LOCAL(lock);
   uint32_t accumulated_votes = 0;
-  for (unsigned int n = heights.size() - 1; n > current_fork_index; --n) {
+  for (int n = heights.size() - 1; n >= 0; --n) {
     uint8_t v = heights[n].version;
     accumulated_votes += last_versions[v];
     uint32_t threshold = (window_size * heights[n].threshold + 99) / 100;

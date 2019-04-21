@@ -39,7 +39,7 @@ namespace cryptonote
 {
   //---------------------------------------------------------------
   bool construct_miner_tx(size_t height, size_t median_size, uint64_t already_generated_coins, size_t current_block_size, uint64_t fee, const account_public_address &miner_address, 
-    transaction& tx, const blobdata& extra_nonce = blobdata(), size_t max_outs = 999, uint8_t hard_fork_version = 1, bool uncle_included = false, const cryptonote::block *uncle = NULL);
+    transaction& tx, const blobdata& extra_nonce = blobdata(), size_t max_outs = 999, uint8_t hard_fork_version = 1);
 
   struct tx_source_entry
   {
@@ -108,11 +108,7 @@ namespace cryptonote
                                       crypto::public_key &out_eph_public_key) ;
 
   bool generate_genesis_block(block& bl);
-
 }
-
-BOOST_CLASS_VERSION(cryptonote::tx_source_entry, 1)
-BOOST_CLASS_VERSION(cryptonote::tx_destination_entry, 2)
 
 namespace boost
 {
@@ -128,8 +124,6 @@ namespace boost
       a & x.amount;
       a & x.rct;
       a & x.mask;
-      if (ver < 1)
-        return;
       a & x.multisig_kLRki;
       a & x.real_out_additional_tx_keys;
     }
@@ -139,14 +133,7 @@ namespace boost
     {
       a & x.amount;
       a & x.addr;
-      if (ver < 1)
-        return;
       a & x.is_subaddress;
-      if (ver < 2)
-      {
-        x.is_integrated = false;
-        return;
-      }
       a & x.original;
       a & x.is_integrated;
     }

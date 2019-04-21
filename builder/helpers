@@ -89,14 +89,31 @@ elif [ $(uname) == "Darwin" ]; then
 			ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 		fi
 
+		brew update
+		brew upgrade -all
+		brew install git
+		brew install zeromq
+		brew install libsodium
+		brew install openSSL
+		brew install PkgConfig
+		brew install readline
+		brew install boost
+		brew install miniupnpc
+		brew tap jmuncaster/homebrew-header-only
+		brew install jmuncaster/header-only/cppzmq
+		brew install cmake
+
 		if ! [ -f "/usr/local/lib/libcurl.a" ]; then
 			#build libcurl if not already built
 			if ! [ -d ${BUILDER_DIR}/curl ]; then
 				cd ${NERVA_DIR}/external/curl
-				./configure --prefix="${BUILDER_DIR}/curl" --without-ssl --without-zlib \
-				--disable-ftp --disable-gopher --disable-file --disable-imap --disable-ldap --disable-ldaps \
-				--disable-pop3 --disable-proxy --disable-rtsp --disable-smtp --disable-telnet --disable-tftp \
-				--without-gnutls --without-libidn --without-librtmp --disable-dict
+				./buildconf
+
+				./configure --prefix="/Users/virtual/nerva/builder/curl" --with-darwinssl --disable-dict --disable-ftp --disable-gopher \
+				--disable-file --disable-imap --disable-ldap --disable-ldaps --disable-pop3 --disable-proxy --disable-rtsp --disable-smtp \
+				--disable-telnet --disable-tftp --disable-smb --disable-smbs --disable-psl --without-zlib --without-brotli \
+				--without-libidn2 --disable-ftmp --enable-static --disable-shared
+
 				make -j4
 				make install
 			fi
@@ -105,21 +122,6 @@ elif [ $(uname) == "Darwin" ]; then
 			cp ${BUILDER_DIR}/curl/lib/libcurl.a /usr/local/lib/libcurl.a
 			cp -r ${BUILDER_DIR}/curl/include/curl /usr/local/include
 		fi
-
-		brew update
-		brew upgrade -all
-		brew install git
-		brew install zeromq
-		brew install cppzmq
-		brew install libsodium
-		brew install openSSL
-		brew install PkgConfig
-		brew install readline
-		brew install boost
-		brew install miniupnpc
-		brew  tap jmuncaster/homebrew-header-only
-		brew install jmuncaster/header-only/cppzmq
-		brew install cmake
 	}
 
 	function install()
