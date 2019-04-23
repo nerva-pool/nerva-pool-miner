@@ -42,6 +42,7 @@ using namespace epee;
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/account.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"
+#include "cryptonote_core/tx_sanity_check.h"
 #include "misc_language.h"
 #include "net/parse.h"
 #include "storages/http_abstract_invoke.h"
@@ -82,7 +83,7 @@ namespace cryptonote
     command_line::add_arg(desc, arg_rpc_ssl);
     command_line::add_arg(desc, arg_rpc_ssl_private_key);
     command_line::add_arg(desc, arg_rpc_ssl_certificate);
-    command_line::add_arg(desc, arg_rpc_ssl_allowed_certificates);
+    command_line::add_arg(desc, arg_rpc_ssl_ca_certificates);
     command_line::add_arg(desc, arg_rpc_ssl_allowed_fingerprints);
     command_line::add_arg(desc, arg_rpc_ssl_allow_any_cert);
     command_line::add_arg(desc, arg_bootstrap_daemon_address);
@@ -140,35 +141,38 @@ namespace cryptonote
     if (rpc_config->login)
       http_login.emplace(std::move(rpc_config->login->username), std::move(rpc_config->login->password).password());
 
-    epee::net_utils::ssl_support_t ssl_support;
-    const std::string ssl = command_line::get_arg(vm, arg_rpc_ssl);
-    if (!epee::net_utils::ssl_support_from_string(ssl_support, ssl))
+    epee::net_utils::ssl_options_t ssl_options = epee::net_utils::ssl_support_t::e_ssl_support_autodetect;
+    if (command_line::get_arg(vm, arg_rpc_ssl_allow_any_cert))
+      ssl_options.verification = epee::net_utils::ssl_verification_t::none;
+    else
     {
-      MFATAL("Invalid RPC SSL support: " << ssl);
-      return false;
+      std::string ssl_ca_path = command_line::get_arg(vm, arg_rpc_ssl_ca_certificates);
+      const std::vector<std::string> ssl_allowed_fingerprint_strings = command_line::get_arg(vm, arg_rpc_ssl_allowed_fingerprints);
+      std::vector<std::vector<uint8_t>> ssl_allowed_fingerprints{ ssl_allowed_fingerprint_strings.size() };
+      std::transform(ssl_allowed_fingerprint_strings.begin(), ssl_allowed_fingerprint_strings.end(), ssl_allowed_fingerprints.begin(), epee::from_hex::vector);
+
+      if (!ssl_ca_path.empty() || !ssl_allowed_fingerprints.empty())
+        ssl_options = epee::net_utils::ssl_options_t{std::move(ssl_allowed_fingerprints), std::move(ssl_ca_path)};
     }
-    const std::string ssl_private_key = command_line::get_arg(vm, arg_rpc_ssl_private_key);
-    const std::string ssl_certificate = command_line::get_arg(vm, arg_rpc_ssl_certificate);
-    const std::vector<std::string> ssl_allowed_certificate_paths = command_line::get_arg(vm, arg_rpc_ssl_allowed_certificates);
-    std::list<std::string> ssl_allowed_certificates;
-    for (const std::string &path: ssl_allowed_certificate_paths)
+
+    ssl_options.auth = epee::net_utils::ssl_authentication_t{
+      command_line::get_arg(vm, arg_rpc_ssl_private_key), command_line::get_arg(vm, arg_rpc_ssl_certificate)
+    };
+
+    // user specified CA file or fingeprints implies enabled SSL by default
+    if (ssl_options.verification != epee::net_utils::ssl_verification_t::user_certificates || !command_line::is_arg_defaulted(vm, arg_rpc_ssl))
     {
-      ssl_allowed_certificates.push_back({});
-      if (!epee::file_io_utils::load_file_to_string(path, ssl_allowed_certificates.back()))
+      const std::string ssl = command_line::get_arg(vm, arg_rpc_ssl);
+      if (!epee::net_utils::ssl_support_from_string(ssl_options.support, ssl))
       {
-        MERROR("Failed to load certificate: " << path);
-        ssl_allowed_certificates.back() = std::string();
+        MFATAL("Invalid RPC SSL support: " << ssl);
+        return false;
       }
     }
 
-    const std::vector<std::string> ssl_allowed_fingerprint_strings = command_line::get_arg(vm, arg_rpc_ssl_allowed_fingerprints);
-    std::vector<std::vector<uint8_t>> ssl_allowed_fingerprints{ ssl_allowed_fingerprint_strings.size() };
-    std::transform(ssl_allowed_fingerprint_strings.begin(), ssl_allowed_fingerprint_strings.end(), ssl_allowed_fingerprints.begin(), epee::from_hex::vector);
-    const bool ssl_allow_any_cert = command_line::get_arg(vm, arg_rpc_ssl_allow_any_cert);
     auto rng = [](size_t len, uint8_t *ptr){ return crypto::rand(len, ptr); };
     return epee::http_server_impl_base<core_rpc_server, connection_context>::init(
-      rng, std::move(port), std::move(rpc_config->bind_ip), std::move(rpc_config->access_control_origins), std::move(http_login),
-      ssl_support, std::make_pair(ssl_private_key, ssl_certificate), std::move(ssl_allowed_certificates), std::move(ssl_allowed_fingerprints), ssl_allow_any_cert
+      rng, std::move(port), std::move(rpc_config->bind_ip), std::move(rpc_config->access_control_origins), std::move(http_login), std::move(ssl_options)
     );
   }
   //------------------------------------------------------------------------------------------------------------------------------
@@ -943,6 +947,14 @@ namespace cryptonote
     {
       LOG_PRINT_L0("[on_send_raw_tx]: Failed to parse tx from hexbuff: " << req.tx_as_hex);
       res.status = "Failed";
+      return true;
+    }
+
+    if (req.do_sanity_checks && !cryptonote::tx_sanity_check(m_core.get_blockchain_storage(), tx_blob))
+    {
+      res.status = "Failed";
+      res.reason = "Sanity check failed";
+      res.sanity_check_failed = true;
       return true;
     }
 
@@ -2419,9 +2431,9 @@ namespace cryptonote
     , ""
     };
 
-  const command_line::arg_descriptor<std::vector<std::string>> core_rpc_server::arg_rpc_ssl_allowed_certificates = {
-      "rpc-ssl-allowed-certificates"
-    , "List of paths to PEM format certificates of allowed peers (all allowed if empty)"
+  const command_line::arg_descriptor<std::string> core_rpc_server::arg_rpc_ssl_ca_certificates = {
+      "rpc-ssl-ca-certificates"
+    , "Path to file containing concatenated PEM format certificate(s) to replace system CA(s)."
     };
 
   const command_line::arg_descriptor<std::vector<std::string>> core_rpc_server::arg_rpc_ssl_allowed_fingerprints = {
@@ -2431,7 +2443,7 @@ namespace cryptonote
 
   const command_line::arg_descriptor<bool> core_rpc_server::arg_rpc_ssl_allow_any_cert = {
       "rpc-ssl-allow-any-cert"
-    , "Allow any peer certificate, rather than just those on the allowed list"
+    , "Allow any peer certificate"
     , false
     };
 

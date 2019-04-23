@@ -45,7 +45,7 @@ namespace hw {
   public:
     std::vector<std::string> tx_device_aux;  // device generated aux data
     std::vector<cryptonote::address_parse_info> tx_recipients;  // as entered by user
-    boost::optional<bool> is_v2_bp;  // BP version to use
+    boost::optional<int> is_v2_bp;  // BP version to use
     boost::optional<unsigned> client_version;  // Signing client version to use (testing)
   };
 

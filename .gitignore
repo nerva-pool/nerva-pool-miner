@@ -1,4 +1,9 @@
 .vscode/ipch
 builder/build
+build
 db
 *.zip
+hw.*
+*.keys
+*.cache
+*.address.txt

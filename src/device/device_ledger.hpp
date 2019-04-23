@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019, The Monero Project
+// Copyright (c) 2017-2018, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -42,7 +42,6 @@ namespace hw {
 
     namespace ledger {
 
-    /* Minimal supported version */
     #define MINIMAL_APP_VERSION_MAJOR    1
     #define MINIMAL_APP_VERSION_MINOR    6
     #define MINIMAL_APP_VERSION_MICRO    5
@@ -53,8 +52,8 @@ namespace hw {
     #define VERSION_MICRO(v)     (((v)>>0)&0xFF)
     
     #define MINIMAL_APP_VERSION   VERSION(MINIMAL_APP_VERSION_MAJOR, MINIMAL_APP_VERSION_MINOR, MINIMAL_APP_VERSION_MICRO)
-
-    void register_all(std::map<std::string, std::unique_ptr<device>> &registry);
+    
+void register_all(std::map<std::string, std::unique_ptr<device>> &registry);
 
     #ifdef WITH_DEVICE_LEDGER
 
@@ -76,7 +75,7 @@ namespace hw {
         rct::key AKout;
         ABPkeys(const rct::key& A, const rct::key& B, const bool is_subaddr, bool is_subaddress, bool is_change_address, size_t index, const rct::key& P,const rct::key& AK);
         ABPkeys(const ABPkeys& keys) ;
-        ABPkeys() {index=0;is_subaddress=false;is_subaddress=false;is_change_address=false;}
+        ABPkeys() {index=0;is_subaddress=false;is_change_address=false;}
     };
 
     class Keymap {
@@ -203,15 +202,9 @@ namespace hw {
         /* ======================================================================= */
         /*                               TRANSACTION                               */
         /* ======================================================================= */
-        void generate_tx_proof(const crypto::hash &prefix_hash, 
-                                   const crypto::public_key &R, const crypto::public_key &A, const boost::optional<crypto::public_key> &B, const crypto::public_key &D, const crypto::secret_key &r, 
-                                   crypto::signature &sig) override;
-        
         bool  open_tx(crypto::secret_key &tx_key) override;
 
         bool  encrypt_payment_id(crypto::hash8 &payment_id, const crypto::public_key &public_key, const crypto::secret_key &secret_key) override;
-
-        rct::key genCommitmentMask(const rct::key &amount_key) override;
 
         bool  ecdhEncode(rct::ecdhTuple & unmasked, const rct::key & sharedSec, bool short_format) override;
         bool  ecdhDecode(rct::ecdhTuple & masked, const rct::key & sharedSec, bool short_format) override;

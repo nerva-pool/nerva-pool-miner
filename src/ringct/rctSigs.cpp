@@ -878,7 +878,6 @@ namespace rct {
         rv.p.bulletproofs.clear();
         if (bulletproof)
         {
-            std::vector<uint64_t> proof_amounts;
             size_t n_amounts = outamounts.size();
             size_t amounts_proved = 0;
             if (rct_config.range_proof_type == RangeProofPaddedBulletproof)

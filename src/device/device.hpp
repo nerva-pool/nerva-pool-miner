@@ -34,18 +34,11 @@
 #include "ringct/rctTypes.h"
 #include "cryptonote_config.h"
 
-
-#ifndef USE_DEVICE_LEDGER
-#define USE_DEVICE_LEDGER 1
-#endif
+#define WITH_DEVICE_LEDGER 1
 
 #if !defined(HAVE_HIDAPI) 
-#undef  USE_DEVICE_LEDGER
-#define USE_DEVICE_LEDGER 0
-#endif
-
-#if USE_DEVICE_LEDGER
-#define WITH_DEVICE_LEDGER
+#undef  WITH_DEVICE_LEDGER
+#define WITH_DEVICE_LEDGER 0
 #endif
 
 // forward declaration needed because this header is included by headers in libcryptonote_basic which depends on libdevice
@@ -76,6 +69,7 @@ namespace hw {
     class i_device_callback {
     public:
         virtual void on_button_request(uint64_t code=0) {}
+        virtual void on_button_pressed() {}
         virtual boost::optional<epee::wipeable_string> on_pin_request() { return boost::none; }
         virtual boost::optional<epee::wipeable_string> on_passphrase_request(bool on_device) { return boost::none; }
         virtual void on_progress(const device_progress& event) {}
@@ -194,11 +188,6 @@ namespace hw {
         /* ======================================================================= */
         /*                               TRANSACTION                               */
         /* ======================================================================= */
-
-        virtual void generate_tx_proof(const crypto::hash &prefix_hash, 
-                                       const crypto::public_key &R, const crypto::public_key &A, const boost::optional<crypto::public_key> &B, const crypto::public_key &D, const crypto::secret_key &r, 
-                                       crypto::signature &sig) = 0;
-
         virtual bool  open_tx(crypto::secret_key &tx_key) = 0;
 
         virtual bool  encrypt_payment_id(crypto::hash8 &payment_id, const crypto::public_key &public_key, const crypto::secret_key &secret_key) = 0;
@@ -207,8 +196,6 @@ namespace hw {
             // Encryption and decryption are the same operation (xor with a key)
             return encrypt_payment_id(payment_id, public_key, secret_key);
         }
-
-        virtual rct::key genCommitmentMask(const rct::key &amount_key) = 0;
 
         virtual bool  ecdhEncode(rct::ecdhTuple & unmasked, const rct::key & sharedSec, bool short_amount) = 0;
         virtual bool  ecdhDecode(rct::ecdhTuple & masked, const rct::key & sharedSec, bool short_amount) = 0;

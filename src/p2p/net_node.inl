@@ -178,8 +178,14 @@ namespace nodetool
     if(!addr.is_blockable())
       return false;
 
+    const time_t now = time(nullptr);
     CRITICAL_REGION_LOCAL(m_blocked_hosts_lock);
-    m_blocked_hosts[addr.host_str()] = time(nullptr) + seconds;
+    time_t limit;
+    if (now > std::numeric_limits<time_t>::max() - seconds)
+      limit = std::numeric_limits<time_t>::max();
+    else
+      limit = now + seconds;
+    m_blocked_hosts[addr.host_str()] = limit;
 
     std::vector<boost::uuids::uuid> conns;
     for(auto& zone : m_network_zones)
@@ -1349,7 +1355,7 @@ namespace nodetool
         return true;
 
       size_t try_count = 0;
-      size_t current_index = crypto::rand<size_t>()%m_seed_nodes.size();
+      size_t current_index = crypto::rand_idx(m_seed_nodes.size());
       const net_server& server = m_network_zones.at(epee::net_utils::zone::public_).m_net_server;
       while(true)
       {

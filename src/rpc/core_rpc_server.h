@@ -40,6 +40,9 @@
 #include "p2p/net_node.h"
 #include "cryptonote_protocol/cryptonote_protocol_handler.h"
 
+#undef MONERO_DEFAULT_LOG_CATEGORY
+#define MONERO_DEFAULT_LOG_CATEGORY "daemon.rpc"
+
 // yes, epee doesn't properly use its full namespace when calling its
 // functions from macros.  *sigh*
 using namespace epee;
@@ -60,7 +63,7 @@ namespace cryptonote
     static const command_line::arg_descriptor<std::string> arg_rpc_ssl;
     static const command_line::arg_descriptor<std::string> arg_rpc_ssl_private_key;
     static const command_line::arg_descriptor<std::string> arg_rpc_ssl_certificate;
-    static const command_line::arg_descriptor<std::vector<std::string>> arg_rpc_ssl_allowed_certificates;
+    static const command_line::arg_descriptor<std::string> arg_rpc_ssl_ca_certificates;
     static const command_line::arg_descriptor<std::vector<std::string>> arg_rpc_ssl_allowed_fingerprints;
     static const command_line::arg_descriptor<bool> arg_rpc_ssl_allow_any_cert;
     static const command_line::arg_descriptor<std::string> arg_bootstrap_daemon_address;

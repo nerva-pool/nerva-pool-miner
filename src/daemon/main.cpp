@@ -336,18 +336,18 @@ int main(int argc, char const * argv[])
       return 1;
 
     if (noanalytics)
-      MGUSER_CYAN("Analytics disabled. Please consider helping us build the node map");
+      MGINFO("Analytics disabled. Please consider helping us build the node map");
     else
     {
       if (analytics::contact_server(testnet))
-        MGUSER_CYAN("Node map server pinged. Thanks for helping build the node map");
+        MGINFO("Node map server pinged. Thanks for helping build the node map");
       else
-        MGUSER_CYAN("Node map server error. Information not submitted");  
+        MGINFO("Node map server error. Information not submitted");  
     }        
 
     blacklist::read_blacklist_from_url(testnet);
     if (blacklist::get_ip_list().size() > 0)
-      MGUSER_CYAN("Blacklist loaded: " << blacklist::get_ip_list().size() << " items");
+      MGINFO("Blacklist loaded: " << blacklist::get_ip_list().size() << " items");
 
     MINFO("Moving from main() into the daemonize now.");
 

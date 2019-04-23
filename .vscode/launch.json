@@ -90,13 +90,12 @@
             ]
         },
         {
-            "name": "Stagenet-HwWallet",
+            "name": "Testnet-HwWallet",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
             "args": [
-                "--stagenet",
-                "--daemon-address", "127.0.0.1:28081",
+                "--testnet",
                 "--hw-device", "Ledger",
                 "--wallet-file", "${workspaceFolder}/hw",
                 "--password", "''",
@@ -116,15 +115,14 @@
             ]
         },
         {
-            "name": "Stagenet-HwWallet-Restore",
+            "name": "Testnet-HwWallet-Restore",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
             "args": [
-                "--stagenet",
-                "--daemon-address", "127.0.0.1:28081",
+                "--testnet",
                 "--generate-from-device", "${workspaceFolder}/hw",
-                "--restore-height", "815",
+                "--restore-height", "1",
                 "--password", "''",
             ],
             "preLaunchTask": "delete-hw-wallet",
@@ -242,9 +240,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
-            "args": [
-                "--quicksync", "~/.nerva/quicksync.raw", "--block-sync-size", "100", "--log-level", "1"
-            ],
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

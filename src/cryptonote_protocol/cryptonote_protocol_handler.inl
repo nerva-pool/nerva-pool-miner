@@ -1558,12 +1558,6 @@ skip:
         bool queue_proceed = nspans < BLOCK_QUEUE_NSPANS_THRESHOLD || size < block_queue_size_threshold;
         // get rid of blocks we already requested, or already have
         skip_unneeded_hashes(context, true);
-        uint64_t next_needed_height = m_block_queue.get_next_needed_height(bc_height);
-        uint64_t next_block_height = 0;
-        if (context.m_needed_objects.empty())
-          next_block_height = next_needed_height;
-        else
-          next_block_height = context.m_last_response_height - context.m_needed_objects.size() + 1;
 
         // if we're waiting for next span, try to get it before unblocking threads below,
         // or a runaway downloading of future spans might happen
