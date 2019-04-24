@@ -272,6 +272,12 @@ namespace hw {
         /* ======================================================================= */
         /*                               TRANSACTION                               */
         /* ======================================================================= */
+        void device_default::generate_tx_proof(const crypto::hash &prefix_hash, 
+                                               const crypto::public_key &R, const crypto::public_key &A, const boost::optional<crypto::public_key> &B, const crypto::public_key &D, const crypto::secret_key &r, 
+                                               crypto::signature &sig) {
+            crypto::generate_tx_proof(prefix_hash, R, A, B, D, r, sig);
+        }
+
         bool device_default::open_tx(crypto::secret_key &tx_key) {
             cryptonote::keypair txkey = cryptonote::keypair::generate(*this);
             tx_key = txkey.sec;
@@ -345,6 +351,10 @@ namespace hw {
                 payment_id.data[b] ^= hash.data[b];
 
             return true;
+        }
+
+        rct::key device_default::genCommitmentMask(const rct::key &amount_key) {
+            return rct::genCommitmentMask(amount_key);
         }
 
         bool  device_default::ecdhEncode(rct::ecdhTuple & unmasked, const rct::key & sharedSec, bool short_amount) {
