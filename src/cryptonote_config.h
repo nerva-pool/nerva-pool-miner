@@ -176,18 +176,16 @@ namespace config
     uint32_t const GENESIS_NONCE = 10000;
 
     std::string const HF_MIN_VERSION = "0.1.6.4";
-    std::string const MIN_VERSION    = "0.1.6.3";
+    std::string const MIN_VERSION    = "0.1.6.4";
 
     std::set<std::string> const seed_nodes = {
         "206.81.2.15:17565",
-        "206.81.2.16:17565",
-        "206.81.12.28:17565"
+        "206.81.2.16:17565"
     };
 
     std::set<std::string> const seed_node_aliases = {
         "xnv1.getnerva.org",
-        "xnv2.getnerva.org",
-        "xnv3.getnerva.org"
+        "xnv2.getnerva.org"
     };
 
     static const hard_fork hard_forks[] = {
@@ -212,18 +210,16 @@ namespace config
         boost::uuids::uuid const NETWORK_ID = {{0x13, 0x22, 0xF0, 0x55, 0x42, 0x18, 0x40, 0x33, 0x16, 0x88, 0x01, 0x92, 0xAA, 0xBC, 0xFF, 0x13}};
 
         std::string const HF_MIN_VERSION = "0.1.6.4";
-        std::string const MIN_VERSION    = "0.1.6.3";
+        std::string const MIN_VERSION    = "0.1.6.4";
 
         std::set<std::string> const seed_nodes = {
-            "204.48.17.173:18565",
-            "206.81.2.10:18565",
-            "206.81.2.12:18565"
+            "206.189.68.68:18565",
+            "178.128.165.236:18565"
         };
 
         std::set<std::string> const seed_node_aliases = {
-            "xnv4.getnerva.org",
-            "xnv5.getnerva.org",
-            "xnv6.getnerva.org"
+            "xnv3.getnerva.org",
+            "xnv4.getnerva.org"
         };
 
         static const hard_fork hard_forks[] = {

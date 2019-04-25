@@ -381,6 +381,10 @@ if (APPLE AND NOT IOS)
   endif()
 endif()
 
+if(STATIC)
+  set(OPENSSL_USE_STATIC_LIBS TRUE)
+endif()
+
 find_package(OpenSSL REQUIRED)
 message(STATUS "Using OpenSSL include dir at ${OPENSSL_INCLUDE_DIR}")
 find_package(CURL REQUIRED)

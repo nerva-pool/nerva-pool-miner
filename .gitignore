@@ -1,5 +1,6 @@
 .vscode/ipch
 builder/build
+builder/curl
 build
 db
 *.zip
