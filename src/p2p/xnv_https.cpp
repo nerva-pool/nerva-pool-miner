@@ -7,6 +7,20 @@
 #include "xnv_https.h"
 #include "cryptonote_config.h"
 #include "version.h"
+#include "misc_log_ex.h"
+
+namespace
+{
+    bool curl_supports_ssl()
+    {
+        curl_version_info_data * vinfo = curl_version_info(CURLVERSION_NOW);
+
+        if(vinfo->features & CURL_VERSION_SSL)
+            return true;
+        else
+            return false;
+    }
+}
 
 namespace blacklist
 {
@@ -45,12 +59,18 @@ namespace blacklist
 
     void read_blacklist_from_url(const bool testnet)
     {
-        std::set<std::string> seed_node_aliases = testnet ? 
-            ::config::testnet::seed_node_aliases : ::config::seed_node_aliases;
+        std::string protocol = "http://";
+        std::set<std::string> url_list = testnet ? ::config::testnet::seed_nodes : ::config::seed_nodes;
 
-        for (const std::string &a : seed_node_aliases)
+        if (curl_supports_ssl())
         {
-            std::string url = "https://" + a + "/xnv_blacklist.txt";
+            protocol = "https://";
+            url_list = testnet ? ::config::testnet::seed_node_aliases : ::config::seed_node_aliases;
+        }
+        
+        for (const std::string &a : url_list)
+        {
+            std::string url = protocol + a + "/xnv_blacklist.txt";
 
             CURL* curl = curl_easy_init(); 
             if(curl) 
@@ -75,12 +95,19 @@ namespace analytics
 {
     bool contact_server(const bool testnet)
     {
-        std::set<std::string> seed_node_aliases = testnet ? 
-            ::config::testnet::seed_node_aliases : ::config::seed_node_aliases;
+        std::string protocol = "http://";
+        std::set<std::string> url_list = testnet ? ::config::testnet::seed_nodes : ::config::seed_nodes;
 
-        for (const std::string &a : seed_node_aliases)
+        if (curl_supports_ssl())
         {
-            std::string url = "https://" + a + "/api/submitanalytics.php";
+            protocol = "https://";
+            url_list = testnet ? ::config::testnet::seed_node_aliases : ::config::seed_node_aliases;
+        }
+
+        for (const std::string &a : url_list)
+        {
+            std::string url = protocol + a + "/api/submitanalytics.php";
+            MGINFO("Sending analytics to " << url);
 
             std::string user_agent = "nerva-cli/";
             user_agent.append(MONERO_VERSION);
@@ -94,10 +121,14 @@ namespace analytics
                 CURLcode res = curl_easy_perform(curl); 
                 curl_easy_cleanup(curl); 
                 if (res == CURLE_OK)
+                {
+                    MGINFO("Sending analytics successful");
                     return true;
+                }
             } 
         }
-
+        
+        MGINFO("Sending analytics failed");
         return false;
     }
 }

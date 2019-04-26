@@ -240,7 +240,9 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
-            "args": [],
+            "args": [
+                "--log-level", "1"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
