@@ -13,12 +13,16 @@ namespace xnvhttp
 {
     bool curl_supports_ssl()
     {
+#ifdef _WIN32
+        return false;
+#else
         curl_version_info_data * vinfo = curl_version_info(CURLVERSION_NOW);
 
         if(vinfo->features & CURL_VERSION_SSL)
             return true;
         else
             return false;
+#endif
     }
 
     std::string get_host(std::string ip)
@@ -125,6 +129,8 @@ namespace analytics
                     MGINFO("Sending analytics successful");
                     return true;
                 }
+                else
+                    MGINFO("Curl returned error: " << curl_easy_strerror(res));
             } 
         }
         
