@@ -824,7 +824,7 @@ namespace nodetool
 
       if (hsh_result)
       {
-        std::string host_compare = blacklist::get_host(context.m_remote_address.str());
+        std::string host_compare = xnvhttp::get_host(context.m_remote_address.str());
         for (auto i : blacklist::get_ip_list())
         {
           if (i == host_compare)
@@ -878,7 +878,7 @@ namespace nodetool
         return;
       }
 
-      std::string host_compare = blacklist::get_host(context.m_remote_address.str());
+      std::string host_compare = xnvhttp::get_host(context.m_remote_address.str());
       for (auto i : blacklist::get_ip_list())
       {
         if (i == host_compare)
@@ -2013,7 +2013,7 @@ namespace nodetool
       return 1;
     }
 
-    std::string host_compare = blacklist::get_host(context.m_remote_address.str());
+    std::string host_compare = xnvhttp::get_host(context.m_remote_address.str());
     for (auto i : blacklist::get_ip_list())
     {
       if (i == host_compare)

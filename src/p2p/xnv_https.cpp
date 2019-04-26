@@ -9,7 +9,7 @@
 #include "version.h"
 #include "misc_log_ex.h"
 
-namespace
+namespace xnvhttp
 {
     bool curl_supports_ssl()
     {
@@ -19,6 +19,13 @@ namespace
             return true;
         else
             return false;
+    }
+
+    std::string get_host(std::string ip)
+    {
+        size_t found = ip.find_first_of(":");
+        std::string host = ip.substr(0, found);
+        return host;
     }
 }
 
@@ -50,19 +57,12 @@ namespace blacklist
         return strings;
     }
 
-    std::string get_host(std::string ip)
-    {
-        size_t found = ip.find_first_of(":");
-        std::string host = ip.substr(0, found);
-        return host;
-    }
-
     void read_blacklist_from_url(const bool testnet)
     {
         std::string protocol = "http://";
         std::set<std::string> url_list = testnet ? ::config::testnet::seed_nodes : ::config::seed_nodes;
 
-        if (curl_supports_ssl())
+        if (xnvhttp::curl_supports_ssl())
         {
             protocol = "https://";
             url_list = testnet ? ::config::testnet::seed_node_aliases : ::config::seed_node_aliases;
@@ -70,7 +70,7 @@ namespace blacklist
         
         for (const std::string &a : url_list)
         {
-            std::string url = protocol + a + "/xnv_blacklist.txt";
+            std::string url = protocol + xnvhttp::get_host(a) + "/xnv_blacklist.txt";
 
             CURL* curl = curl_easy_init(); 
             if(curl) 
@@ -98,7 +98,7 @@ namespace analytics
         std::string protocol = "http://";
         std::set<std::string> url_list = testnet ? ::config::testnet::seed_nodes : ::config::seed_nodes;
 
-        if (curl_supports_ssl())
+        if (xnvhttp::curl_supports_ssl())
         {
             protocol = "https://";
             url_list = testnet ? ::config::testnet::seed_node_aliases : ::config::seed_node_aliases;
@@ -106,7 +106,7 @@ namespace analytics
 
         for (const std::string &a : url_list)
         {
-            std::string url = protocol + a + "/api/submitanalytics.php";
+            std::string url = protocol + xnvhttp::get_host(a) + "/api/submitanalytics.php";
             MGINFO("Sending analytics to " << url);
 
             std::string user_agent = "nerva-cli/";

@@ -7,12 +7,17 @@
 #include <string>
 #include <vector>
 
+namespace xnvhttp
+{
+    std::string get_host(std::string ip);
+    bool curl_supports_ssl();
+};
+
 namespace blacklist
 {
     static std::vector<std::string> ip_list;
     const std::vector<std::string> get_ip_list();
     void read_blacklist_from_url(const bool testnet);
-    std::string get_host(std::string ip);
     std::vector<std::string> split_string(const std::string& str, const std::string& delimiter);
     size_t curl_write_callback(void *contents, size_t size, size_t nmemb, void *userp);
 };

@@ -119,6 +119,7 @@ elif [ $(uname) == "Darwin" ]; then
 		brew install readline
 		brew install boost
 		brew install miniupnpc
+		brew install hidapi
 		brew tap jmuncaster/homebrew-header-only
 		brew install jmuncaster/header-only/cppzmq
 		brew install cmake
