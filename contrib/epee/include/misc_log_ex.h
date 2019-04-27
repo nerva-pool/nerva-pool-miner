@@ -39,10 +39,10 @@
 #define MAX_LOG_FILES 50
 
 #define MCLOG_TYPE(level, cat, type, x) do { \
-  if (ELPP->vRegistry()->allowed(level, cat)) { \
-    el::base::Writer(level, __FILE__, __LINE__, ELPP_FUNC, type).construct(cat) << x; \
-  } \
-} while (0)
+    if (ELPP->vRegistry()->allowed(level, cat)) { \
+      el::base::Writer(level, __FILE__, __LINE__, ELPP_FUNC, type).construct(cat) << x; \
+    } \
+  } while (0)
 
 #define MCLOG(level, cat, x) MCLOG_TYPE(level, cat, el::base::DispatchAction::NormalLog, x)
 #define MCLOG_FILE(level, cat, x) MCLOG_TYPE(level, cat, el::base::DispatchAction::FileOnlyLog, x)
@@ -92,6 +92,16 @@
 #define MGUSER_BLUE(x) MCLOG_BLUE(el::Level::Info, "user",x)
 #define MGUSER_MAGENTA(x) MCLOG_MAGENTA(el::Level::Info, "user",x)
 #define MGUSER_CYAN(x) MCLOG_CYAN(el::Level::Info, "user",x)
+
+#define IFLOG(level, cat, type, init, x) \
+  do { \
+    if (ELPP->vRegistry()->allowed(level, cat)) { \
+      init; \
+      el::base::Writer(level, __FILE__, __LINE__, ELPP_FUNC, type).construct(cat) << x; \
+    } \
+  } while(0)
+#define MIDEBUG(init, x) IFLOG(el::Level::Debug, MONERO_DEFAULT_LOG_CATEGORY, el::base::DispatchAction::NormalLog, init, x)
+
 
 #define LOG_ERROR(x) MERROR(x)
 #define LOG_PRINT_L0(x) MWARNING(x)

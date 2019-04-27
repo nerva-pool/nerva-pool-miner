@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2018, The Monero Project
+# Copyright (c) 2014-2019, The Monero Project
 #
 # All rights reserved.
 #
@@ -40,6 +40,7 @@ target_link_libraries(p2p
   PUBLIC
     version
     cryptonote_core
+	  net
     ${CURL_LIBRARIES}
     ${UPNP_LIBRARIES}
     ${Boost_CHRONO_LIBRARY}

@@ -1,5 +1,4 @@
-// Copyright (c) 2018, The Masari Project
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -29,6 +28,7 @@
 
 #include "common/dns_utils.h"
 #include "common/command_line.h"
+#include "version.h"
 #include "daemon/command_parser_executor.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
@@ -48,9 +48,34 @@ t_command_parser_executor::t_command_parser_executor(
 
 bool t_command_parser_executor::print_peer_list(const std::vector<std::string>& args)
 {
-  if (!args.empty()) return false;
+  if (args.size() > 3)
+  {
+    std::cout << "use: print_pl [white] [gray] [<limit>]" << std::endl;
+    return true;
+  }
 
-  return m_executor.print_peer_list();
+  bool white = false;
+  bool gray = false;
+  size_t limit = 0;
+  for (size_t i = 0; i < args.size(); ++i)
+  {
+    if (args[i] == "white")
+    {
+      white = true;
+    }
+    else if (args[i] == "gray")
+    {
+      gray = true;
+    }
+    else if (!epee::string_tools::get_xtype_from_string(limit, args[i]))
+    {
+      std::cout << "unexpected argument: " << args[i] << std::endl;
+      return true;
+    }
+  }
+
+  const bool print_both = !white && !gray;
+  return m_executor.print_peer_list(white | print_both, gray | print_both, limit);
 }
 
 bool t_command_parser_executor::print_peer_list_stats(const std::vector<std::string>& args)
@@ -100,6 +125,13 @@ bool t_command_parser_executor::print_connections(const std::vector<std::string>
   if (!args.empty()) return false;
 
   return m_executor.print_connections();
+}
+
+bool t_command_parser_executor::print_net_stats(const std::vector<std::string>& args)
+{
+  if (!args.empty()) return false;
+
+  return m_executor.print_net_stats();
 }
 
 bool t_command_parser_executor::print_blockchain_info(const std::vector<std::string>& args)
@@ -184,24 +216,6 @@ bool t_command_parser_executor::print_block(const std::vector<std::string>& args
     }
   }
 
-  return false;
-}
-
-bool t_command_parser_executor::print_uncle_block(const std::vector<std::string>& args)
-{
-  if (args.empty())
-  {
-    std::cout << "expected: print_uncle_block (<uncle_block_hash>)" << std::endl;
-    return false;
-  }
-  
-  const std::string& arg = args.front();
-  crypto::hash uncle_hash;
-  if (parse_hash256(arg, uncle_hash))
-  {
-    return m_executor.print_uncle_block(uncle_hash);
-  }
-  
   return false;
 }
 
@@ -332,6 +346,11 @@ bool t_command_parser_executor::start_mining(const std::vector<std::string>& arg
     }
   }
 
+  if (info.is_subaddress)
+  {
+    tools::fail_msg_writer() << "subaddress for mining reward is not yet supported!" << std::endl;
+    return true;
+  }
   if(nettype != cryptonote::MAINNET)
     std::cout << "Mining to a " << (nettype == cryptonote::TESTNET ? "testnet" : "stagenet") << "address, make sure this is intentional!" << std::endl;
   uint64_t threads_count = 0;
@@ -379,7 +398,7 @@ bool t_command_parser_executor::start_mining(const std::vector<std::string>& arg
     }
   }
 
-  m_executor.start_mining(args.front(), threads_count, nettype, do_background_mining, ignore_battery);
+  m_executor.start_mining(info.address, threads_count, nettype, do_background_mining, ignore_battery);
 
   return true;
 }
@@ -389,6 +408,11 @@ bool t_command_parser_executor::stop_mining(const std::vector<std::string>& args
   if (!args.empty()) return false;
 
   return m_executor.stop_mining();
+}
+
+bool t_command_parser_executor::mining_status(const std::vector<std::string>& args)
+{
+  return m_executor.mining_status();
 }
 
 bool t_command_parser_executor::stop_daemon(const std::vector<std::string>& args)
@@ -419,8 +443,6 @@ bool t_command_parser_executor::set_limit(const std::vector<std::string>& args)
       std::cout << "failed to parse argument" << std::endl;
       return false;
   }
-  if (limit > 0)
-    limit *= 1024;
 
   return m_executor.set_limit(limit, limit);
 }
@@ -439,8 +461,6 @@ bool t_command_parser_executor::set_limit_up(const std::vector<std::string>& arg
       std::cout << "failed to parse argument" << std::endl;
       return false;
   }
-  if (limit > 0)
-    limit *= 1024;
 
   return m_executor.set_limit(0, limit);
 }
@@ -459,8 +479,6 @@ bool t_command_parser_executor::set_limit_down(const std::vector<std::string>& a
       std::cout << "failed to parse argument" << std::endl;
       return false;
   }
-  if (limit > 0)
-    limit *= 1024;
 
   return m_executor.set_limit(limit, 0);
 }
@@ -555,7 +573,7 @@ bool t_command_parser_executor::ban(const std::vector<std::string>& args)
       return false;
     }
   }
-
+  
   return m_executor.ban(ip, seconds);
 }
 

@@ -118,9 +118,6 @@ static const char *get_default_categories(int level)
     case 4:
       categories = "*:TRACE";
       break;
-    case 5:
-      categories = "*:TRACE";
-      break;
     default:
       break;
   }

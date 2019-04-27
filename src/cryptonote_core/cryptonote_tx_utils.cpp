@@ -76,7 +76,7 @@ namespace cryptonote
     LOG_PRINT_L2("destinations include " << num_stdaddresses << " standard addresses and " << num_subaddresses << " subaddresses");
   }
   //---------------------------------------------------------------
-  bool construct_miner_tx(size_t height, size_t median_size, uint64_t already_generated_coins, size_t current_block_size, uint64_t fee, const account_public_address &miner_address, transaction& tx, const blobdata& extra_nonce, size_t max_outs, uint8_t hard_fork_version, bool uncle_included, const cryptonote::block *uncle) {
+  bool construct_miner_tx(size_t height, size_t median_size, uint64_t already_generated_coins, size_t current_block_size, uint64_t fee, const account_public_address &miner_address, transaction& tx, const blobdata& extra_nonce, size_t max_outs, uint8_t hard_fork_version) {
     tx.vin.clear();
     tx.vout.clear();
     tx.extra.clear();
@@ -96,22 +96,6 @@ namespace cryptonote
     }
 
     size_t miner_index = 0;
-
-    if (uncle_included)
-    {
-      block_reward += (base_reward / NEPHEW_REWARD_RATIO);
-      miner_index = 1;
-
-      add_tx_pub_key_to_extra(tx, get_tx_pub_key_from_extra(uncle->miner_tx));
-
-      txout_to_key tku;
-      tku.key = boost::get<txout_to_key>(uncle->miner_tx.vout[0].target).key;
-
-      tx_out outu;
-      outu.amount = base_reward / UNCLE_REWARD_RATIO;
-      outu.target = tku;
-      tx.vout.push_back(outu);
-    }
 
     add_tx_pub_key_to_extra(tx, txkey.pub);
     if(!extra_nonce.empty())

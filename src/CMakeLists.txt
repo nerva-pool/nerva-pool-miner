@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2018, The Monero Project
+# Copyright (c) 2014-2019, The Monero Project
 #
 # All rights reserved.
 #
@@ -112,6 +112,7 @@ add_subdirectory(checkpoints)
 add_subdirectory(cryptonote_basic)
 add_subdirectory(cryptonote_core)
 add_subdirectory(multisig)
+add_subdirectory(net)
 if(NOT IOS)
   add_subdirectory(blockchain_db)
 endif()
@@ -127,14 +128,9 @@ endif()
 add_subdirectory(cryptonote_protocol)
 if(NOT IOS)
   add_subdirectory(simplewallet)
-  add_subdirectory(gen_multisig)
   add_subdirectory(daemonizer)
   add_subdirectory(daemon)
   add_subdirectory(blockchain_utilities)
-endif()
-
-if(PER_BLOCK_CHECKPOINT)
-  add_subdirectory(blocks)
 endif()
 
 add_subdirectory(device)

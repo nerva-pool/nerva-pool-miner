@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2018, The Monero Project
+# Copyright (c) 2014-2019, The Monero Project
 #
 # All rights reserved.
 #
@@ -111,6 +111,7 @@ target_link_libraries(rpc
     common
     cryptonote_core
     cryptonote_protocol
+    net
     version
     ${Boost_REGEX_LIBRARY}
     ${Boost_THREAD_LIBRARY}

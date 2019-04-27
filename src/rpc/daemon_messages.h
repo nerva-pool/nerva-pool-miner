@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2018, The Monero Project
+// Copyright (c) 2016-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -27,6 +27,9 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
+
+#include <unordered_map>
+#include <vector>
 
 #include "message.h"
 #include "cryptonote_protocol/cryptonote_protocol_defs.h"
@@ -62,12 +65,10 @@ class classname \
 #define END_RPC_MESSAGE_RESPONSE };
 #define END_RPC_MESSAGE_CLASS };
 
-#define COMMA() ,
-
 // NOTE: when using a type with multiple template parameters,
 // replace any comma in the template specifier with the macro
 // above, or the preprocessor will eat the comma in a bad way.
-#define RPC_MESSAGE_MEMBER(type, name) type name;
+#define RPC_MESSAGE_MEMBER(type, name) type name = {}
 
 
 namespace cryptonote
@@ -118,7 +119,8 @@ BEGIN_RPC_MESSAGE_CLASS(GetTransactions);
     RPC_MESSAGE_MEMBER(std::vector<crypto::hash>, tx_hashes);
   END_RPC_MESSAGE_REQUEST;
   BEGIN_RPC_MESSAGE_RESPONSE;
-    RPC_MESSAGE_MEMBER(std::unordered_map<crypto::hash COMMA() cryptonote::rpc::transaction_info>, txs);
+    using txes_map = std::unordered_map<crypto::hash, transaction_info>;
+    RPC_MESSAGE_MEMBER(txes_map, txs);
     RPC_MESSAGE_MEMBER(std::vector<crypto::hash>, missed_hashes);
   END_RPC_MESSAGE_RESPONSE;
 END_RPC_MESSAGE_CLASS;
@@ -167,6 +169,14 @@ BEGIN_RPC_MESSAGE_CLASS(SendRawTx);
   BEGIN_RPC_MESSAGE_RESPONSE;
     RPC_MESSAGE_MEMBER(bool, relayed);
   END_RPC_MESSAGE_RESPONSE;
+END_RPC_MESSAGE_CLASS;
+
+BEGIN_RPC_MESSAGE_CLASS(SendRawTxHex);
+  BEGIN_RPC_MESSAGE_REQUEST;
+    RPC_MESSAGE_MEMBER(std::string, tx_as_hex);
+    RPC_MESSAGE_MEMBER(bool, relay);
+  END_RPC_MESSAGE_REQUEST;
+  using Response = SendRawTx::Response;
 END_RPC_MESSAGE_CLASS;
 
 BEGIN_RPC_MESSAGE_CLASS(StartMining);

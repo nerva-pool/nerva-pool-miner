@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2018, The Monero Project
+# Copyright (c) 2014-2019, The Monero Project
 #
 # All rights reserved.
 #
@@ -34,7 +34,10 @@ set(wallet_sources
   wallet2.cpp
   wallet_args.cpp
   ringdb.cpp
-  node_rpc_proxy.cpp)
+  node_rpc_proxy.cpp
+  message_store.cpp
+  message_transporter.cpp
+)
 
 set(wallet_private_headers
   wallet2.h
@@ -44,7 +47,9 @@ set(wallet_private_headers
   wallet_rpc_server_commands_defs.h
   wallet_rpc_server_error_codes.h
   ringdb.h
-  node_rpc_proxy.h)
+  node_rpc_proxy.h
+  message_store.h
+  message_transporter.h)
 
 monero_private_headers(wallet
   ${wallet_private_headers})
@@ -57,6 +62,7 @@ target_link_libraries(wallet
     common
     cryptonote_core
     mnemonics
+	  net
     ${LMDB_LIBRARY}
     ${Boost_CHRONO_LIBRARY}
     ${Boost_SERIALIZATION_LIBRARY}
@@ -118,7 +124,8 @@ if (BUILD_GUI_DEPS)
             ringct
             ringct_basic
             checkpoints
-            version)
+            version
+			net)
 
     foreach(lib ${libs_to_merge})
         list(APPEND objlibs $<TARGET_OBJECTS:obj_${lib}>) # matches naming convention in src/CMakeLists.txt

@@ -167,6 +167,32 @@ namespace crypto {
     return res;
   }
 
+  /* UniformRandomBitGenerator using crypto::rand<uint64_t>()
+   */
+  struct random_device
+  {
+    typedef uint64_t result_type;
+    static constexpr result_type min() { return 0; }
+    static constexpr result_type max() { return result_type(-1); }
+    result_type operator()() const { return crypto::rand<result_type>(); }
+  };
+
+  /* Generate a random value between range_min and range_max
+   */
+  template<typename T>
+  typename std::enable_if<std::is_integral<T>::value, T>::type rand_range(T range_min, T range_max) {
+    crypto::random_device rd;
+    std::uniform_int_distribution<T> dis(range_min, range_max);
+    return dis(rd);
+  }
+
+  /* Generate a random index between 0 and sz-1
+   */
+  template<typename T>
+  typename std::enable_if<std::is_unsigned<T>::value, T>::type rand_idx(T sz) {
+    return crypto::rand_range<T>(0, sz-1);
+  }
+
   /* Generate a new key pair
    */
   inline secret_key generate_keys(public_key &pub, secret_key &sec, const secret_key& recovery_key = secret_key(), bool recover = false) {

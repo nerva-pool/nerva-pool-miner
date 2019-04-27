@@ -7,7 +7,7 @@ BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
 source ${BUILDER_DIR}/helpers
 
-installdeps
+#installdeps
 detectos
 detectversion
 

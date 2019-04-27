@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Masari Project
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2018, The NERVA Project
 //
 // All rights reserved.
 //
@@ -74,12 +74,11 @@
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "miner"
 
+#define AUTODETECT_WINDOW 10 // seconds
+#define AUTODETECT_GAIN_THRESHOLD 1.02f  // 2%
 using namespace epee;
 
 #include "miner.h"
-
-#define AUTODETECT_WINDOW 10 // seconds
-#define AUTODETECT_GAIN_THRESHOLD 1.02f  // 2%
 
 extern "C" void slow_hash_allocate_state();
 extern "C" void slow_hash_free_state();
@@ -120,7 +119,8 @@ namespace cryptonote
     m_min_idle_seconds(BACKGROUND_MINING_DEFAULT_MIN_IDLE_INTERVAL_IN_SECONDS),
     m_idle_threshold(BACKGROUND_MINING_DEFAULT_IDLE_THRESHOLD_PERCENTAGE),
     m_mining_target(BACKGROUND_MINING_DEFAULT_MINING_TARGET_PERCENTAGE),
-    m_miner_extra_sleep(BACKGROUND_MINING_DEFAULT_MINER_EXTRA_SLEEP_MILLIS)
+    m_miner_extra_sleep(BACKGROUND_MINING_DEFAULT_MINER_EXTRA_SLEEP_MILLIS),
+    m_block_reward(0)
   {
 
   }
@@ -131,12 +131,13 @@ namespace cryptonote
     catch (...) { /* ignore */ }
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::set_block_template(const block& bl, const difficulty_type& di, uint64_t height)
+  bool miner::set_block_template(const block& bl, const difficulty_type& di, uint64_t height, uint64_t block_reward)
   {
     CRITICAL_REGION_LOCAL(m_template_lock);
     m_template = bl;
     m_diffic = di;
     m_height = height;
+    m_block_reward = block_reward;
     ++m_template_no;
     m_starter_nonce = crypto::rand<uint32_t>();
     return true;
@@ -168,7 +169,7 @@ namespace cryptonote
       LOG_ERROR("Failed to get_block_template(), stopping mining");
       return false;
     }
-    set_block_template(bl, di, height);
+    set_block_template(bl, di, height, expected_reward);
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -306,7 +307,8 @@ namespace cryptonote
       }
       m_config_folder_path = boost::filesystem::path(command_line::get_arg(vm, arg_extra_messages)).parent_path().string();
       m_config = AUTO_VAL_INIT(m_config);
-      epee::serialization::load_t_from_json_file(m_config, m_config_folder_path + "/" + MINER_CONFIG_FILE_NAME);
+      const std::string filename = m_config_folder_path + "/" + MINER_CONFIG_FILE_NAME;
+      CHECK_AND_ASSERT_MES(epee::serialization::load_t_from_json_file(m_config, filename), false, "Failed to load data from " << filename);
       MINFO("Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index);
     }
 
@@ -359,6 +361,7 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------------
   bool miner::start(const account_public_address& adr, size_t threads_count, const boost::thread::attributes& attrs, bool do_background, bool ignore_battery)
   {
+    m_block_reward = 0;
     m_mine_address = adr;
     m_threads_total = static_cast<uint32_t>(threads_count);
     if (threads_count == 0)
@@ -432,14 +435,15 @@ namespace cryptonote
   {
     MTRACE("Miner has received stop signal");
 
-    if (!is_mining())
+    CRITICAL_REGION_LOCAL(m_threads_lock);
+    bool mining = !m_threads.empty();
+    if (!mining)
     {
       MTRACE("Not mining - nothing to stop" );
       return true;
     }
 
     send_stop_signal();
-    CRITICAL_REGION_LOCAL(m_threads_lock);
 
     // In case background mining was active and the miner threads are waiting
     // on the background miner to signal start. 
@@ -569,9 +573,6 @@ namespace cryptonote
         //we lucky!
         ++m_config.current_extra_message_index;
         MGUSER_GREEN("Found block at height: " << height);
-	      if (is_uncle_block_included(b)) {
-          MGUSER_GREEN("Uncle mined: " << b.uncle);
-        }
         if(!m_phandler->handle_block_found(b))
         {
           --m_config.current_extra_message_index;

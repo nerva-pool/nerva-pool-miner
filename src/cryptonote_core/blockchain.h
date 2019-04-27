@@ -1,5 +1,5 @@
 // Copyright (c) 2018, The Masari Project
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -38,10 +38,13 @@
 #include <boost/multi_index/global_fun.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/member.hpp>
+#include <boost/circular_buffer.hpp>
 #include <atomic>
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
 
+#include "span.h"
 #include "syncobj.h"
 #include "string_tools.h"
 #include "cryptonote_basic/cryptonote_basic.h"
@@ -109,6 +112,11 @@ namespace cryptonote
      * @param tx_pool a reference to the transaction pool to be kept by the Blockchain
      */
     Blockchain(tx_memory_pool& tx_pool);
+
+	/**
+     * @brief Blockchain destructor
+     */
+    ~Blockchain();
 
     HardFork* get_hardfork() const;
 
@@ -205,16 +213,6 @@ namespace cryptonote
     crypto::hash get_block_id_by_height(uint64_t height) const;
 
     /**
-     * @brief gets uncle at a given height
-     *
-     * @param height hte height to fetch from
-     * @param uncle return-by-reference variable
-     *
-     * @return true if uncle found else false
-     */
-    bool get_uncle_from_height(uint64_t height, block &uncle);
-
-    /**
      * @brief gets the block with a given hash
      *
      * @param h the hash to look for
@@ -223,7 +221,7 @@ namespace cryptonote
      *
      * @return true if the block was found, else false
      */
-    bool get_block_by_hash(const crypto::hash &h, block &blk, bool *orphan = NULL, bool search_uncles = false) const;
+    bool get_block_by_hash(const crypto::hash &h, block &blk, bool *orphan = NULL) const;
 
     /**
      * @brief performs some preprocessing on a group of incoming blocks to speed up verification
@@ -484,22 +482,6 @@ namespace cryptonote
     crypto::public_key get_output_key(uint64_t amount, uint64_t global_index) const;
 
     /**
-     * @brief gets random outputs to mix with
-     *
-     * This function takes an RPC request for outputs to mix with
-     * and creates an RPC response with the resultant output indices.
-     *
-     * Outputs to mix with are randomly selected from the utxo set
-     * for each output amount in the request.
-     *
-     * @param req the output amounts and number of mixins to select
-     * @param res return-by-reference the resultant output indices
-     *
-     * @return true
-     */
-    bool get_random_outs_for_amounts(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::request& req, COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::response& res) const;
-
-    /**
      * @brief gets specific outputs to mix with
      *
      * This function takes an RPC request for outputs to mix with
@@ -526,27 +508,11 @@ namespace cryptonote
     void get_output_key_mask_unlocked(const uint64_t& amount, const uint64_t& index, crypto::public_key& key, rct::key& mask, bool& unlocked) const;
 
     /**
-     * @brief gets random ringct outputs to mix with
-     *
-     * This function takes an RPC request for outputs to mix with
-     * and creates an RPC response with the resultant output indices
-     * and the matching keys.
-     *
-     * Outputs to mix with are randomly selected from the utxo set
-     * for each output amount in the request.
-     *
-     * @param req the output amounts and number of mixins to select
-     * @param res return-by-reference the resultant output indices
-     *
-     * @return true
-     */
-    bool get_random_rct_outs(const COMMAND_RPC_GET_RANDOM_RCT_OUTPUTS::request& req, COMMAND_RPC_GET_RANDOM_RCT_OUTPUTS::response& res) const;
-
-    /**
      * @brief gets per block distribution of outputs of a given amount
      *
      * @param amount the amount to get a ditribution for
-     * @param return-by-reference from_height the height before which we do not care about the data
+     * @param from_height the height before which we do not care about the data
+     * @param to_height the height after which we do not care about the data
      * @param return-by-reference start_height the height of the first rct output
      * @param return-by-reference distribution the start offset of the first rct output in this block (same as previous if none)
      * @param return-by-reference base how many outputs of that amount are before the stated distribution
@@ -561,10 +527,12 @@ namespace cryptonote
      *
      * @param tx_id the hash of the transaction to fetch indices for
      * @param indexs return-by-reference the global indices for the transaction's outputs
+     * @param n_txes how many txes in a row to get results for
      *
      * @return false if the transaction does not exist, or if no indices are found, otherwise true
      */
     bool get_tx_outputs_gindexs(const crypto::hash& tx_id, std::vector<uint64_t>& indexs) const;
+    bool get_tx_outputs_gindexs(const crypto::hash& tx_id, size_t n_txes, std::vector<std::vector<uint64_t>>& indexs) const;
 
     /**
      * @brief stores the blockchain
@@ -674,15 +642,6 @@ namespace cryptonote
     uint64_t block_difficulty(uint64_t i) const;
 
     /**
-     * @brief gets the supplemental difficulty added to a nephew block
-     *
-     * @param current_diffic current nephew's difficulty
-     *
-     * @return the additional difficulty
-     */
-    difficulty_type get_added_nephew_difficulty(difficulty_type current_diffic);
-
-    /**
      * @brief gets the difficulty of the block given a hash
      *
      * Handles blocks from alternative chains
@@ -705,13 +664,12 @@ namespace cryptonote
      * @tparam t_missed_container a standard-iterable container
      * @param block_ids a container of block hashes for which to get the corresponding blocks
      * @param blocks return-by-reference a container to store result blocks in
-     * @param uncles return-by-reference a container to store result uncles for blocks being fetched
      * @param missed_bs return-by-reference a container to store missed blocks in
      *
      * @return false if an unexpected exception occurs, else true
      */
     template<class t_ids_container, class t_blocks_container, class t_missed_container>
-    bool get_blocks(const t_ids_container& block_ids, t_blocks_container& blocks, t_blocks_container& uncles, t_missed_container& missed_bs) const;
+    bool get_blocks(const t_ids_container& block_ids, t_blocks_container& blocks, t_missed_container& missed_bs) const;
 
     /**
      * @brief gets transactions based on a list of transaction hashes
@@ -866,7 +824,7 @@ namespace cryptonote
      *
      * @return false if any removals fail, otherwise true
      */
-    bool flush_txes_from_pool(const std::list<crypto::hash> &txids);
+    bool flush_txes_from_pool(const std::vector<crypto::hash> &txids);
 
     /**
      * @brief return a histogram of outputs on the blockchain
@@ -874,10 +832,11 @@ namespace cryptonote
      * @param amounts optional set of amounts to lookup
      * @param unlocked whether to restrict instances to unlocked ones
      * @param recent_cutoff timestamp to consider outputs as recent
+     * @param min_count return only amounts with at least that many instances
      *
      * @return a set of amount/instances
      */
-    std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff) const;
+    std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff, uint64_t min_count = 0) const;
 
     /**
      * @brief perform a check on all key images in the blockchain
@@ -956,8 +915,7 @@ namespace cryptonote
      * @param txs unused, candidate for removal
      */
     void output_scan_worker(const uint64_t amount,const std::vector<uint64_t> &offsets,
-        std::vector<output_data_t> &outputs, std::unordered_map<crypto::hash,
-        cryptonote::transaction> &txs) const;
+        std::vector<output_data_t> &outputs) const;
 
     /**
      * @brief computes the "short" and "long" hashes for a set of blocks
@@ -1203,26 +1161,6 @@ namespace cryptonote
     void get_height_info(const uint64_t& height, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight);
 
     /**
-     * @brief gets uncle info at a given height
-     *
-     * @param height requested height
-     * @param difficulty return-by-reference difficulty
-     * @param weight return-by-reference weight
-     * @param cumulative_difficulty return-by-reference cumulative difficulty
-     * @param cumulative_weight return-by-reference cumulative weight
-     */
-    void get_uncle_height_info(const uint64_t& height,
-                               difficulty_type& difficulty,
-                               difficulty_type& weight,
-                               difficulty_type& cumulative_difficulty,
-                               difficulty_type& cumulative_weight);
-
-    /**
-     * @brief wrapper for above get_uncle_height_info method, for when we don't need individual difficulty or weight
-     */
-    void get_uncle_height_info(const uint64_t& height, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight);
-
-    /**
      * @brief removes the most recent block from the blockchain
      *
      * @return the block removed
@@ -1315,28 +1253,6 @@ namespace cryptonote
     bool validate_miner_transaction(const block& b, size_t cumulative_block_size, uint64_t fee, uint64_t& base_reward, uint64_t already_generated_coins, bool &partial_block_reward, uint8_t version);
 
     /**
-     * @brief validate mined uncle
-     *
-     * This function checks that the uncle block mined is accurately represented.
-     *
-     * @param nephew the block containing the mined uncle
-     * @param uncle the uncle being mined
-     *
-     * @return false if anything is found wrong with the mined uncle, otherwise true
-     */
-    bool validate_uncle_block(const block& nephew, const block& uncle);
-
-    /**
-     * @brief validate mined uncle's reward
-     *
-     * @param nephew the block containing the mined uncle
-     * @param uncle the uncle being mined
-     *
-     * @return false if anything is found wrong with the miner transaction, otherwise true
-     */
-    bool validate_uncle_reward(const block& nephew, const block& uncle);
-
-    /**
      * @brief reverts the blockchain to its previous state following a failed switch
      *
      * If Blockchain fails to switch to an alternate chain when it means
@@ -1359,15 +1275,6 @@ namespace cryptonote
      * @param count the number of blocks to get sizes for
      */
     void get_last_n_blocks_sizes(std::vector<size_t>& sz, size_t count) const;
-
-    /**
-     * @brief adds the given output to the requested set of random ringct outputs
-     *
-     * @param outs return-by-reference the set the output is to be added to
-     * @param amount the output amount (0 for rct inputs)
-     * @param i the rct output index
-     */
-    void add_out_to_get_rct_random_outs(std::list<COMMAND_RPC_GET_RANDOM_RCT_OUTPUTS::out_entry>& outs, uint64_t amount, size_t i) const;
 
     /**
      * @brief checks if a transaction is unlocked (its outputs spendable)

@@ -105,7 +105,11 @@ namespace cryptonote
   const command_line::arg_descriptor<bool> arg_disable_dns_checkpoints = {
     "disable-dns-checkpoints"
   , "Do not retrieve checkpoints from DNS"
-  , true
+  };
+  const command_line::arg_descriptor<size_t> arg_block_download_max_size  = {
+    "block-download-max-size"
+  , "Set maximum size of block download queue in bytes (0 for default)"
+  , 0
   };
 
   static const command_line::arg_descriptor<bool> arg_test_drop_download = {
@@ -162,6 +166,11 @@ namespace cryptonote
   , "Set maximum txpool size in bytes."
   , DEFAULT_TXPOOL_MAX_SIZE
   };
+  static const command_line::arg_descriptor<bool> arg_pad_transactions  = {
+    "pad-transactions"
+  , "Pad relayed transactions to help defend against traffic volume analysis"
+  , false
+  };
 
   //-----------------------------------------------------------------------------------------------
   core::core(i_cryptonote_protocol* pprotocol):
@@ -174,10 +183,11 @@ namespace cryptonote
               m_checkpoints_path(""),
               m_last_dns_checkpoints_update(0),
               m_last_json_checkpoints_update(0),
-              m_disable_dns_checkpoints(true),
+              m_disable_dns_checkpoints(false),
               m_threadpool(tools::threadpool::getInstance()),
               m_update_download(0),
-              m_nettype(UNDEFINED)
+              m_nettype(UNDEFINED),
+			  m_pad_transactions(false)
   {
     m_checkpoints_updating.clear();
     set_cryptonote_protocol(pprotocol);
@@ -275,6 +285,8 @@ namespace cryptonote
     command_line::add_arg(desc, arg_offline);
     command_line::add_arg(desc, arg_disable_dns_checkpoints);
     command_line::add_arg(desc, arg_max_txpool_size);
+	command_line::add_arg(desc, arg_block_download_max_size);
+	command_line::add_arg(desc, arg_pad_transactions);
 
     miner::init_options(desc);
     BlockchainDB::init_options(desc);
@@ -328,6 +340,7 @@ namespace cryptonote
 
     set_enforce_dns_checkpoints(command_line::get_arg(vm, arg_dns_checkpoints));
     test_drop_download_height(command_line::get_arg(vm, arg_test_drop_download_height));
+    m_pad_transactions = get_arg(vm, arg_pad_transactions);
     m_offline = get_arg(vm, arg_offline);
     m_disable_dns_checkpoints = get_arg(vm, arg_disable_dns_checkpoints);
 
@@ -1205,19 +1218,9 @@ namespace cryptonote
     return m_blockchain_storage.find_blockchain_supplement(req_start_block, qblock_ids, blocks, total_height, start_height, pruned, get_miner_tx_hash, max_count);
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::get_random_outs_for_amounts(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::request& req, COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::response& res) const
-  {
-    return m_blockchain_storage.get_random_outs_for_amounts(req, res);
-  }
-  //-----------------------------------------------------------------------------------------------
   bool core::get_outs(const COMMAND_RPC_GET_OUTPUTS_BIN::request& req, COMMAND_RPC_GET_OUTPUTS_BIN::response& res) const
   {
     return m_blockchain_storage.get_outs(req, res);
-  }
-  //-----------------------------------------------------------------------------------------------
-  bool core::get_random_rct_outs(const COMMAND_RPC_GET_RANDOM_RCT_OUTPUTS::request& req, COMMAND_RPC_GET_RANDOM_RCT_OUTPUTS::response& res) const
-  {
-    return m_blockchain_storage.get_random_rct_outs(req, res);
   }
   //-----------------------------------------------------------------------------------------------
   bool core::get_output_distribution(uint64_t amount, uint64_t from_height, uint64_t &start_height, std::vector<uint64_t> &distribution, uint64_t &base) const
@@ -1228,6 +1231,11 @@ namespace cryptonote
   bool core::get_tx_outputs_gindexs(const crypto::hash& tx_id, std::vector<uint64_t>& indexs) const
   {
     return m_blockchain_storage.get_tx_outputs_gindexs(tx_id, indexs);
+  }
+  //-----------------------------------------------------------------------------------------------
+  bool core::get_tx_outputs_gindexs(const crypto::hash& tx_id, size_t n_txes, std::vector<std::vector<uint64_t>>& indexs) const
+  {
+    return m_blockchain_storage.get_tx_outputs_gindexs(tx_id, n_txes, indexs);
   }
   //-----------------------------------------------------------------------------------------------
   void core::pause_mine()
@@ -1398,13 +1406,6 @@ namespace cryptonote
     return weight;
   }
   //-----------------------------------------------------------------------------------------------
-  difficulty_type core::get_uncle_weight(uint64_t height) const
-  {
-    difficulty_type diff, weight, cum_diff, cum_weight;
-    m_blockchain_storage.get_db().get_uncle_height_info(height, diff, weight, cum_diff, cum_weight);
-    return weight;
-  }
-  //-----------------------------------------------------------------------------------------------
   size_t core::get_pool_transactions_count() const
   {
     return m_mempool.get_transactions_count();
@@ -1481,20 +1482,6 @@ namespace cryptonote
   bool core::get_block_by_hash(const crypto::hash &h, block &blk, bool *orphan) const
   {
     return m_blockchain_storage.get_block_by_hash(h, blk, orphan);
-  }
-  //-----------------------------------------------------------------------------------------------
-  bool core::get_uncle_by_hash(const crypto::hash &h, block &uncle) const
-  {
-    try 
-    {
-      uncle = m_blockchain_storage.get_db().get_uncle(h);
-      return true;
-    }
-    catch (const BLOCK_DNE& e)
-    {
-      MDEBUG("No uncle block with hash " << h << " exists in the database");
-      return false;
-    }
   }
   //-----------------------------------------------------------------------------------------------
   std::string core::print_pool(bool short_format) const
