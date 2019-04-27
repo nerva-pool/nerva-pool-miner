@@ -436,7 +436,6 @@ bool t_rpc_command_executor::show_status() {
     }
   }
 
-  std::time_t uptime = std::time(nullptr) - ires.start_time;
   uint64_t net_height = ires.target_height > ires.height ? ires.target_height : ires.height;
   std::string bootstrap_msg;
   if (ires.was_bootstrap_ever_used)
@@ -452,7 +451,7 @@ bool t_rpc_command_executor::show_status() {
     }
   }
 
-  tools::success_msg_writer() << boost::format("Height: %llu/%llu (%.1f%%) on %s%s, %s, net hash %s, v%u%s, %u(out)+%u(in) connections, uptime %ud %uh %um %us")
+  tools::success_msg_writer() << boost::format("Height: %llu/%llu (%.1f%%) on %s%s, %s, net hash %s, v%u%s, %u(out)+%u(in) connections")
     % (unsigned long long)ires.height
     % (unsigned long long)net_height
     % get_sync_percentage(ires)
@@ -464,10 +463,6 @@ bool t_rpc_command_executor::show_status() {
     % get_fork_extra_info(hfres.earliest_height, net_height, ires.target)
     % (unsigned)ires.outgoing_connections_count
     % (unsigned)ires.incoming_connections_count
-    % (unsigned int)floor(uptime / 60.0 / 60.0 / 24.0)
-    % (unsigned int)floor(fmod((uptime / 60.0 / 60.0), 24.0))
-    % (unsigned int)floor(fmod((uptime / 60.0), 60.0))
-    % (unsigned int)fmod(uptime, 60.0)
   ;
 
   return true;
@@ -645,28 +640,15 @@ bool t_rpc_command_executor::print_net_stats()
     }
   }
 
-  uint64_t seconds = (uint64_t)time(NULL) - net_stats_res.start_time;
-  uint64_t average = seconds > 0 ? net_stats_res.total_bytes_in / seconds : 0;
-  uint64_t limit = limit_res.limit_down * 1024;   // convert to bytes, as limits are always kB/s
-  double percent = (double)average / (double)limit * 100.0;
-  tools::success_msg_writer() << boost::format("Received %u bytes (%s) in %u packets, average %s/s = %.2f%% of the limit of %s/s")
+  tools::success_msg_writer() << boost::format("Received %u bytes (%s) in %u packets")
     % net_stats_res.total_bytes_in
     % tools::get_human_readable_bytes(net_stats_res.total_bytes_in)
-    % net_stats_res.total_packets_in
-    % tools::get_human_readable_bytes(average)
-    % percent
-    % tools::get_human_readable_bytes(limit);
+    % net_stats_res.total_packets_in;
 
-  average = seconds > 0 ? net_stats_res.total_bytes_out / seconds : 0;
-  limit = limit_res.limit_up * 1024;
-  percent = (double)average / (double)limit * 100.0;
-  tools::success_msg_writer() << boost::format("Sent %u bytes (%s) in %u packets, average %s/s = %.2f%% of the limit of %s/s")
+  tools::success_msg_writer() << boost::format("Sent %u bytes (%s) in %u packets")
     % net_stats_res.total_bytes_out
     % tools::get_human_readable_bytes(net_stats_res.total_bytes_out)
-    % net_stats_res.total_packets_out
-    % tools::get_human_readable_bytes(average)
-    % percent
-    % tools::get_human_readable_bytes(limit);
+    % net_stats_res.total_packets_out;
 
   return true;
 }

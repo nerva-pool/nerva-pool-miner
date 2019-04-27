@@ -713,7 +713,6 @@ namespace cryptonote
       uint64_t cumulative_weight;
       uint64_t block_size_limit;
       uint64_t block_size_median;
-      uint64_t start_time;
       uint64_t free_space;
       bool offline;
       bool untrusted;
@@ -745,7 +744,6 @@ namespace cryptonote
         KV_SERIALIZE(cumulative_weight)
         KV_SERIALIZE(block_size_limit)
         KV_SERIALIZE(block_size_median)
-        KV_SERIALIZE(start_time)
         KV_SERIALIZE(free_space)
         KV_SERIALIZE(offline)
         KV_SERIALIZE(untrusted)
@@ -774,7 +772,6 @@ namespace cryptonote
     struct response_t
     {
       std::string status;
-      uint64_t start_time;
       uint64_t total_packets_in;
       uint64_t total_bytes_in;
       uint64_t total_packets_out;
@@ -782,7 +779,6 @@ namespace cryptonote
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
-        KV_SERIALIZE(start_time)
         KV_SERIALIZE(total_packets_in)
         KV_SERIALIZE(total_bytes_in)
         KV_SERIALIZE(total_packets_out)

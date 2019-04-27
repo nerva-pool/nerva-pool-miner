@@ -501,7 +501,6 @@ namespace rpc
     res.info.stagenet = m_core.get_nettype() == STAGENET;
     res.info.cumulative_difficulty = m_core.get_blockchain_storage().get_db().get_block_cumulative_difficulty(res.info.height - 1);
     res.info.block_size_limit = m_core.get_blockchain_storage().get_current_cumulative_blocksize_limit();
-    res.info.start_time = (uint64_t)m_core.get_start_time();
     res.info.version = MONERO_VERSION;
 
     res.status = Message::STATUS_OK;

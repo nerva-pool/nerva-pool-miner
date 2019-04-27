@@ -410,8 +410,6 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------
   bool core::init(const boost::program_options::variables_map& vm, const char *config_subdir, const cryptonote::test_options *test_options)
   {
-    start_time = std::time(nullptr);
-
     if (test_options != NULL)
     {
       m_nettype = FAKECHAIN;
@@ -1710,11 +1708,6 @@ namespace cryptonote
     boost::filesystem::path path(m_config_folder);
     boost::filesystem::space_info si = boost::filesystem::space(path);
     return si.available;
-  }
-  //-----------------------------------------------------------------------------------------------
-  std::time_t core::get_start_time() const
-  {
-    return start_time;
   }
   //-----------------------------------------------------------------------------------------------
   void core::graceful_exit()

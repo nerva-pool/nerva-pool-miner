@@ -185,7 +185,6 @@ namespace rpc
     crypto::hash top_block_hash;
     uint64_t cumulative_difficulty;
     uint64_t block_size_limit;
-    uint64_t start_time;
     std::string version;
   };
 }  // namespace rpc
