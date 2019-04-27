@@ -402,7 +402,6 @@ void cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters,
         aes_sw_variant();
 
     finalize_hash();
-    free(salt_hash);
 }
 
 void cn_slow_hash_v10(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww)
