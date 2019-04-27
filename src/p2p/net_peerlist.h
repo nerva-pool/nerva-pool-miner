@@ -48,6 +48,7 @@
 #include "net/local_ip.h"
 #include "p2p_protocol_defs.h"
 #include "syncobj.h"
+#include "crypto/crypto.h"
 
 namespace nodetool
 {

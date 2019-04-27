@@ -612,7 +612,9 @@ namespace nodetool
 
     //only in case if we really sure that we have external visible ip
     m_have_address = true;
+#ifdef ALLOW_DEBUG_COMMANDS
     m_last_stat_request_time = 0;
+#endif
 
     //configure self
     public_zone.m_net_server.set_threads_prefix("P2P"); // all zones use these threads/asio::io_service
@@ -1781,6 +1783,7 @@ namespace nodetool
     rsp.local_time = time(NULL);
     return 1;
   }
+#endif
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
   int node_server<t_payload_net_handler>::handle_get_peer_id(int command, COMMAND_REQUEST_PEER_ID::request& arg, COMMAND_REQUEST_PEER_ID::response& rsp, p2p_connection_context& context)
@@ -1789,7 +1792,6 @@ namespace nodetool
     rsp.version = MONERO_VERSION;
     return 1;
   }
-#endif
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
   int node_server<t_payload_net_handler>::handle_get_support_flags(int command, COMMAND_REQUEST_SUPPORT_FLAGS::request& arg, COMMAND_REQUEST_SUPPORT_FLAGS::response& rsp, p2p_connection_context& context)

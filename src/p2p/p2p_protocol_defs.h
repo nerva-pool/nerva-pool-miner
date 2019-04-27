@@ -427,6 +427,16 @@ namespace nodetool
     typedef epee::misc_utils::struct_init<response_t> response;
   };
 
+  inline crypto::hash get_proof_of_trust_hash(const nodetool::proof_of_trust& pot)
+  {
+    std::string s;
+    s.append(reinterpret_cast<const char*>(&pot.peer_id), sizeof(pot.peer_id));
+    s.append(reinterpret_cast<const char*>(&pot.time), sizeof(pot.time));
+    return crypto::cn_fast_hash(s.data(), s.size());
+  }
+  
+#endif
+
   /************************************************************************/
   /*                                                                      */
   /************************************************************************/
@@ -478,19 +488,5 @@ namespace nodetool
     };
     typedef epee::misc_utils::struct_init<response_t> response;
   };
-  
-#endif
-
-
-  inline crypto::hash get_proof_of_trust_hash(const nodetool::proof_of_trust& pot)
-  {
-    std::string s;
-    s.append(reinterpret_cast<const char*>(&pot.peer_id), sizeof(pot.peer_id));
-    s.append(reinterpret_cast<const char*>(&pot.time), sizeof(pot.time));
-    return crypto::cn_fast_hash(s.data(), s.size());
-  }
 
 }
-
-
-
