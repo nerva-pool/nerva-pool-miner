@@ -10,7 +10,6 @@
 namespace xnvhttp
 {
     std::string get_host(std::string ip);
-    bool curl_supports_ssl();
 };
 
 namespace blacklist

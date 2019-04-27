@@ -11,20 +11,6 @@
 
 namespace xnvhttp
 {
-    bool curl_supports_ssl()
-    {
-#ifdef _WIN32
-        return false;
-#else
-        curl_version_info_data * vinfo = curl_version_info(CURLVERSION_NOW);
-
-        if(vinfo->features & CURL_VERSION_SSL)
-            return true;
-        else
-            return false;
-#endif
-    }
-
     std::string get_host(std::string ip)
     {
         size_t found = ip.find_first_of(":");
@@ -63,18 +49,14 @@ namespace blacklist
 
     void read_blacklist_from_url(const bool testnet)
     {
-        std::string protocol = "http://";
-        std::set<std::string> url_list = testnet ? ::config::testnet::seed_nodes : ::config::seed_nodes;
-
-        if (xnvhttp::curl_supports_ssl())
-        {
-            protocol = "https://";
-            url_list = testnet ? ::config::testnet::seed_node_aliases : ::config::seed_node_aliases;
-        }
+        if (!testnet)
+            return;
+            
+        std::set<std::string> url_list = ::config::testnet::seed_nodes;
         
         for (const std::string &a : url_list)
         {
-            std::string url = protocol + xnvhttp::get_host(a) + "/xnv_blacklist.txt";
+            std::string url = "http://" + xnvhttp::get_host(a) + "/xnv_blacklist.txt";
 
             CURL* curl = curl_easy_init(); 
             if(curl) 
@@ -99,18 +81,11 @@ namespace analytics
 {
     bool contact_server(const bool testnet)
     {
-        std::string protocol = "http://";
         std::set<std::string> url_list = testnet ? ::config::testnet::seed_nodes : ::config::seed_nodes;
-
-        if (xnvhttp::curl_supports_ssl())
-        {
-            protocol = "https://";
-            url_list = testnet ? ::config::testnet::seed_node_aliases : ::config::seed_node_aliases;
-        }
 
         for (const std::string &a : url_list)
         {
-            std::string url = protocol + xnvhttp::get_host(a) + "/api/submitanalytics.php";
+            std::string url = "http://" + xnvhttp::get_host(a) + "/api/submitanalytics.php";
             MGINFO("Sending analytics to " << url);
 
             std::string user_agent = "nerva-cli/";
