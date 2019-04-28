@@ -183,11 +183,6 @@ namespace config
         "206.81.2.16:17565"
     };
 
-    std::set<std::string> const seed_node_aliases = {
-        "xnv1.getnerva.org",
-        "xnv2.getnerva.org"
-    };
-
     static const hard_fork hard_forks[] = {
         { 1,      1},
         { 2,      2},
@@ -217,11 +212,6 @@ namespace config
             "178.128.165.236:18565"
         };
 
-        std::set<std::string> const seed_node_aliases = {
-            "xnv3.getnerva.org",
-            "xnv4.getnerva.org"
-        };
-
         static const hard_fork hard_forks[] = {
             { 1,   1},
             { 2,   2},
@@ -245,7 +235,6 @@ namespace config
         boost::uuids::uuid const NETWORK_ID = {{0x14, 0x31, 0xF1, 0x22, 0x54, 0x86, 0x36, 0xFF, 0xAB, 0x51, 0x00, 0x4F, 0x3C, 0x3D, 0xAA, 0x16}};
 
         std::set<std::string> const seed_nodes = { };
-        std::set<std::string> const seed_node_aliases = { };
 
         static const hard_fork hard_forks[] = {
             { 1,   1},

@@ -4301,7 +4301,6 @@ bool Blockchain::for_all_txpool_txes(std::function<bool(const crypto::hash&, con
 
 void Blockchain::set_user_options(uint64_t maxthreads, uint64_t blocks_per_sync, blockchain_db_sync_mode sync_mode, bool fast_sync)
 {
-
   if (sync_mode == db_defaultsync)
   {
     m_db_default_sync = true;
@@ -4465,7 +4464,6 @@ void Blockchain::load_compiled_in_block_hashes()
 
 bool Blockchain::is_within_compiled_block_hash_area(uint64_t height) const
 {
-
 #if defined(PER_BLOCK_CHECKPOINT)
   return height < m_blocks_hash_of_hashes.size() * HASH_OF_HASHES_STEP;
 #else

@@ -151,6 +151,7 @@ int main(int argc, char const * argv[])
 
       // Hidden options
       command_line::add_arg(hidden_options, daemon_args::arg_command);
+      command_line::add_arg(hidden_options, daemon_args::arg_create_genesis_tx);
 
       visible_options.add(core_settings);
       all_options.add(visible_options);
@@ -225,6 +226,31 @@ int main(int argc, char const * argv[])
     {
       std::cerr << "Can't specify more than one of --testnet and --stagenet" << ENDL;
       return 1;
+    }
+
+    uint64_t gb = command_line::get_arg(vm, daemon_args::arg_create_genesis_tx);
+
+    if (gb)
+    {
+      cryptonote::transaction tx;
+
+      if (construct_genesis_tx(tx, gb))
+      {
+        std::stringstream ss;
+        binary_archive<true> ba(ss);
+        std::string tx_hex = string_tools::buff_to_hex_nodelimer(tx_to_blob(tx));
+        bool r = do_serialize(ba, tx);
+        if (r)
+        {
+          MGUSER_YELLOW(ENDL << "New Genesis TX:" << ENDL << tx_hex);
+          return 1;
+        }
+      }
+      else
+      {
+        MGUSER_RED("Could not create genesis TX");
+        return 1;
+      }
     }
 
     // data_dir

@@ -112,7 +112,7 @@ namespace cryptonote
     block_reward += base_reward;
     block_reward += fee;
 
-    crypto::key_derivation derivation = AUTO_VAL_INIT(derivation);;
+    crypto::key_derivation derivation = AUTO_VAL_INIT(derivation);
     crypto::public_key out_eph_public_key = AUTO_VAL_INIT(out_eph_public_key);
     bool r = crypto::generate_key_derivation(miner_address.m_view_public_key, txkey.sec, derivation);
     CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to generate_key_derivation(" << miner_address.m_view_public_key << ", " << txkey.sec << ")");
@@ -137,6 +137,48 @@ namespace cryptonote
 
     //LOG_PRINT("MINER_TX generated ok, block_reward=" << print_money(block_reward) << "("  << print_money(block_reward - fee) << "+" << print_money(fee)
     //  << "), current_block_size=" << current_block_size << ", already_generated_coins=" << already_generated_coins << ", tx_id=" << get_transaction_hash(tx), LOG_LEVEL_2);
+    return true;
+  }
+  //---------------------------------------------------------------
+  bool construct_genesis_tx(transaction& tx, uint64_t amount) {
+    tx.vin.clear();
+    tx.vout.clear();
+    tx.extra.clear();
+
+    hw::device &hwdev = hw::get_device("default");
+    keypair txkey = keypair::generate(hwdev);
+    keypair sk = keypair::generate(hwdev);
+    keypair vk = keypair::generate(hwdev);
+    
+    txin_gen in;
+    in.height = 0;
+
+    add_tx_pub_key_to_extra(tx, txkey.pub);
+    if (!sort_tx_extra(tx.extra, tx.extra))
+      return false;
+
+    crypto::key_derivation derivation = AUTO_VAL_INIT(derivation);
+    crypto::public_key out_eph_public_key = AUTO_VAL_INIT(out_eph_public_key);
+    bool r = crypto::generate_key_derivation(vk.pub, txkey.sec, derivation);
+    CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to generate_key_derivation(" << vk.pub << ", " << txkey.sec << ")");
+
+    r = crypto::derive_public_key(derivation, 0, sk.pub, out_eph_public_key);
+    CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to derive_public_key(" << derivation << ", " << sk.pub << ")");
+
+    txout_to_key tk;
+    tk.key = out_eph_public_key;
+
+    tx_out out;
+    out.amount = amount;
+    out.target = tk;
+    tx.vout.push_back(out);
+
+    tx.version = CURRENT_TRANSACTION_VERSION;
+
+    //lock
+    tx.unlock_time = CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW;
+    tx.vin.push_back(in);
+    tx.invalidate_hashes();
     return true;
   }
   //---------------------------------------------------------------
