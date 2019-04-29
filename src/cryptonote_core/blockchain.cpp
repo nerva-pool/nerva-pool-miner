@@ -3942,7 +3942,9 @@ uint64_t Blockchain::prevalidate_block_hashes(uint64_t height, const std::vector
 
 //------------------------------------------------------------------
 // ND: Speedups:
-// 1. Thread long_hash computations if possible (m_max_prepare_blocks_threads = nthreads, default = 4)
+// 1. Thread long_hash computations if possible. Note that threading adds
+//    complexity when long_hash computations depends on the blockchain
+//    state, and has therefore been disabled.
 // 2. Group all amounts (from txs) and related absolute offsets and form a table of tx_prefix_hash
 //    vs [k_image, output_keys] (m_scan_table). This is faster because it takes advantage of bulk queries
 //    and is threaded if possible. The table (m_scan_table) will be used later when querying output
@@ -3972,7 +3974,8 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
   m_tx_pool.lock();
   CRITICAL_REGION_LOCAL1(m_blockchain_lock);
 
-  if(blocks_entry.size() == 0)
+  const size_t nblocks = blocks_entry.size();
+  if(nblocks == 0)
     return false;
 
   for (const auto &entry : blocks_entry)
@@ -3992,80 +3995,33 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
     m_blockchain_lock.lock();
   }
 
-  if ((m_db->height() + blocks_entry.size()) < m_blocks_hash_check.size())
+  const uint64_t height = m_db->height();
+  if ((height + nblocks) < m_blocks_hash_check.size())
     return true;
 
   bool blocks_exist = false;
-  tools::threadpool& tpool = tools::threadpool::getInstance();
-  uint64_t threads = tpool.get_max_concurrency();
+  auto it = blocks_entry.begin();
 
-  if (blocks_entry.size() > 1 && threads > 1 && m_max_prepare_blocks_threads > 1)
+  const crypto::hash tophash = m_db->top_block_hash();
+  for (size_t i = 0; i < nblocks; i++)
   {
-    // limit threads, default limit = 4
-    if(threads > m_max_prepare_blocks_threads)
-      threads = m_max_prepare_blocks_threads;
+    block block;
+    crypto::hash block_hash;
 
-    uint64_t height = m_db->height();
-    int batches = blocks_entry.size() / threads;
-    int extra = blocks_entry.size() % threads;
-    MDEBUG("block_batches: " << batches);
-    std::vector<std::unordered_map<crypto::hash, crypto::hash>> maps(threads);
-    std::vector < std::vector < block >> blocks(threads);
-    auto it = blocks_entry.begin();
+    if (!parse_and_validate_block_from_blob(it->block, block, block_hash))
+      return false;
 
-    for (uint64_t i = 0; i < threads; i++)
+    // check first block and skip all blocks if its not chained properly
+    if (i == 0 && block.prev_id != tophash)
     {
-      blocks[i].reserve(batches + 1);
-      for (int j = 0; j < batches; j++)
-      {
-        block block;
-
-        if (!parse_and_validate_block_from_blob(it->block, block))
-        {
-          std::advance(it, 1);
-          continue;
-        }
-
-        // check first block and skip all blocks if its not chained properly
-        if (i == 0 && j == 0)
-        {
-          crypto::hash tophash = m_db->top_block_hash();
-          if (block.prev_id != tophash)
-          {
-            MDEBUG("Skipping prepare blocks. New blocks don't belong to chain.");
-            return true;
-          }
-        }
-        if (have_block(get_block_hash(block)))
-        {
-          blocks_exist = true;
-          break;
-        }
-
-        blocks[i].push_back(std::move(block));
-        std::advance(it, 1);
-      }
+      MDEBUG("Skipping prepare blocks. New blocks don't belong to chain.");
+      return true;
     }
+        
+    if (have_block(block_hash))
+      blocks_exist = true;
 
-    for (int i = 0; i < extra && !blocks_exist; i++)
-    {
-      block block;
-
-      if (!parse_and_validate_block_from_blob(it->block, block))
-      {
-        std::advance(it, 1);
-        continue;
-      }
-
-      if (have_block(get_block_hash(block)))
-      {
-        blocks_exist = true;
-        break;
-      }
-
-      blocks[i].push_back(std::move(block));
-      std::advance(it, 1);
-    }
+    std::advance(it, 1);
   }
 
   if (m_cancel)
@@ -4082,7 +4038,7 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
 
   TIME_MEASURE_FINISH(prepare);
 
-  if (blocks_entry.size() > 1 && threads > 1 && m_show_time_stats)
+  if (nblocks > 1 && m_show_time_stats)
     MDEBUG("Prepare blocks took: " << prepare << " ms");
 
   // [input] stores all unique amounts found
@@ -4176,14 +4132,12 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
     offsets.second.erase(last, offsets.second.end());
   }
 
-  // [output] stores all transactions for each tx_out_index::hash found
-  std::vector<std::unordered_map<crypto::hash, cryptonote::transaction>> transactions(amounts.size());
-
-  threads = tpool.get_max_concurrency();
+  tools::threadpool& tpool = tools::threadpool::getInstance();
+  unsigned threads = tpool.get_max_concurrency();
   if (!m_db->can_thread_bulk_indices())
     threads = 1;
 
-  if (threads > 1)
+  if (threads > 1 && amounts.size() > 1)
   {
     tools::threadpool::waiter waiter;
 
@@ -4203,7 +4157,6 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
     }
   }
 
-  // now generate a table for each tx_prefix and k_image hashes
   // now generate a table for each tx_prefix and k_image hashes
   tx_index = 0;
   for (const auto &entry : blocks_entry)
