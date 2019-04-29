@@ -157,10 +157,14 @@ if(ARCH_ID STREQUAL "powerpc64" OR ARCH_ID STREQUAL "ppc64")
   set(PPC     0)
 endif()
 
-if(ARCH_ID STREQUAL "powerpc")
+if(ARCH_ID STREQUAL "powerpc" OR ARCH_ID STREQUAL "ppc")
   set(PPC64LE 0)
   set(PPC64   0)
   set(PPC     1)
+endif()
+
+if(ARCH_ID STREQUAL "s390x")
+  set(S390X 1)
 endif()
 
 if(WIN32 OR ARM OR PPC64LE OR PPC64 OR PPC)
@@ -373,6 +377,16 @@ endif()
 if (CMAKE_SYSTEM_NAME MATCHES "(SunOS|Solaris)")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthreads")
 endif ()
+
+if (APPLE AND NOT IOS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64 -fvisibility=default")
+  if (NOT OpenSSL_DIR)
+      EXECUTE_PROCESS(COMMAND brew --prefix openssl
+        OUTPUT_VARIABLE OPENSSL_ROOT_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message(STATUS "Using OpenSSL found at ${OPENSSL_ROOT_DIR}")
+  endif()
+endif()
 
 if(STATIC)
   set(OPENSSL_USE_STATIC_LIBS TRUE)
