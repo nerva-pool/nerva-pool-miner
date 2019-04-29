@@ -390,9 +390,6 @@ BOOL SetLockPagesPrivilege(HANDLE hProcess, BOOL bEnable)
 
 #else
 
-static void (*const extra_hashes[4])(const void *, size_t, char *) = {
-    hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein};
-
 static size_t e2i(const uint8_t *a, size_t count) { return (*((uint64_t *)a) / AES_BLOCK_SIZE) & (count - 1); }
 
 static void mul(const uint8_t *a, const uint8_t *b, uint8_t *res)
@@ -459,7 +456,7 @@ static void xor64(uint8_t *left, const uint8_t *right)
     const uint8_t index = (((tmp >> 3) & 6) | (tmp & 1)) << 1; \
     ((uint8_t *)(p))[11] = tmp ^ ((table >> index) & 0x30);
 
-#define VARIANT1_2(p) \
+#define VARIANT1_2(p)                                          \
     xor64(p, tweak1_2);
 
 #define aes_sw_variant()                                   \
@@ -498,18 +495,20 @@ static void xor64(uint8_t *left, const uint8_t *right)
     copy_block(b, a);                                      \
     copy_block(a, c1);
 
-#define init_hash()                                                \
-    union cn_slow_hash_state state;                                \
-    uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);    \
-    uint8_t *text = (uint8_t *)malloc(init_size_byte);             \
-    uint8_t a[AES_BLOCK_SIZE];                                     \
-    uint8_t b[AES_BLOCK_SIZE];                                     \
-    uint8_t c1[AES_BLOCK_SIZE];                                    \
-    uint8_t c2[AES_BLOCK_SIZE];                                    \
-    uint8_t d[AES_BLOCK_SIZE];                                     \
-    size_t i, j;                                                   \
-    uint8_t aes_key[AES_KEY_SIZE];                                 \
-    oaes_ctx *aes_ctx;                                             \
+#define init_hash()                                                                                          \
+    union cn_slow_hash_state state;                                                                          \
+    uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);                                              \
+    uint8_t *text = (uint8_t *)malloc(init_size_byte);                                                       \
+    uint8_t a[AES_BLOCK_SIZE];                                                                               \
+    uint8_t b[AES_BLOCK_SIZE];                                                                               \
+    uint8_t c1[AES_BLOCK_SIZE];                                                                              \
+    uint8_t c2[AES_BLOCK_SIZE];                                                                              \
+    uint8_t d[AES_BLOCK_SIZE];                                                                               \
+    size_t i, j;                                                                                             \
+    uint8_t aes_key[AES_KEY_SIZE];                                                                           \
+    oaes_ctx *aes_ctx;                                                                                       \
+    static void (*const extra_hashes[4])(const void *, size_t, char *) = {                                   \
+    hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein};                                  \
     slow_hash_allocate_state();
 
 #define expand_key()                                                                                         \
