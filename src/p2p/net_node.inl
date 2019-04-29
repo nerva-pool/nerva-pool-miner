@@ -175,6 +175,9 @@ namespace nodetool
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::block_host(const epee::net_utils::network_address &addr, time_t seconds)
   {
+    if (seconds == 0)
+      seconds = m_nettype == cryptonote::MAINNET ? P2P_IP_BLOCKTIME_MAINNET : P2P_IP_BLOCKTIME_TESTNET;
+      
     if(!addr.is_blockable())
       return false;
 
