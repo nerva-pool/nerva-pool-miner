@@ -36,6 +36,7 @@
 #include <string>
 #include <set>
 #include <boost/uuid/uuid.hpp>
+#include "misc_log_ex.h"
 
 #define CRYPTONOTE_DNS_TIMEOUT_MS 20000
 
@@ -265,9 +266,12 @@ inline uint32_t version_string_to_integer(std::string data)
     unsigned int byte0;
     char dummyString[2];
 
-    if (sscanf(v, "%u.%u.%u.%u%1s", &byte3, &byte2, &byte1, &byte0, dummyString) == 4)
-        return (byte3 << 24) + (byte2 << 16) + (byte1 << 8) + byte0;
-
+    if (sscanf(v, "%u.%u.%u%1s", &byte2, &byte1, &byte0, dummyString) == 3)
+        return (byte2 << 24) + (byte1 << 16) + byte0; //3 part versioning scheme
+    else if (sscanf(v, "%u.%u.%u.%u%1s", &byte3, &byte2, &byte1, &byte0, dummyString) == 4)
+        return (byte3 << 24) + (byte2 << 16) + (byte1 << 8) + byte0; //4 part versioning scheme
+    
+    MGUSER_RED("Cound not interpret version number");
     return 0;
 }
 
