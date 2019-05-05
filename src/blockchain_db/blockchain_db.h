@@ -362,14 +362,12 @@ private:
    * @param blk the block to be added
    * @param block_size the size of the block (transactions and all)
    * @param cumulative_difficulty the accumulated difficulty after this block
-   * @param cumulative_weight the accumulated weight
    * @param coins_generated the number of coins generated total after this block
    * @param blk_hash the hash of the block
    */
   virtual void add_block( const block& blk
                 , const size_t& block_size
                 , const difficulty_type& cumulative_difficulty
-                , const difficulty_type& cumulative_weight
                 , const uint64_t& coins_generated
                 , const crypto::hash& blk_hash
                 ) = 0;
@@ -800,7 +798,6 @@ public:
   virtual uint64_t add_block( const block& blk
                             , const size_t& block_size
                             , const difficulty_type& cumulative_difficulty
-                            , const difficulty_type& cumulative_weight
                             , const uint64_t& coins_generated
                             , const std::vector<transaction>& txs
                             );
@@ -953,20 +950,6 @@ public:
   virtual size_t get_block_size(const uint64_t& height) const = 0;
 
   /**
-   * @brief fetch a block's cumulative weight
-   *
-   * The subclass should return the cumulative weight of the block with the
-   * given height.
-   *
-   * If the block does not exist, the subclass should throw BLOCK_DNE
-   *
-   * @param height the height requested
-   *
-   * @return the cumulative difficulty
-   */
-  virtual difficulty_type get_block_cumulative_weight(const uint64_t& height) const = 0;
-
-  /**
    * @brief fetch a block's cumulative difficulty
    *
    * The subclass should return the cumulative difficulty of the block with the
@@ -979,17 +962,6 @@ public:
    * @return the cumulative difficulty
    */
   virtual difficulty_type get_block_cumulative_difficulty(const uint64_t& height) const = 0;
-
-  /**
-   * @brief fetch a block's cumulative weight by hash id (main chain)
-   *
-   * If the block does not exist, the subclass should throw BLOCK_DNE
-   *
-   * @param id the hash id of the block requested
-   *
-   * @return the cumulative weight
-   */
-  virtual difficulty_type get_block_cumulative_weight(const crypto::hash& id) const;
 
   /**
    * @brief fetch a block's cumulative difficulty by hash id (main chain)
@@ -1146,42 +1118,36 @@ public:
    *
    * @param height requested height
    * @param difficulty return-by-reference difficulty
-   * @param weight return-by-reference weight
    * @param cumulative_difficulty return-by-reference cumulative difficulty
-   * @param cumulative_weight return-by-reference cumulative weight
    */
-  virtual void get_height_info(const uint64_t& height, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const = 0;
+  virtual void get_height_info(const uint64_t& height, difficulty_type& difficulty, difficulty_type& cumulative_difficulty) const = 0;
 
   /**
    * @brief gets block info given a hash
    */
-  virtual void get_height_info(const crypto::hash& h, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const = 0;
+  virtual void get_height_info(const crypto::hash& h, difficulty_type& difficulty, difficulty_type& cumulative_difficulty) const = 0;
 
   /**
    * @brief helper method for getting top block height info
    *
    * @param cumulative_difficulty return-by-reference cumulative weight of top block
-   * @param cumulative_weight return-by-reference cumulative weight of top block
    *
    */
-  void top_height_info(difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const
+  void top_height_info(difficulty_type& cumulative_difficulty) const
   {
     difficulty_type difficulty;
-    difficulty_type weight;
-    get_height_info(height() - 1, difficulty, weight, cumulative_difficulty, cumulative_weight);
+    get_height_info(height() - 1, difficulty, cumulative_difficulty);
   }
 
   /**
    * @brief get block info from a given hash
    *
    * @param cumulative_difficulty return-by-reference block's cumulative difficulty
-   * @param cumulative_weight return-by-reference block's cumulative weight
    */
-  virtual void get_block_info(const crypto::hash& h, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const
+  virtual void get_block_info(const crypto::hash& h, difficulty_type& cumulative_difficulty) const
   {
     difficulty_type difficulty;
-    difficulty_type weight;
-    get_height_info(h, difficulty, weight, cumulative_difficulty, cumulative_weight);
+    get_height_info(h, difficulty, cumulative_difficulty);
   }
 
   /**

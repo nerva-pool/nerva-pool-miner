@@ -102,7 +102,6 @@ namespace cryptonote
       uint64_t height; //!< the height of the block in the blockchain
       size_t block_cumulative_size; //!< the size (in bytes) of the block
       difficulty_type cumulative_difficulty; //!< the accumulated difficulty after that block
-      difficulty_type cumulative_weight; //!< the accumulated weight after that block
       uint64_t already_generated_coins; //!< the total coins minted after that block
     };
 
@@ -648,13 +647,11 @@ namespace cryptonote
      *
      * @param h the hash
      * @param difficulty return-by-reference difficulty
-     * @param weight return-by-reference weight
      * @param cumulative_difficulty return-by-reference cumulative difficulty
-     * @param cumulative_weight return-by-reference cumulative weight
      *
      * @return if fetch was successful
      */
-    bool get_block_info(const crypto::hash h, difficulty_type &difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight);
+    bool get_block_info(const crypto::hash h, difficulty_type &difficulty, difficulty_type& cumulative_difficulty);
 
     /**
      * @brief gets blocks based on a list of block hashes
@@ -1129,36 +1126,30 @@ namespace cryptonote
      * @param bl return-by-reference block popped from top of chain
      * @param height return-by-reference height of block
      * @param difficulty return-by-reference difficulty of block
-     * @param weight return-by-reference weight of block
      * @param cumulative_difficulty return-by-reference cumulative difficulty of block
-     * @param cumulative_weight return-by-reference cumulative weight of block
      */
-    void pop_top_block_from_blockchain(block& bl, uint64_t& height, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight);
+    void pop_top_block_from_blockchain(block& bl, uint64_t& height, difficulty_type& difficulty, difficulty_type& cumulative_difficulty);
 
     /**
-     * @brief wrapper for above pop_top_block_from_blockchain method, for when we don't need individual difficulty or weight
+     * @brief wrapper for above pop_top_block_from_blockchain method, for when we don't need individual difficulty
      */
-    void pop_top_block_from_blockchain(block& bl, uint64_t& height, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight);
+    void pop_top_block_from_blockchain(block& bl, uint64_t& height, difficulty_type& cumulative_difficulty);
 
     /**
      * @brief gets block info at a given height
      *
      * @param height requested height
      * @param difficulty return-by-reference difficulty
-     * @param weight return-by-reference weight
      * @param cumulative_difficulty return-by-reference cumulative difficulty
-     * @param cumulative_weight return-by-reference cumulative weight
      */
     void get_height_info(const uint64_t& height,
                          difficulty_type& difficulty,
-                         difficulty_type& weight,
-                         difficulty_type& cumulative_difficulty,
-                         difficulty_type& cumulative_weight);
+                         difficulty_type& cumulative_difficulty);
 
     /**
-     * @brief wrapper for above get_height_info method, for when we don't need individual difficulty or weight
+     * @brief wrapper for above get_height_info method, for when we don't need individual difficulty
      */
-    void get_height_info(const uint64_t& height, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight);
+    void get_height_info(const uint64_t& height, difficulty_type& cumulative_difficulty);
 
     /**
      * @brief removes the most recent block from the blockchain
@@ -1433,6 +1424,6 @@ namespace cryptonote
      *
      * @return if built successfully
      */
-    bool get_alt_height_info(const crypto::hash h, difficulty_type &difficulty, difficulty_type &weight, difficulty_type &cumulative_difficulty, difficulty_type &cumulative_weight);
+    bool get_alt_height_info(const crypto::hash h, difficulty_type &difficulty, difficulty_type &cumulative_difficulty);
   };
 }  // namespace cryptonote

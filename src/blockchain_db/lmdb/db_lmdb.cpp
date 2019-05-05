@@ -655,7 +655,7 @@ estim:
   return threshold_size;
 }
 
-void BlockchainLMDB::add_block(const block& blk, const size_t& block_size, const difficulty_type& cumulative_difficulty, const difficulty_type& cumulative_weight, const uint64_t& coins_generated, const crypto::hash& blk_hash)
+void BlockchainLMDB::add_block(const block& blk, const size_t& block_size, const difficulty_type& cumulative_difficulty, const uint64_t& coins_generated, const crypto::hash& blk_hash)
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
   check_open();
@@ -703,7 +703,6 @@ void BlockchainLMDB::add_block(const block& blk, const size_t& block_size, const
   bi.bi_size = block_size;
   bi.bi_diff = cumulative_difficulty;
   bi.bi_hash = blk_hash;
-  bi.bi_weight = cumulative_weight;
 
   MDB_val_set(val, bi);
   result = mdb_cursor_put(m_cur_block_info, (MDB_val *)&zerokval, &val, MDB_APPENDDUP);
@@ -2204,14 +2203,6 @@ size_t BlockchainLMDB::get_block_size(const uint64_t& height) const
   return bi.bi_size;
 }
 
-difficulty_type BlockchainLMDB::get_block_cumulative_weight(const uint64_t& height) const
-{
-  LOG_PRINT_L3("BlockchainLMDB::" << __func__ << "  height: " << height);
-  mdb_block_info bi = get_block_info(height);
-  difficulty_type ret = bi.bi_weight;
-  return ret;
-}
-
 difficulty_type BlockchainLMDB::get_block_cumulative_difficulty(const uint64_t& height) const
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__ << "  height: " << height);
@@ -2220,7 +2211,7 @@ difficulty_type BlockchainLMDB::get_block_cumulative_difficulty(const uint64_t& 
   return ret;
 }
 
-void BlockchainLMDB::get_height_info(const uint64_t& height, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const
+void BlockchainLMDB::get_height_info(const uint64_t& height, difficulty_type& difficulty, difficulty_type& cumulative_difficulty) const
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__ << "  height: " << height);
   mdb_block_info bi = get_block_info(height);
@@ -2229,21 +2220,18 @@ void BlockchainLMDB::get_height_info(const uint64_t& height, difficulty_type& di
   {
     mdb_block_info bi_prev = get_block_info(height - 1);
     difficulty = bi.bi_diff - bi_prev.bi_diff;
-    weight = bi.bi_weight - bi_prev.bi_weight;
   }
   else
   {
     difficulty = bi.bi_diff;
-    weight = bi.bi_weight;
   }
   cumulative_difficulty = bi.bi_diff;
-  cumulative_weight = bi.bi_weight;
 }
 
-void BlockchainLMDB::get_height_info(const crypto::hash& h, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const
+void BlockchainLMDB::get_height_info(const crypto::hash& h, difficulty_type& difficulty, difficulty_type& cumulative_difficulty) const
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__ << "  hash: " << h);
-  get_height_info(get_block_height(h), difficulty, weight, cumulative_difficulty, cumulative_weight);
+  get_height_info(get_block_height(h), difficulty, cumulative_difficulty);
 }
 
 mdb_block_info BlockchainLMDB::get_block_info(const uint64_t& height) const
@@ -3239,7 +3227,7 @@ void BlockchainLMDB::block_txn_abort()
   }
 }
 
-uint64_t BlockchainLMDB::add_block(const block& blk, const size_t& block_size, const difficulty_type& cumulative_difficulty, const difficulty_type& cumulative_weight, const uint64_t& coins_generated, const std::vector<transaction>& txs)
+uint64_t BlockchainLMDB::add_block(const block& blk, const size_t& block_size, const difficulty_type& cumulative_difficulty, const uint64_t& coins_generated, const std::vector<transaction>& txs)
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
   check_open();
@@ -3257,7 +3245,7 @@ uint64_t BlockchainLMDB::add_block(const block& blk, const size_t& block_size, c
 
   try
   {
-    BlockchainDB::add_block(blk, block_size, cumulative_difficulty, cumulative_weight, coins_generated, txs);
+    BlockchainDB::add_block(blk, block_size, cumulative_difficulty, coins_generated, txs);
   }
   catch (const DB_ERROR_TXN_START& e)
   {

@@ -89,6 +89,7 @@ typedef struct mdb_block_info_v1
   uint64_t bi_size;
   difficulty_type bi_diff;
   crypto::hash bi_hash;
+  // TODO: bi_weight is unused but requires a migration to remove
   difficulty_type bi_weight;
 } mdb_block_info;
 
@@ -222,13 +223,11 @@ public:
 
   virtual size_t get_block_size(const uint64_t& height) const;
 
-  virtual difficulty_type get_block_cumulative_weight(const uint64_t& height) const;
-
   virtual difficulty_type get_block_cumulative_difficulty(const uint64_t& height) const;
 
-  virtual void get_height_info(const uint64_t& height, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const;
+  virtual void get_height_info(const uint64_t& height, difficulty_type& difficulty, difficulty_type& cumulative_difficulty) const;
 
-  virtual void get_height_info(const crypto::hash& h, difficulty_type& difficulty, difficulty_type& weight, difficulty_type& cumulative_difficulty, difficulty_type& cumulative_weight) const;
+  virtual void get_height_info(const crypto::hash& h, difficulty_type& difficulty, difficulty_type& cumulative_difficulty) const;
 
   virtual mdb_block_info get_block_info(const uint64_t& height) const;
 
@@ -296,7 +295,6 @@ public:
   virtual uint64_t add_block( const block& blk
                             , const size_t& block_size
                             , const difficulty_type& cumulative_difficulty
-                            , const difficulty_type& cumulative_weight
                             , const uint64_t& coins_generated
                             , const std::vector<transaction>& txs
                             );
@@ -339,7 +337,6 @@ private:
   virtual void add_block(const block& blk
                 , const size_t& block_size
                 , const difficulty_type& cumulative_difficulty
-                , const difficulty_type& cumulative_weight
                 , const uint64_t& coins_generated
                 , const crypto::hash& block_hash
                 );

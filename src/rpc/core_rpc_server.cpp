@@ -1569,7 +1569,6 @@ namespace cryptonote
     response.depth = m_core.get_current_blockchain_height() - height - 1;
     response.hash = string_tools::pod_to_hex(hash);
     response.difficulty = m_core.get_blockchain_storage().block_difficulty(height);
-    response.weight = m_core.get_block_weight(height);
     response.reward = get_block_reward(blk);
     response.block_size = m_core.get_blockchain_storage().get_db().get_block_size(height);
     response.num_txes = blk.tx_hashes.size();
@@ -2127,7 +2126,7 @@ namespace cryptonote
       std::list<std::pair<Blockchain::block_extended_info, uint64_t>> chains = m_core.get_blockchain_storage().get_alternative_chains();
       for (const auto &i: chains)
       {
-        res.chains.push_back(COMMAND_RPC_GET_ALTERNATE_CHAINS::chain_info{epee::string_tools::pod_to_hex(get_block_hash(i.first.bl)), i.first.height, i.second, i.first.cumulative_difficulty, i.first.cumulative_weight});
+        res.chains.push_back(COMMAND_RPC_GET_ALTERNATE_CHAINS::chain_info{epee::string_tools::pod_to_hex(get_block_hash(i.first.bl)), i.first.height, i.second, i.first.cumulative_difficulty});
       }
       res.status = CORE_RPC_STATUS_OK;
     }
