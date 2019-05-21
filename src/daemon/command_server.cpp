@@ -296,7 +296,7 @@ t_command_server::t_command_server(
     m_command_lookup.set_handler(
       "check_update"
     , std::bind(&t_command_parser_executor::update, &m_parser, p::_1)
-    , "Check if an update is available, optionally downloads it if there is. Updating is not yet implemented."
+    , "Check if an update is available."
     );
     m_command_lookup.set_handler(
       "relay_tx"

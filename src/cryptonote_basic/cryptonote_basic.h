@@ -154,6 +154,10 @@ namespace cryptonote
 
   };
 
+  template<typename T> static inline unsigned int getpos(T &ar) { return 0; }
+  template<> inline unsigned int getpos(binary_archive<true> &ar) { return ar.stream().tellp(); }
+  template<> inline unsigned int getpos(binary_archive<false> &ar) { return ar.stream().tellg(); }
+
   class transaction_prefix
   {
 
@@ -213,7 +217,7 @@ namespace cryptonote
     void set_hash_valid(bool v) const { hash_valid.store(v,std::memory_order_release); }
     bool is_blob_size_valid() const { return blob_size_valid.load(std::memory_order_acquire); }
     void set_blob_size_valid(bool v) const { blob_size_valid.store(v,std::memory_order_release); }
-	void set_hash(const crypto::hash &h) { hash = h; set_hash_valid(true); }
+    void set_hash(const crypto::hash &h) { hash = h; set_hash_valid(true); }
     void set_blob_size(size_t sz) { blob_size = sz; set_blob_size_valid(true); }
 
     BEGIN_SERIALIZE_OBJECT()
@@ -280,7 +284,6 @@ namespace cryptonote
   inline
   transaction::~transaction()
   {
-    //set_null();
   }
 
   inline

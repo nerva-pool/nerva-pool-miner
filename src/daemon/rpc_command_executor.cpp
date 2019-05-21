@@ -1,5 +1,5 @@
 // Copyright (c) 2017-2018, The Masari Project
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -530,13 +530,14 @@ bool t_rpc_command_executor::mining_status() {
     tools::msg_writer() << "  Ignore battery: " << (mres.bg_ignore_battery ? "yes" : "no");
   }
 
-  if (!mining_busy && mres.active)
+  if (!mining_busy && mres.active && mres.speed > 0 && mres.block_target > 0 && mres.difficulty > 0)
   {
+    double ratio = mres.speed * mres.block_target / (double)mres.difficulty;
     uint64_t daily = 86400ull / mres.block_target * mres.block_reward;
     uint64_t monthly = 86400ull / mres.block_target * 30.5 * mres.block_reward;
     uint64_t yearly = 86400ull / mres.block_target * 356 * mres.block_reward;
-    tools::msg_writer() << "Expected: " << cryptonote::print_money(daily) << " monero daily, "
-        << cryptonote::print_money(monthly) << " monero monthly, " << cryptonote::print_money(yearly) << " yearly";
+    tools::msg_writer() << "Expected: " << cryptonote::print_money(daily) << " nerva daily, "
+        << cryptonote::print_money(monthly) << " nerva monthly, " << cryptonote::print_money(yearly) << " yearly";
   }
 
   return true;
@@ -640,15 +641,19 @@ bool t_rpc_command_executor::print_net_stats()
     }
   }
 
-  tools::success_msg_writer() << boost::format("Received %u bytes (%s) in %u packets")
+  uint64_t limit = limit_res.limit_down * 1024;   // convert to bytes, as limits are always kB/s
+  tools::success_msg_writer() << boost::format("Received %u bytes (%s) in %u packets, limit of %s/s")
     % net_stats_res.total_bytes_in
     % tools::get_human_readable_bytes(net_stats_res.total_bytes_in)
-    % net_stats_res.total_packets_in;
+    % net_stats_res.total_packets_in
+    % tools::get_human_readable_bytes(limit);
 
-  tools::success_msg_writer() << boost::format("Sent %u bytes (%s) in %u packets")
+  limit = limit_res.limit_up * 1024;
+  tools::success_msg_writer() << boost::format("Sent %u bytes (%s) in %u packets, limit of %s/s")
     % net_stats_res.total_bytes_out
     % tools::get_human_readable_bytes(net_stats_res.total_bytes_out)
-    % net_stats_res.total_packets_out;
+    % net_stats_res.total_packets_out
+    % tools::get_human_readable_bytes(limit);
 
   return true;
 }
@@ -779,7 +784,7 @@ bool t_rpc_command_executor::print_height() {
   return true;
 }
 
-bool t_rpc_command_executor::print_block_by_hash(crypto::hash block_hash) {
+bool t_rpc_command_executor::print_block_by_hash(crypto::hash block_hash, bool include_hex) {
   cryptonote::COMMAND_RPC_GET_BLOCK::request req;
   cryptonote::COMMAND_RPC_GET_BLOCK::response res;
   epee::json_rpc::error error_resp;
@@ -799,18 +804,20 @@ bool t_rpc_command_executor::print_block_by_hash(crypto::hash block_hash) {
   {
     if (!m_rpc_server->on_get_block(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
     {
-      tools::fail_msg_writer() << make_error(fail_message, error_resp.message);
+      tools::fail_msg_writer() << make_error(fail_message, res.status);
       return true;
     }
   }
 
+  if (include_hex)
+    tools::success_msg_writer() << res.blob << std::endl;
   print_block_header(res.block_header);
   tools::success_msg_writer() << res.json << ENDL;
 
   return true;
 }
 
-bool t_rpc_command_executor::print_block_by_height(uint64_t height) {
+bool t_rpc_command_executor::print_block_by_height(uint64_t height, bool include_hex) {
   cryptonote::COMMAND_RPC_GET_BLOCK::request req;
   cryptonote::COMMAND_RPC_GET_BLOCK::response res;
   epee::json_rpc::error error_resp;
@@ -830,11 +837,13 @@ bool t_rpc_command_executor::print_block_by_height(uint64_t height) {
   {
     if (!m_rpc_server->on_get_block(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
     {
-      tools::fail_msg_writer() << make_error(fail_message, error_resp.message);
+      tools::fail_msg_writer() << make_error(fail_message, res.status);
       return true;
     }
   }
 
+  if (include_hex)
+    tools::success_msg_writer() << res.blob << std::endl;
   print_block_header(res.block_header);
   tools::success_msg_writer() << res.json << ENDL;
 
@@ -843,7 +852,7 @@ bool t_rpc_command_executor::print_block_by_height(uint64_t height) {
 
 bool t_rpc_command_executor::print_transaction(crypto::hash transaction_hash,
   bool include_hex,
-  bool include_json, bool prune) {
+  bool include_json) {
   cryptonote::COMMAND_RPC_GET_TRANSACTIONS::request req;
   cryptonote::COMMAND_RPC_GET_TRANSACTIONS::response res;
 
@@ -851,7 +860,6 @@ bool t_rpc_command_executor::print_transaction(crypto::hash transaction_hash,
 
   req.txs_hashes.push_back(epee::string_tools::pod_to_hex(transaction_hash));
   req.decode_as_json = false;
-  req.prune = include_hex && prune ? true : false;
   if (m_is_rpc)
   {
     if (!m_rpc_client->rpc_request(req, res, "/gettransactions", fail_message.c_str()))
@@ -887,28 +895,23 @@ bool t_rpc_command_executor::print_transaction(crypto::hash transaction_hash,
     // Print json if requested
     if (include_json)
     {
-      crypto::hash tx_hash, tx_prefix_hash;
+      crypto::hash tx_hash;
       cryptonote::transaction tx;
       cryptonote::blobdata blob;
       if (!string_tools::parse_hexstr_to_binbuff(as_hex, blob))
       {
         tools::fail_msg_writer() << "Failed to parse tx to get json format";
       }
-      else if (!cryptonote::parse_and_validate_tx_from_blob(blob, tx, tx_hash, tx_prefix_hash))
-      {
-        tools::fail_msg_writer() << "Failed to parse tx blob to get json format";
-      }
       else
       {
-        if(prune)
+        if (!cryptonote::parse_and_validate_tx_from_blob(blob, tx, tx_hash))
         {
-          std::stringstream ss;
-          json_archive<true> ar(ss);
-          tx.serialize_base(ar);
-          tools::success_msg_writer() << ss.str() << std::endl;
+          tools::fail_msg_writer() << "Failed to parse tx blob to get json format";
         }
         else
-        tools::success_msg_writer() << cryptonote::obj_to_json_str(tx) << std::endl;
+        {
+          tools::success_msg_writer() << cryptonote::obj_to_json_str(tx) << std::endl;
+        }
       }
     }
   }
@@ -1235,19 +1238,6 @@ bool t_rpc_command_executor::stop_daemon()
 {
   cryptonote::COMMAND_RPC_STOP_DAEMON::request req;
   cryptonote::COMMAND_RPC_STOP_DAEMON::response res;
-
-//# ifdef WIN32
-//    // Stop via service API
-//    // TODO - this is only temporary!  Get rid of hard-coded constants!
-//    bool ok = windows::stop_service("NERVA Daemon");
-//    ok = windows::uninstall_service("NERVA Daemon");
-//    //bool ok = windows::stop_service(SERVICE_NAME);
-//    //ok = windows::uninstall_service(SERVICE_NAME);
-//    if (ok)
-//    {
-//      return true;
-//    }
-//# endif
 
   // Stop via RPC
   std::string fail_message = "Daemon did not stop";
@@ -1850,7 +1840,7 @@ bool t_rpc_command_executor::print_tx_pubkey(std::string extra)
   return true;
 }
 
-bool t_rpc_command_executor::alt_chain_info()
+bool t_rpc_command_executor::alt_chain_info(const std::string &tip)
 {
   cryptonote::COMMAND_RPC_GET_INFO::request ireq;
   cryptonote::COMMAND_RPC_GET_INFO::response ires;
@@ -1885,12 +1875,32 @@ bool t_rpc_command_executor::alt_chain_info()
     }
   }
 
-  tools::msg_writer() << boost::lexical_cast<std::string>(res.chains.size()) << " alternate chains found:";
-  for (const auto &chain: res.chains)
+  if (tip.empty())
   {
-    uint64_t start_height = (chain.height - chain.length + 1);
-    tools::msg_writer() << chain.length << " blocks long, from height " << start_height << " (" << (ires.height - start_height - 1)
-        << " deep), diff " << chain.difficulty << ": " << chain.block_hash;
+    tools::msg_writer() << boost::lexical_cast<std::string>(res.chains.size()) << " alternate chains found:";
+    for (const auto &chain: res.chains)
+    {
+      uint64_t start_height = (chain.height - chain.length + 1);
+      tools::msg_writer() << chain.length << " blocks long, from height " << start_height << " (" << (ires.height - start_height - 1)
+          << " deep), diff " << chain.difficulty << ": " << chain.block_hash;
+    }
+  }
+  else
+  {
+    const auto i = std::find_if(res.chains.begin(), res.chains.end(), [&tip](cryptonote::COMMAND_RPC_GET_ALTERNATE_CHAINS::chain_info &info){ return info.block_hash == tip; });
+    if (i != res.chains.end())
+    {
+      const auto &chain = *i;
+      tools::success_msg_writer() << "Found alternate chain with tip " << tip;
+      uint64_t start_height = (chain.height - chain.length + 1);
+      tools::msg_writer() << chain.length << " blocks long, from height " << start_height << " (" << (ires.height - start_height - 1)
+          << " deep), diff " << chain.difficulty << ":";
+      for (const std::string &block_id: chain.block_hashes)
+        tools::msg_writer() << "  " << block_id;
+      tools::msg_writer() << "Chain parent on main chain: " << chain.main_chain_parent_block;
+    }
+    else
+      tools::fail_msg_writer() << "Block hash " << tip << " is not the tip of any known alternate chain";
   }
   return true;
 }
@@ -2102,15 +2112,19 @@ bool t_rpc_command_executor::sync_info()
       std::string address = epee::string_tools::pad_string(p.info.address, 24);
       uint64_t nblocks = 0, size = 0;
       for (const auto &s: res.spans)
-        if (s.rate > 0.0f && s.connection_id == p.info.connection_id)
+        if (s.connection_id == p.info.connection_id)
           nblocks += s.nblocks, size += s.size;
-      tools::success_msg_writer() << address << "  " << epee::string_tools::pad_string(p.info.peer_id, 16, '0', true) << "  " << p.info.height << "  "  << p.info.current_download << " kB/s, " << nblocks << " blocks / " << size/1e6 << " MB queued";
+      tools::success_msg_writer() << address << "  " << epee::string_tools::pad_string(p.info.peer_id, 16, '0', true) << "  " <<
+          epee::string_tools::pad_string(p.info.state, 16) << "  " <<
+          p.info.height << "  "  <<
+          p.info.current_download << " kB/s, " << nblocks << " blocks / " << size/1e6 << " MB queued";
     }
 
     uint64_t total_size = 0;
     for (const auto &s: res.spans)
       total_size += s.size;
     tools::success_msg_writer() << std::to_string(res.spans.size()) << " spans, " << total_size/1e6 << " MB";
+    tools::success_msg_writer() << res.overview;
     for (const auto &s: res.spans)
     {
       std::string address = epee::string_tools::pad_string(s.remote_address, 24);
@@ -2123,6 +2137,7 @@ bool t_rpc_command_executor::sync_info()
         tools::success_msg_writer() << address << "  " << s.nblocks << " (" << s.start_block_height << " - " << (s.start_block_height + s.nblocks - 1) << ", " << (uint64_t)(s.size/1e3) << " kB)  " << (unsigned)(s.rate/1e3) << " kB/s (" << s.speed/100.0f << ")";
       }
     }
+
     return true;
 }
 
@@ -2150,7 +2165,7 @@ bool t_rpc_command_executor::pop_blocks(uint64_t num_blocks)
   }
   tools::success_msg_writer() << "new height: " << res.height;
 
-    return true;
+  return true;
 }
 
 }// namespace daemonize

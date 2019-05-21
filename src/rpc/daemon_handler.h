@@ -132,16 +132,17 @@ class DaemonHandler : public RpcHandler
 
     void handle(const GetPerKBFeeEstimate::Request& req, GetPerKBFeeEstimate::Response& res);
 
-    std::string handle(const std::string& request);
+    void handle(const GetOutputDistribution::Request& req, GetOutputDistribution::Response& res);
 
-    cryptonote::core& m_core;
+    std::string handle(const std::string& request);
 
   private:
 
     bool getBlockHeaderByHash(const crypto::hash& hash_in, cryptonote::rpc::BlockHeaderResponse& response);
-    
-void handleTxBlob(const std::string& tx_blob, bool relay, SendRawTx::Response& res);
 
+    void handleTxBlob(const std::string& tx_blob, bool relay, SendRawTx::Response& res);
+
+    cryptonote::core& m_core;
     t_p2p& m_p2p;
 };
 

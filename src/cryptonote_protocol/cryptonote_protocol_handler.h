@@ -113,7 +113,6 @@ namespace cryptonote
     void set_max_out_peers(unsigned int max) { m_max_out_peers = max; }
     void set_no_sync(bool value) { m_no_sync = value; }
     bool needs_new_sync_connections() const;
-    t_core& m_core;
   private:
     //----------------- commands handlers ----------------------------------------------
     int handle_notify_new_block(int command, NOTIFY_NEW_BLOCK::request& arg, cryptonote_connection_context& context);
@@ -140,6 +139,8 @@ namespace cryptonote
     bool update_sync_search();
     int try_add_next_blocks(cryptonote_connection_context &context);
     void skip_unneeded_hashes(cryptonote_connection_context& context, bool check_block_queue) const;
+
+    t_core& m_core;
 
     nodetool::p2p_endpoint_stub<connection_context> m_p2p_stub;
     nodetool::i_p2p_endpoint<connection_context>* m_p2p;

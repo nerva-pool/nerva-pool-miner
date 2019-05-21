@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2018, The Monero Project
+// Copyright (c) 2016-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -31,6 +31,7 @@
 #include "crypto/hash.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "ringct/rctSigs.h"
+#include "rpc/rpc_handler.h"
 
 #include <unordered_map>
 #include <vector>
@@ -130,6 +131,7 @@ namespace rpc
     uint32_t votes;
     uint32_t threshold;
     uint8_t voting;
+    uint32_t state;
     uint64_t earliest_height;
   };
 
@@ -186,6 +188,13 @@ namespace rpc
     uint64_t cumulative_difficulty;
     uint64_t block_size_limit;
     std::string version;
+  };
+
+  struct output_distribution
+  {
+    output_distribution_data data;
+    uint64_t amount;
+    bool cumulative;
   };
 }  // namespace rpc
 

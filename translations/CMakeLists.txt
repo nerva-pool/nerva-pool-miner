@@ -37,13 +37,13 @@ IF(CMAKE_CROSSCOMPILING)
   INCLUDE(${IMPORT_EXECUTABLES})
 ENDIF(CMAKE_CROSSCOMPILING)
 
- # only build the generator if not crosscompiling
+# only build the generator if not crosscompiling
 IF(NOT CMAKE_CROSSCOMPILING)
   add_executable(generate_translations_header generate_translations_header.c)
 ENDIF(NOT CMAKE_CROSSCOMPILING)
 
 if(LRELEASE_PATH STREQUAL "")
-find_program(LRELEASE lrelease)
+  find_program(LRELEASE lrelease)
 else()
   set(LRELEASE ${LRELEASE_PATH}/lrelease)
 endif()

@@ -1,5 +1,5 @@
 // Copyright (c) 2017-2018, The Masari Project
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -33,7 +33,6 @@
 #include "blockchain_db.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "profile_tools.h"
-#include "ringct/rctOps.h"
 
 #include "lmdb/db_lmdb.h"
 
@@ -47,8 +46,8 @@ namespace cryptonote
 
 const command_line::arg_descriptor<std::string> arg_db_sync_mode = {
   "db-sync-mode"
-, "Specify sync option, using format [safe|fast|fastest]:[sync|async]:[nblocks_per_sync]." 
-, "fast:async:1000"
+, "Specify sync option, using format [safe|fast|fastest]:[sync|async]:[<nblocks_per_sync>[blocks]|<nbytes_per_sync>[bytes]]." 
+, "fast:async:250000000bytes"
 };
 const command_line::arg_descriptor<bool> arg_db_salvage  = {
   "db-salvage"
@@ -80,8 +79,10 @@ void BlockchainDB::pop_block()
   pop_block(blk, txs);
 }
 
-void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const transaction& tx, const crypto::hash* tx_hash_ptr)
+void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& txp, const crypto::hash* tx_hash_ptr)
 {
+  const transaction &tx = txp.first;
+
   bool miner_tx = false;
   crypto::hash tx_hash;
   if (!tx_hash_ptr)
@@ -120,7 +121,7 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const transacti
     }
   }
 
-  uint64_t tx_id = add_transaction_data(blk_hash, tx, tx_hash);
+  uint64_t tx_id = add_transaction_data(blk_hash, txp, tx_hash);
 
   std::vector<uint64_t> amount_output_indices(tx.vout.size());
 
@@ -146,18 +147,18 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const transacti
   add_tx_amount_output_indices(tx_id, amount_output_indices);
 }
 
-uint64_t BlockchainDB::add_block( const block& blk
-                                , const size_t& block_size
+uint64_t BlockchainDB::add_block( const std::pair<block, blobdata>& blck
+                                , size_t block_size
                                 , const difficulty_type& cumulative_difficulty
                                 , const uint64_t& coins_generated
-                                , const std::vector<transaction>& txs
+                                , const std::vector<std::pair<transaction, blobdata>>& txs
                                 )
 {
+  const block &blk = blck.first;
+
   // sanity
   if (blk.tx_hashes.size() != txs.size())
     throw std::runtime_error("Inconsistent tx/hashes sizes");
-
-  block_txn_start(false);
 
   TIME_MEASURE_START(time1);
   crypto::hash blk_hash = get_block_hash(blk);
@@ -169,10 +170,10 @@ uint64_t BlockchainDB::add_block( const block& blk
   // call out to add the transactions
   
   time1 = epee::misc_utils::get_tick_count();
-  add_transaction(blk_hash, blk.miner_tx);
+  add_transaction(blk_hash, std::make_pair(blk.miner_tx, tx_to_blob(blk.miner_tx)));
   int tx_i = 0;
   crypto::hash tx_hash = crypto::null_hash;
-  for (const transaction& tx : txs)
+  for (const std::pair<transaction, blobdata>& tx : txs)
   {
     tx_hash = blk.tx_hashes[tx_i];
     add_transaction(blk_hash, tx, &tx_hash);
@@ -188,8 +189,6 @@ uint64_t BlockchainDB::add_block( const block& blk
   time_add_block1 += time1;
 
   m_hardfork->add(blk, prev_height);
-
-  block_txn_stop();
 
   ++num_calls;
 
@@ -239,23 +238,24 @@ void BlockchainDB::remove_transaction(const crypto::hash& tx_hash)
   remove_transaction_data(tx_hash, tx);
 }
 
-static block get_block_from_blob(const blobdata& bd, const std::string& type)
+block BlockchainDB::get_block_from_height(const uint64_t& height) const
 {
+  blobdata bd = get_block_blob_from_height(height);
   block b;
   if (!parse_and_validate_block_from_blob(bd, b))
-    throw DB_ERROR(("Failed to parse " + type + " from blob retrieved from the db").c_str());
+    throw DB_ERROR("Failed to parse block from blob retrieved from the db");
 
   return b;
 }
 
-block BlockchainDB::get_block_from_height(const uint64_t& height) const
-{
-  return get_block_from_blob(get_block_blob_from_height(height), "block");
-}
-
 block BlockchainDB::get_block(const crypto::hash& h) const
 {
-  return get_block_from_blob(get_block_blob(h), "block");
+  blobdata bd = get_block_blob(h);
+  block b;
+  if (!parse_and_validate_block_from_blob(bd, b))
+    throw DB_ERROR("Failed to parse block from blob retrieved from the db");
+
+  return b;
 }
 
 bool BlockchainDB::get_tx(const crypto::hash& h, cryptonote::transaction &tx) const

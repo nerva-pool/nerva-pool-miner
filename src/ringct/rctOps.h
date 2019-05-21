@@ -124,7 +124,6 @@ namespace rct {
     void scalarmultKey(key &aP, const key &P, const key &a);
     key scalarmultKey(const key &P, const key &a);
     //Computes aH where H= toPoint(cn_fast_hash(G)), G the basepoint
-    key scalarmultH(const key & a, bool v2);
 	key scalarmultH_v1(const key & a);
 	key scalarmultH_v2(const key & a);
 

@@ -35,7 +35,6 @@ if (WIN32 OR STATIC)
   add_definitions(-DMINIUPNP_STATICLIB)
 endif ()
 
-
 function (monero_private_headers group)
   source_group("${group}\\Private"
     FILES
@@ -111,6 +110,7 @@ add_subdirectory(ringct)
 add_subdirectory(checkpoints)
 add_subdirectory(cryptonote_basic)
 add_subdirectory(cryptonote_core)
+add_subdirectory(lmdb)
 add_subdirectory(multisig)
 add_subdirectory(net)
 if(NOT IOS)
@@ -131,6 +131,14 @@ if(NOT IOS)
   add_subdirectory(daemonizer)
   add_subdirectory(daemon)
   add_subdirectory(blockchain_utilities)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL Debug)
+  add_subdirectory(debug_utilities)
+endif()
+
+if(PER_BLOCK_CHECKPOINT)
+  add_subdirectory(blocks)
 endif()
 
 add_subdirectory(device)

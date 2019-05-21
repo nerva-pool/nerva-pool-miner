@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -64,6 +64,7 @@ namespace cryptonote
 
     hw::device& get_device()  const ;
     void set_device( hw::device &hwdev) ;
+
   private:
     void xor_with_key_stream(const crypto::chacha_key &key);
   };

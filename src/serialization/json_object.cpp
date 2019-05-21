@@ -495,6 +495,7 @@ void toJsonValue(rapidjson::Document& doc, const cryptonote::tx_out& txout, rapi
   val.SetObject();
 
   INSERT_INTO_JSON_OBJECT(val, doc, amount, txout.amount);
+
   struct add_output
   {
     using result_type = void;
@@ -805,6 +806,7 @@ void toJsonValue(rapidjson::Document& doc, const cryptonote::rpc::hard_fork_info
   INSERT_INTO_JSON_OBJECT(val, doc, votes, info.votes);
   INSERT_INTO_JSON_OBJECT(val, doc, threshold, info.threshold);
   INSERT_INTO_JSON_OBJECT(val, doc, voting, info.voting);
+  INSERT_INTO_JSON_OBJECT(val, doc, state, info.state);
   INSERT_INTO_JSON_OBJECT(val, doc, earliest_height, info.earliest_height);
 }
 
@@ -822,6 +824,7 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::hard_fork_info&
   GET_FROM_JSON_OBJECT(val, info.votes, votes);
   GET_FROM_JSON_OBJECT(val, info.threshold, threshold);
   GET_FROM_JSON_OBJECT(val, info.voting, voting);
+  GET_FROM_JSON_OBJECT(val, info.state, state);
   GET_FROM_JSON_OBJECT(val, info.earliest_height, earliest_height);
 }
 
@@ -961,6 +964,8 @@ void toJsonValue(rapidjson::Document& doc, const rct::rctSig& sig, rapidjson::Va
   INSERT_INTO_JSON_OBJECT(val, doc, encrypted, sig.ecdhInfo);
   INSERT_INTO_JSON_OBJECT(val, doc, commitments, transform(sig.outPk, just_mask));
   INSERT_INTO_JSON_OBJECT(val, doc, fee, sig.txnFee);
+
+  // prunable
   {
     rapidjson::Value prunable;
     prunable.SetObject();
@@ -1222,6 +1227,29 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::DaemonInfo& inf
   GET_FROM_JSON_OBJECT(val, info.top_block_hash, top_block_hash);
   GET_FROM_JSON_OBJECT(val, info.cumulative_difficulty, cumulative_difficulty);
   GET_FROM_JSON_OBJECT(val, info.block_size_limit, block_size_limit);
+}
+
+void toJsonValue(rapidjson::Document& doc, const cryptonote::rpc::output_distribution& dist, rapidjson::Value& val)
+{
+  val.SetObject();
+
+  INSERT_INTO_JSON_OBJECT(val, doc, distribution, dist.data.distribution);
+  INSERT_INTO_JSON_OBJECT(val, doc, amount, dist.amount);
+  INSERT_INTO_JSON_OBJECT(val, doc, start_height, dist.data.start_height);
+  INSERT_INTO_JSON_OBJECT(val, doc, base, dist.data.base);
+}
+
+void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::output_distribution& dist)
+{
+  if (!val.IsObject())
+  {
+    throw WRONG_TYPE("json object");
+  }
+
+  GET_FROM_JSON_OBJECT(val, dist.data.distribution, distribution);
+  GET_FROM_JSON_OBJECT(val, dist.amount, amount);
+  GET_FROM_JSON_OBJECT(val, dist.data.start_height, start_height);
+  GET_FROM_JSON_OBJECT(val, dist.data.base, base);
 }
 
 }  // namespace json

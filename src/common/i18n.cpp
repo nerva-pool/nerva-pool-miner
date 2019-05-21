@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -39,6 +39,7 @@
 #define MONERO_DEFAULT_LOG_CATEGORY "i18n"
 
 #define MAX_LANGUAGE_SIZE 16
+
 static const unsigned char qm_magic[16] = {0x3c, 0xb8, 0x64, 0x18, 0xca, 0xef, 0x9c, 0x95, 0xcd, 0x21, 0x1c, 0xbf, 0x60, 0xa1, 0xbd, 0xdd};
 
 static std::map<std::string,std::string> i18n_entries;
@@ -69,6 +70,7 @@ std::string i18n_get_language()
   for (char c: language)
     if (!strchr("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-.@", c))
       return "en";
+
   std::transform(language.begin(), language.end(), language.begin(), tolower);
   if (language.size() > MAX_LANGUAGE_SIZE)
   {

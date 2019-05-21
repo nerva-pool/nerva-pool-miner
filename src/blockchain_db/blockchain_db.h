@@ -1,6 +1,6 @@
-// Copyright (c) 2019, The Nerva Project
+// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2018, The Masari Project
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -32,7 +32,6 @@
 
 #pragma once
 
-#include <list>
 #include <string>
 #include <exception>
 #include <boost/program_options.hpp>
@@ -43,6 +42,7 @@
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/difficulty.h"
 #include "cryptonote_basic/hardfork.h"
+#include "ringct/rctOps.h"
 
 /** \file
  * Cryptonote Blockchain Database Interface
@@ -366,7 +366,7 @@ private:
    * @param blk_hash the hash of the block
    */
   virtual void add_block( const block& blk
-                , const size_t& block_size
+                , size_t block_size
                 , const difficulty_type& cumulative_difficulty
                 , const uint64_t& coins_generated
                 , const crypto::hash& blk_hash
@@ -403,7 +403,7 @@ private:
    * @param tx_hash the hash of the transaction
    * @return the transaction ID
    */
-  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const transaction& tx, const crypto::hash& tx_hash) = 0;
+  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& tx, const crypto::hash& tx_hash) = 0;
 
   /**
    * @brief remove data about a transaction
@@ -530,7 +530,7 @@ protected:
    * @param tx the transaction to add
    * @param tx_hash_ptr the hash of the transaction, if already calculated
    */
-  void add_transaction(const crypto::hash& blk_hash, const transaction& tx, const crypto::hash* tx_hash_ptr = NULL);
+  void add_transaction(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& tx, const crypto::hash* tx_hash_ptr = NULL);
 
   mutable uint64_t time_tx_exists = 0;  //!< a performance metric
   uint64_t time_commit1 = 0;  //!< a performance metric
@@ -543,7 +543,7 @@ public:
   /**
    * @brief An empty constructor.
    */
-  BlockchainDB(): m_open(false) { }
+  BlockchainDB(): m_hardfork(NULL), m_open(false) { }
 
   /**
    * @brief An empty destructor.
@@ -768,9 +768,12 @@ public:
    */
   virtual void set_batch_transactions(bool) = 0;
 
-  virtual void block_txn_start(bool readonly=false) = 0;
-  virtual void block_txn_stop() = 0;
-  virtual void block_txn_abort() = 0;
+  virtual void block_wtxn_start() = 0;
+  virtual void block_wtxn_stop() = 0;
+  virtual void block_wtxn_abort() = 0;
+  virtual bool block_rtxn_start() const = 0;
+  virtual void block_rtxn_stop() const = 0;
+  virtual void block_rtxn_abort() const = 0;
 
   virtual void set_hard_fork(HardFork* hf);
 
@@ -795,11 +798,11 @@ public:
    *
    * @return the height of the chain post-addition
    */
-  virtual uint64_t add_block( const block& blk
-                            , const size_t& block_size
+  virtual uint64_t add_block( const std::pair<block, blobdata>& blk
+                            , size_t block_size
                             , const difficulty_type& cumulative_difficulty
                             , const uint64_t& coins_generated
-                            , const std::vector<transaction>& txs
+                            , const std::vector<std::pair<transaction, blobdata>>& txs
                             );
 
   /**
@@ -1114,43 +1117,6 @@ public:
   virtual void pop_block(block& blk, std::vector<transaction>& txs);
 
   /**
-   * @brief gets block info at a given height
-   *
-   * @param height requested height
-   * @param difficulty return-by-reference difficulty
-   * @param cumulative_difficulty return-by-reference cumulative difficulty
-   */
-  virtual void get_height_info(const uint64_t& height, difficulty_type& difficulty, difficulty_type& cumulative_difficulty) const = 0;
-
-  /**
-   * @brief gets block info given a hash
-   */
-  virtual void get_height_info(const crypto::hash& h, difficulty_type& difficulty, difficulty_type& cumulative_difficulty) const = 0;
-
-  /**
-   * @brief helper method for getting top block height info
-   *
-   * @param cumulative_difficulty return-by-reference cumulative weight of top block
-   *
-   */
-  void top_height_info(difficulty_type& cumulative_difficulty) const
-  {
-    difficulty_type difficulty;
-    get_height_info(height() - 1, difficulty, cumulative_difficulty);
-  }
-
-  /**
-   * @brief get block info from a given hash
-   *
-   * @param cumulative_difficulty return-by-reference block's cumulative difficulty
-   */
-  virtual void get_block_info(const crypto::hash& h, difficulty_type& cumulative_difficulty) const
-  {
-    difficulty_type difficulty;
-    get_height_info(h, difficulty, cumulative_difficulty);
-  }
-
-  /**
    * @brief check if a transaction with a given hash exists
    *
    * The subclass should check if a transaction is stored which has the
@@ -1298,7 +1264,26 @@ public:
    *
    * @return the requested output data
    */
-  virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool v2, bool include_commitment = true) const = 0;
+  virtual output_data_t get_output_key_only(const uint64_t& amount, const uint64_t& index) const = 0;
+  inline output_data_t get_output_key_and_commitment(const uint64_t& amount, const uint64_t& index, bool v2)
+  {
+    output_data_t result = get_output_key_only(amount, index);
+    if (amount == 0)
+    {
+      result.commitment = rct::zeroCommit(amount, v2);
+    }
+    return result;
+  } 
+  // Monero defines a get_output_key function which accepts a final boolean
+  // parameter that determines whether to include an rct zero commitment in the
+  // result, and is defaulted to true. The default cannot be applied sanely
+  // in NERVA, because there are two versions of rct zero commitments.
+  // Therefore, NERVA functions which generate an rct commitment must
+  // include a mandatory parameter specifying the commitment version.
+  // To avoid accidentally merging Monero calls to get_output_key without
+  // addressing the differences in behavior, eliminate this function in NERVA,
+  // replacing it with get_output_key_only and get_output_key_and_commitment.
+  // virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool include_commitmemt = true) const = 0;
 
   /**
    * @brief gets an output's tx hash and index
@@ -1349,6 +1334,7 @@ public:
    * @param amount an output amount
    * @param offsets a list of amount-specific output indices
    * @param outputs return-by-reference a list of outputs' metadata
+   * @param v2 boolean indicating whether the transaction is a v2 bulletproofs transaction
    */
   virtual void get_output_key(const epee::span<const uint64_t> &amounts, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool v2, bool allow_partial = false) const = 0;
   
@@ -1389,7 +1375,7 @@ public:
    *
    * @param details the details of the transaction to add
    */
-  virtual void add_txpool_tx(const transaction &tx, const txpool_tx_meta_t& details) = 0;
+  virtual void add_txpool_tx(const crypto::hash &txid, const cryptonote::blobdata &blob, const txpool_tx_meta_t& details) = 0;
 
   /**
    * @brief update a txpool transaction's metadata
@@ -1577,7 +1563,9 @@ public:
    * @return a set of amount/instances
    */
   virtual std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff, uint64_t min_count) const = 0;
-  
+
+  virtual bool get_output_distribution(uint64_t amount, uint64_t from_height, uint64_t to_height, std::vector<uint64_t> &distribution, uint64_t &base) const = 0;
+
   /**
    * @brief is BlockchainDB in read-only mode?
    *
@@ -1591,6 +1579,7 @@ public:
    * @return the size required
    */
   virtual uint64_t get_database_size() const = 0;
+
   // TODO: this should perhaps be (or call) a series of functions which
   // progressively update through version updates
   /**
@@ -1613,7 +1602,53 @@ public:
 
 };  // class BlockchainDB
 
-BlockchainDB *new_db( );
+class db_txn_guard
+{
+public:
+  db_txn_guard(BlockchainDB *db, bool readonly): db(db), readonly(readonly), active(false)
+  {
+    if (readonly)
+    {
+      active = db->block_rtxn_start();
+    }
+    else
+    {
+      db->block_wtxn_start();
+      active = true;
+    }
+  }
+  virtual ~db_txn_guard()
+  {
+    if (active)
+      stop();
+  }
+  void stop()
+  {
+    if (readonly)
+      db->block_rtxn_stop();
+    else
+      db->block_wtxn_stop();
+    active = false;
+  }
+  void abort()
+  {
+    if (readonly)
+      db->block_rtxn_abort();
+    else
+      db->block_wtxn_abort();
+    active = false;
+  }
+
+private:
+  BlockchainDB *db;
+  bool readonly;
+  bool active;
+};
+
+class db_rtxn_guard: public db_txn_guard { public: db_rtxn_guard(BlockchainDB *db): db_txn_guard(db, true) {} };
+class db_wtxn_guard: public db_txn_guard { public: db_wtxn_guard(BlockchainDB *db): db_txn_guard(db, false) {} };
+
+BlockchainDB *new_db();
 
 }  // namespace cryptonote
 

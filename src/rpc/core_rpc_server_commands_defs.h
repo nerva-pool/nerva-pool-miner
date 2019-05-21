@@ -1,3 +1,4 @@
+// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
@@ -83,8 +84,8 @@ namespace cryptonote
 // whether they can talk to a given daemon without having to know in
 // advance which version they will stop working with
 // Don't go over 32767 for any of these
-#define CORE_RPC_VERSION_MAJOR 1
-#define CORE_RPC_VERSION_MINOR 19
+#define CORE_RPC_VERSION_MAJOR 2
+#define CORE_RPC_VERSION_MINOR 0
 #define MAKE_CORE_RPC_VERSION(major,minor) (((major)<<16)|(minor))
 #define CORE_RPC_VERSION MAKE_CORE_RPC_VERSION(CORE_RPC_VERSION_MAJOR, CORE_RPC_VERSION_MINOR)
 
@@ -102,11 +103,13 @@ namespace cryptonote
       uint64_t 	 height;
       std::string status;
       bool untrusted;
+      std::string hash;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(height)
         KV_SERIALIZE(status)
         KV_SERIALIZE(untrusted)
+        KV_SERIALIZE(hash)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;
@@ -250,7 +253,7 @@ namespace cryptonote
     };
     typedef epee::misc_utils::struct_init<response_t> response;
   };
-  
+
   //-----------------------------------------------
   struct COMMAND_RPC_GET_RANDOM_OUTS
   {
@@ -330,7 +333,6 @@ namespace cryptonote
       };
       typedef epee::misc_utils::struct_init<response_t> response;
   };
-
   //-----------------------------------------------
   struct COMMAND_RPC_GET_TRANSACTIONS
   {
@@ -395,7 +397,7 @@ namespace cryptonote
         KV_SERIALIZE(untrusted)
       END_KV_SERIALIZE_MAP()
     };
-	  typedef epee::misc_utils::struct_init<response_t> response;
+    typedef epee::misc_utils::struct_init<response_t> response;
   };
 
   //-----------------------------------------------
@@ -522,9 +524,11 @@ namespace cryptonote
     struct request_t
     {
       std::vector<get_outputs_out> outputs;
+      bool get_txid;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(outputs)
+        KV_SERIALIZE(get_txid)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<request_t> request;
@@ -558,7 +562,7 @@ namespace cryptonote
         KV_SERIALIZE(untrusted)
       END_KV_SERIALIZE_MAP()
     };
-	typedef epee::misc_utils::struct_init<response_t> response;
+    typedef epee::misc_utils::struct_init<response_t> response;
   };
   
   //-----------------------------------------------
@@ -718,6 +722,8 @@ namespace cryptonote
       std::string bootstrap_daemon_address;
       uint64_t height_without_bootstrap;
       bool was_bootstrap_ever_used;
+      uint64_t database_size;
+      bool update_available;
       std::string version;
 
       BEGIN_KV_SERIALIZE_MAP()
@@ -748,6 +754,8 @@ namespace cryptonote
         KV_SERIALIZE(bootstrap_daemon_address)
         KV_SERIALIZE(height_without_bootstrap)
         KV_SERIALIZE(was_bootstrap_ever_used)
+        KV_SERIALIZE(database_size)
+        KV_SERIALIZE(update_available)
         KV_SERIALIZE(version)
       END_KV_SERIALIZE_MAP()
     };
@@ -835,6 +843,7 @@ namespace cryptonote
       uint8_t bg_target;
       uint32_t block_target;
       uint64_t block_reward;
+      uint64_t difficulty;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
@@ -849,6 +858,7 @@ namespace cryptonote
         KV_SERIALIZE(bg_target)
         KV_SERIALIZE(block_target)
         KV_SERIALIZE(block_reward)
+        KV_SERIALIZE(difficulty)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;
@@ -910,10 +920,12 @@ namespace cryptonote
     {
       uint64_t reserve_size;       //max 255 bytes
       std::string wallet_address;
+      std::string prev_block;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(reserve_size)
         KV_SERIALIZE(wallet_address)
+        KV_SERIALIZE(prev_block)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<request_t> request;
@@ -966,10 +978,14 @@ namespace cryptonote
     {
       uint64_t amount_of_blocks;
       std::string wallet_address;
+      std::string prev_block;
+      uint32_t starting_nonce;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(amount_of_blocks)
         KV_SERIALIZE(wallet_address)
+        KV_SERIALIZE(prev_block)
+        KV_SERIALIZE_OPT(starting_nonce, (uint32_t)0)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<request_t> request;
@@ -977,10 +993,12 @@ namespace cryptonote
     struct response_t
     {
       uint64_t height;
+      std::vector<std::string> blocks;
       std::string status;
       
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(height)
+        KV_SERIALIZE(blocks)
         KV_SERIALIZE(status)
       END_KV_SERIALIZE_MAP()
     };
@@ -1002,6 +1020,7 @@ namespace cryptonote
       uint64_t reward;
       uint64_t block_size;
       uint64_t num_txes;
+      std::string miner_tx_hash;
       
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(major_version)
@@ -1017,6 +1036,7 @@ namespace cryptonote
         KV_SERIALIZE(reward)
         KV_SERIALIZE(block_size)
         KV_SERIALIZE(num_txes)
+        KV_SERIALIZE(miner_tx_hash)
       END_KV_SERIALIZE_MAP()
   };
 
@@ -1133,7 +1153,7 @@ namespace cryptonote
         KV_SERIALIZE(untrusted)
       END_KV_SERIALIZE_MAP()
     };
-	typedef epee::misc_utils::struct_init<response_t> response;
+    typedef epee::misc_utils::struct_init<response_t> response;
   };
 
   struct peer {
@@ -1308,9 +1328,7 @@ namespace cryptonote
   {
     struct request_t
     {
-      bool json_only;
       BEGIN_KV_SERIALIZE_MAP()
-      KV_SERIALIZE_OPT(json_only, false)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<request_t> request;
@@ -1377,9 +1395,9 @@ namespace cryptonote
         KV_SERIALIZE(untrusted)
       END_KV_SERIALIZE_MAP()
     };
-	  typedef epee::misc_utils::struct_init<response_t> response;
+    typedef epee::misc_utils::struct_init<response_t> response;
   };
-  
+
   struct tx_backlog_entry
   {
     uint64_t blob_size;
@@ -1996,12 +2014,16 @@ namespace cryptonote
       uint64_t height;
       uint64_t length;
       uint64_t difficulty;
+      std::vector<std::string> block_hashes;
+      std::string main_chain_parent_block;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(block_hash)
         KV_SERIALIZE(height)
         KV_SERIALIZE(length)
         KV_SERIALIZE(difficulty)
+        KV_SERIALIZE(block_hashes)
+        KV_SERIALIZE(main_chain_parent_block)
       END_KV_SERIALIZE_MAP()
     };
 
@@ -2135,11 +2157,13 @@ namespace cryptonote
     {
       std::vector<uint64_t> amounts;
       uint64_t from_height;
+      uint64_t to_height;
       bool cumulative;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(amounts)
         KV_SERIALIZE_OPT(from_height, (uint64_t)0)
+        KV_SERIALIZE_OPT(to_height, (uint64_t)0)
         KV_SERIALIZE_OPT(cumulative, false)
       END_KV_SERIALIZE_MAP()
     };

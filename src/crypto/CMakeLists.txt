@@ -40,6 +40,7 @@ set(crypto_sources
   hash-extra-skein.c
   hash.c
   hc128.c
+  hmac-keccak.c
   jh.c
   keccak.c
   oaes_lib.c
@@ -61,6 +62,7 @@ set(crypto_private_headers
   hash-ops.h
   hash.h
   hc128.h
+  hmac-keccak.h
   initializer.h
   jh.h
   keccak.h
@@ -103,5 +105,3 @@ if (ANDROID OR IOS)
     add_definitions(-DFORCE_USE_HEAP=1)
   endif()
 endif()
-
-

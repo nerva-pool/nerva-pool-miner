@@ -33,13 +33,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// OS X, FreeBSD, and OpenBSD don't need malloc.h
+// OS X, FreeBSD, OpenBSD and NetBSD don't need malloc.h
 #if !defined(__APPLE__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) \
   && !defined(__DragonFly__) && !defined(__NetBSD__)
  #include <malloc.h>
 #endif
 
-// ANDROID, FreeBSD, and OpenBSD also don't need timeb.h
+// ANDROID, FreeBSD, OpenBSD and NetBSD also don't need timeb.h
 #if !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__ANDROID__) \
   && !defined(__NetBSD__)
  #include <sys/timeb.h>

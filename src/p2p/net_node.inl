@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2018, The Masari Project
+// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
@@ -88,6 +88,7 @@ namespace nodetool
         ++current;
     }
   }
+  //-----------------------------------------------------------------------------------
   inline bool append_net_address(std::vector<epee::net_utils::network_address> & seed_nodes, std::string const & addr, uint16_t default_port);
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
@@ -182,6 +183,7 @@ namespace nodetool
       return false;
 
     const time_t now = time(nullptr);
+
     CRITICAL_REGION_LOCAL(m_blocked_hosts_lock);
     time_t limit;
     if (now > std::numeric_limits<time_t>::max() - seconds)
@@ -190,6 +192,9 @@ namespace nodetool
       limit = now + seconds;
     m_blocked_hosts[addr.host_str()] = limit;
 
+    // drop any connection to that address. This should only have to look into
+    // the zone related to the connection, but really make sure everything is
+    // swept ...
     std::vector<boost::uuids::uuid> conns;
     for(auto& zone : m_network_zones)
     {
@@ -206,6 +211,7 @@ namespace nodetool
 
       conns.clear();
     }
+
     MCLOG_CYAN(el::Level::Info, "global", "Host " << addr.host_str() << " blocked.");
     return true;
   }
@@ -609,7 +615,6 @@ namespace nodetool
       CHECK_AND_ASSERT_MES(res, false, "Failed to init peerlist.");
     }
 
-
     for(const auto& p: m_command_line_peers)
       m_network_zones.at(p.adr.get_zone()).m_peerlist.append_with_peer_white(p);
 
@@ -676,22 +681,20 @@ namespace nodetool
           unsigned int number_of_in_peers = 0;
           unsigned int number_of_out_peers = 0;
           zone.second.m_net_server.get_config_object().foreach_connection([&](const p2p_connection_context& cntxt)
-        {
-          if (cntxt.m_is_income)
           {
-            ++number_of_in_peers;
-          }
-          else
-          {
-            ++number_of_out_peers;
-          }
-          return true;
-        }); // lambda
-
+            if (cntxt.m_is_income)
+            {
+              ++number_of_in_peers;
+            }
+            else
+            {
+              ++number_of_out_peers;
+            }
+            return true;
+          }); // lambda
           zone.second.m_current_number_of_in_peers = number_of_in_peers;
           zone.second.m_current_number_of_out_peers = number_of_out_peers;
         }
-
         boost::this_thread::sleep_for(boost::chrono::seconds(1));
       } // main loop of thread
       _note("Thread monitor number of peers - done");
@@ -700,12 +703,11 @@ namespace nodetool
     network_zone& public_zone = m_network_zones.at(epee::net_utils::zone::public_);
     public_zone.m_net_server.add_idle_handler(boost::bind(&node_server<t_payload_net_handler>::idle_worker, this), 1000);
     public_zone.m_net_server.add_idle_handler(boost::bind(&t_payload_net_handler::on_idle, &m_payload_handler), 1000);
+
     //here you can set worker threads count
     int thrds_count = 10;
-
     boost::thread::attributes attrs;
     attrs.set_stack_size(THREAD_STACK_SIZE);
-
     //go to loop
     MINFO("Run net_service loop( " << thrds_count << " threads)...");
     if(!public_zone.m_net_server.run_server(thrds_count, true, attrs))
@@ -739,13 +741,14 @@ namespace nodetool
   bool node_server<t_payload_net_handler>::deinit()
   {
     kill();
+
     if (!m_offline)
     {
       for(auto& zone : m_network_zones)
         zone.second.m_net_server.deinit_server();
-	  // remove UPnP port mapping
-	  if(!m_no_igd)
-		delete_upnp_port_mapping(m_listening_port);
+      // remove UPnP port mapping
+      if(!m_no_igd)
+        delete_upnp_port_mapping(m_listening_port);
     }
     return store_config();
   }
@@ -789,13 +792,11 @@ namespace nodetool
       zone.second.m_net_server.get_config_object().foreach_connection([&](const p2p_connection_context& cntxt) {
         connection_ids.push_back(cntxt.m_connection_id);
         return true;
-    });
-    for (const auto &connection_id: connection_ids)
+      });
+      for (const auto &connection_id: connection_ids)
         zone.second.m_net_server.get_config_object().close(connection_id);
     }
-
     m_payload_handler.stop();
-
     return true;
   }
   //-----------------------------------------------------------------------------------
@@ -844,7 +845,7 @@ namespace nodetool
       if (hsh_result)
       {
         uint32_t rsp_ver = version_string_to_integer(rsp.version);
-        m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
+        m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.get_core().get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
         if (rsp_ver < m_minimum_version)
         {
           LOG_PRINT_L0("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.version);
@@ -902,7 +903,7 @@ namespace nodetool
       }
 
       uint32_t rsp_ver = version_string_to_integer(rsp.node_data.version);
-      m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
+      m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.get_core().get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
       if (rsp_ver < m_minimum_version)
       {
         LOG_PRINT_L0("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
@@ -1119,6 +1120,8 @@ namespace nodetool
       --(zone.m_current_number_of_out_peers); // atomic variable, update time = 1s
       return false;
     }
+
+
     MDEBUG("Connecting to " << na.str() << "(peer_type=" << peer_type << ", last_seen: "
         << (last_seen_stamp ? epee::misc_utils::get_time_interval_string(time(NULL) - last_seen_stamp):"never")
         << ")...");
@@ -1404,10 +1407,13 @@ namespace nodetool
   bool node_server<t_payload_net_handler>::connections_maker()
   {
     using zone_type = epee::net_utils::zone;
+
     if (m_offline) return true;
     if (!connect_to_peerlist(m_exclusive_peers)) return false;
 
     if (!m_exclusive_peers.empty()) return true;
+
+    // Only have seeds in the public zone right now.
 
     size_t start_conn_count = get_public_outgoing_connections_count();
     if(!get_public_white_peers_count() && m_seed_nodes.size())
@@ -1884,6 +1890,7 @@ namespace nodetool
 
     if(!zone.m_peerlist.is_host_allowed(context.m_remote_address))
       return false;
+
     std::string ip = epee::string_tools::get_ip_string_from_int32(actual_ip);
     std::string port = epee::string_tools::num_to_string_fast(node_data.my_port);
     epee::net_utils::network_address address{epee::net_utils::ipv4_network_address(actual_ip, node_data.my_port)};
@@ -1950,6 +1957,7 @@ namespace nodetool
   {
     if(context.m_remote_address.get_zone() != epee::net_utils::zone::public_)
       return false;
+
     COMMAND_REQUEST_SUPPORT_FLAGS::request support_flags_request;
     bool r = epee::net_utils::async_invoke_remote_command2<typename COMMAND_REQUEST_SUPPORT_FLAGS::response>
     (
@@ -2030,7 +2038,7 @@ namespace nodetool
     }
 
     uint32_t rsp_ver = version_string_to_integer(arg.node_data.version);
-    m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.m_core.get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
+    m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.get_core().get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
     if (rsp_ver < m_minimum_version)
     {
       LOG_PRINT_L0("Host " << context.m_remote_address.str() << " has incorrect version: " << arg.node_data.version);

@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2018, The Monero Project
+// Copyright (c) 2017-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -236,13 +236,13 @@ std::pair<uint64_t, uint64_t> block_queue::reserve_span(uint64_t first_block_hei
     MDEBUG("reserve_span: early out: first_block_height " << first_block_height << ", last_block_height " << last_block_height << ", max_blocks " << max_blocks);
     return std::make_pair(0, 0);
   }
-
   if (block_hashes.size() > last_block_height)
   {
     MDEBUG("reserve_span: more block hashes than fit within last_block_height: " << block_hashes.size() << " and " << last_block_height);
     return std::make_pair(0, 0);
   }
 
+  // skip everything we've already requested
   uint64_t span_start_height = last_block_height - block_hashes.size() + 1;
   std::vector<crypto::hash>::const_iterator i = block_hashes.begin();
   while (i != block_hashes.end() && requested_internal(*i))

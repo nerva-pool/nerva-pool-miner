@@ -53,7 +53,7 @@ namespace rpc
   {
     std::vector<std::pair<std::pair<blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, blobdata> > > > blocks;
 
-    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.start_height, req.prune, true, COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT))
+    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.start_height, true, COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT))
     {
       res.status = Message::STATUS_FAILED;
       res.error_details = "core::find_blockchain_supplement() returned false";
@@ -62,9 +62,6 @@ namespace rpc
 
     res.blocks.resize(blocks.size());
     res.output_indices.resize(blocks.size());
-
-    //TODO: really need to switch uses of std::list to std::vector unless
-    //      it's a huge performance concern
 
     auto it = blocks.begin();
 
@@ -105,8 +102,6 @@ namespace rpc
         indices.push_back(std::move(tx_indices));
       }
 
-      // assume each block returned is returned with all its transactions
-      // in the correct order.
       auto hash_it = bwt.block.tx_hashes.begin();
       bwt.transactions.reserve(it->second.size());
       for (const auto& blob : it->second)
@@ -794,6 +789,35 @@ namespace rpc
     res.status = Message::STATUS_OK;
   }
 
+  void DaemonHandler::handle(const GetOutputDistribution::Request& req, GetOutputDistribution::Response& res)
+  {
+    try
+    {
+      res.distributions.reserve(req.amounts.size());
+
+      const uint64_t req_to_height = req.to_height ? req.to_height : (m_core.get_current_blockchain_height() - 1);
+      for (std::uint64_t amount : req.amounts)
+      {
+        auto data = rpc::RpcHandler::get_output_distribution([this](uint64_t amount, uint64_t from, uint64_t to, uint64_t &start_height, std::vector<uint64_t> &distribution, uint64_t &base) { return m_core.get_output_distribution(amount, from, to, start_height, distribution, base); }, amount, req.from_height, req_to_height, req.cumulative);
+        if (!data)
+        {
+          res.distributions.clear();
+          res.status = Message::STATUS_FAILED;
+          res.error_details = "Failed to get output distribution";
+          return;
+        }
+        res.distributions.push_back(output_distribution{std::move(*data), amount, req.cumulative});
+      }
+      res.status = Message::STATUS_OK;
+    }
+    catch (const std::exception& e)
+    {
+      res.distributions.clear();
+      res.status = Message::STATUS_FAILED;
+      res.error_details = e.what();
+    }
+  }
+
   bool DaemonHandler::getBlockHeaderByHash(const crypto::hash& hash_in, cryptonote::rpc::BlockHeaderResponse& header)
   {
     block b;
@@ -871,6 +895,8 @@ namespace rpc
       REQ_RESP_TYPES_MACRO(request_type, GetOutputKeys, req_json, resp_message, handle);
       REQ_RESP_TYPES_MACRO(request_type, GetRPCVersion, req_json, resp_message, handle);
       REQ_RESP_TYPES_MACRO(request_type, GetPerKBFeeEstimate, req_json, resp_message, handle);
+      REQ_RESP_TYPES_MACRO(request_type, GetOutputDistribution, req_json, resp_message, handle);
+
       // if none of the request types matches
       if (resp_message == NULL)
       {

@@ -1,5 +1,6 @@
+// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2017-2018, The Masari Project
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -81,13 +82,17 @@ namespace cryptonote
     tx.vout.clear();
     tx.extra.clear();
 
-    hw::device &hwdev = hw::get_device("default");
-    keypair txkey = keypair::generate(hwdev);
+    keypair txkey = keypair::generate(hw::get_device("default"));
+    add_tx_pub_key_to_extra(tx, txkey.pub);
+    if(!extra_nonce.empty())
+      if(!add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
+        return false;
+    if (!sort_tx_extra(tx.extra, tx.extra))
+      return false;
  
     txin_gen in;
     in.height = height;
 
-    uint64_t block_reward = 0;
     uint64_t base_reward;
     if(!get_block_reward(median_size, current_block_size, already_generated_coins, base_reward, hard_fork_version))
     {
@@ -95,28 +100,19 @@ namespace cryptonote
       return false;
     }
 
-    size_t miner_index = 0;
-
-    add_tx_pub_key_to_extra(tx, txkey.pub);
-    if(!extra_nonce.empty())
-      if(!add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
-        return false;
-    if (!sort_tx_extra(tx.extra, tx.extra))
-      return false;
-
 #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
     LOG_PRINT_L1("Creating block template: reward " << base_reward <<
       ", fee " << fee);
 #endif
 
-    block_reward += base_reward;
-    block_reward += fee;
+    uint64_t block_reward = base_reward + fee;
 
     crypto::key_derivation derivation = AUTO_VAL_INIT(derivation);
     crypto::public_key out_eph_public_key = AUTO_VAL_INIT(out_eph_public_key);
     bool r = crypto::generate_key_derivation(miner_address.m_view_public_key, txkey.sec, derivation);
     CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to generate_key_derivation(" << miner_address.m_view_public_key << ", " << txkey.sec << ")");
 
+    size_t miner_index = 0;
     r = crypto::derive_public_key(derivation, miner_index, miner_address.m_spend_public_key, out_eph_public_key);
     CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to derive_public_key(" << derivation << ", " << miner_address.m_spend_public_key << ")");
 
@@ -358,7 +354,6 @@ namespace cryptonote
       tx.vin.push_back(input_to_key);
     }
 
-    // "Shuffle" outs
     if (shuffle_outs)
     {
       std::shuffle(destinations.begin(), destinations.end(), std::default_random_engine(crypto::rand<unsigned int>()));
@@ -413,7 +408,6 @@ namespace cryptonote
     {
       crypto::public_key out_eph_public_key;
 
-      // make additional tx pubkey if necessary
       hwdev.generate_output_ephemeral_keys(tx.version,sender_account_keys, txkey_pub, tx_key,
                                            dst_entr, change_addr, output_index,
                                            need_additional_txkeys, additional_tx_keys,
