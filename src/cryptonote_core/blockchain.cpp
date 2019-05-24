@@ -87,7 +87,8 @@ Blockchain::Blockchain(tx_memory_pool& tx_pool) :
   m_db(), m_tx_pool(tx_pool), m_hardfork(NULL), m_timestamps_and_difficulties_height(0), m_current_block_cumul_sz_limit(0), m_current_block_cumul_sz_median(0),
   m_enforce_dns_checkpoints(false), m_max_prepare_blocks_threads(4), m_db_sync_on_blocks(true), m_db_sync_threshold(1), m_db_sync_mode(db_async), m_db_default_sync(false), m_fast_sync(true), m_show_time_stats(false), m_sync_counter(0), m_bytes_to_sync(0), m_cancel(false),
   m_difficulty_for_next_block_top_hash(crypto::null_hash),
-  m_difficulty_for_next_block(1)
+  m_difficulty_for_next_block(1),
+  m_batch_success(true)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
 }
@@ -539,14 +540,7 @@ void Blockchain::pop_blocks(uint64_t nblocks)
   CRITICAL_REGION_LOCAL(m_tx_pool);
   CRITICAL_REGION_LOCAL1(m_blockchain_lock);
 
-  while (!m_db->batch_start())
-  {
-    m_blockchain_lock.unlock();
-    m_tx_pool.unlock();
-    epee::misc_utils::sleep_no_w(1000);
-    m_tx_pool.lock();
-    m_blockchain_lock.lock();
-  }
+  bool stop_batch = m_db->batch_start();
 
   try
   {
@@ -557,10 +551,14 @@ void Blockchain::pop_blocks(uint64_t nblocks)
   }
   catch (const std::exception& e)
   {
-    LOG_ERROR("Error when popping blocks, only " << i << " blocks are popped: " << e.what());
+    LOG_ERROR("Error when popping blocks after processing " << i << " blocks: " << e.what());
+    if (stop_batch)
+      m_db->batch_abort();
+    return;
   }
 
-  m_db->batch_stop();
+  if (stop_batch)
+    m_db->batch_stop();
 }
 //------------------------------------------------------------------
 // This function tells BlockchainDB to remove the top block from the
@@ -3448,6 +3446,7 @@ leave:
     catch (const KEY_IMAGE_EXISTS& e)
     {
       LOG_ERROR("Error adding block with hash: " << id << " to blockchain, what = " << e.what());
+      m_batch_success = false;
       bvc.m_verifivation_failed = true;
       return_tx_to_pool(txs);
       return false;
@@ -3456,6 +3455,7 @@ leave:
     {
       //TODO: figure out the best way to deal with this failure
       LOG_ERROR("Error adding block with hash: " << id << " to blockchain, what = " << e.what());
+      m_batch_success = false;
       bvc.m_verifivation_failed = true;
       return_tx_to_pool(txs);
       return false;
@@ -3645,7 +3645,10 @@ bool Blockchain::cleanup_handle_incoming_blocks(bool force_sync)
 
   try
   {
-    m_db->batch_stop();
+    if (m_batch_success)
+      m_db->batch_stop();
+    else
+      m_db->batch_abort();
     success = true;
   }
   catch (const std::exception &e)
@@ -3872,6 +3875,7 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
     m_tx_pool.lock();
     m_blockchain_lock.lock();
   }
+  m_batch_success = true;
 
   const uint64_t height = m_db->height();
   if ((height + nblocks) < m_blocks_hash_check.size())
