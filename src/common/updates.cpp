@@ -1,5 +1,5 @@
-// Copyright (c) 2017-2019, The Monero Project
 // Copyright (c) 2019, The NERVA Project
+// Copyright (c) 2017-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -43,6 +43,8 @@ namespace tools
     std::vector<std::string> records;
     bool found = false;
 
+    MDEBUG("Checking updates for " << buildtag << " " << software);
+
     static const std::vector<std::string> dns_urls = {
       "update.getnerva.org",
     };
@@ -56,7 +58,7 @@ namespace tools
       boost::split(fields, record, boost::is_any_of(":"));
       if (fields.size() != 4)
       {
-        MWARNING("Update record does not have 4 fields: " << record);
+        MWARNING("Updates record does not have 4 fields: " << record);
         continue;
       }
 

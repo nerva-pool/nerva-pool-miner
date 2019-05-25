@@ -34,7 +34,7 @@
 #include "tx_sanity_check.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "txsanity"
+#define MONERO_DEFAULT_LOG_CATEGORY "verify"
 
 namespace cryptonote
 {
@@ -70,7 +70,7 @@ bool tx_sanity_check(Blockchain &blockchain, const cryptonote::blobdata &tx_blob
     n_indices += in_to_key.key_offsets.size();
   }
 
-  if (n_indices <= 10)
+  if (n_indices < DEFAULT_RINGSIZE)
   {
     MERROR("n_indices is only " << n_indices);
     return true;
@@ -80,7 +80,7 @@ bool tx_sanity_check(Blockchain &blockchain, const cryptonote::blobdata &tx_blob
   if (n_available < 10000)
     return true;
 
-  if (rct_indices.size() < n_indices * 9 / 10)
+  if (rct_indices.size() < n_indices * 8 / 10)
   {
     MERROR("unique indices is only " << rct_indices.size() << "/" << n_indices);
     return false;

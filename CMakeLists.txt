@@ -1,4 +1,5 @@
-# Copyright (c) 2014-2018, The Monero Project
+# Copyright (c) 2018-2019, The Nerva Project
+# Copyright (c) 2014-2019, The Monero Project
 #
 # All rights reserved.
 #
@@ -43,6 +44,8 @@ cmake_minimum_required(VERSION 2.8.7)
 message(STATUS "CMake version ${CMAKE_VERSION}")
 
 project(monero)
+
+enable_language(C ASM)
 
 function (die msg)
   if (NOT WIN32)
@@ -148,7 +151,6 @@ if(ARCH_ID STREQUAL "ppc64le")
   set(PPC64LE 1)
   set(PPC64   0)
   set(PPC     0)
-
 endif()
 
 if(ARCH_ID STREQUAL "powerpc64" OR ARCH_ID STREQUAL "ppc64")
@@ -187,6 +189,13 @@ set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG ${OPT_FLAGS_RELEASE}")
 # set this to 0 if per-block checkpoint needs to be disabled
 set(PER_BLOCK_CHECKPOINT 0)
 set(BUILD_SHARED_LIBS OFF)
+
+if(PER_BLOCK_CHECKPOINT)
+  add_definitions("-DPER_BLOCK_CHECKPOINT")
+  set(Blocks "blocks")
+else()
+  set(Blocks "")
+endif()
 
 list(INSERT CMAKE_MODULE_PATH 0
   "${CMAKE_SOURCE_DIR}/cmake")
@@ -277,6 +286,17 @@ else()
 endif()
 option(STATIC "Link libraries statically" ${DEFAULT_STATIC})
 
+# This is a CMake built-in switch that concerns internal libraries
+if (NOT DEFINED BUILD_SHARED_LIBS AND NOT STATIC AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
+    set(BUILD_SHARED_LIBS ON)
+endif()
+
+if (BUILD_SHARED_LIBS)
+  message(STATUS "Building internal libraries with position independent code")
+  add_definitions("-DBUILD_SHARED_LIBS")
+else()
+  message(STATUS "Building internal libraries as static")
+endif()
 set(PIC_FLAG "-fPIC")
 
 if(MINGW)
@@ -337,6 +357,9 @@ add_definitions("-DBLOCKCHAIN_DB=${BLOCKCHAIN_DB}")
 # On ARM, having libunwind package (with .so's only) installed breaks static link.
 # When possible, avoid stack tracing using libunwind in favor of using easylogging++.
 if (APPLE)
+  set(DEFAULT_STACK_TRACE OFF)
+  set(LIBUNWIND_LIBRARIES "")
+elseif (DEPENDS AND NOT LINUX)
   set(DEFAULT_STACK_TRACE OFF)
   set(LIBUNWIND_LIBRARIES "")
 elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT MINGW)
@@ -489,7 +512,7 @@ else()
           set(ARCH_FLAG "-mtune=${ARCH}")
         else()
           set(ARCH_FLAG "")
-  endif()
+        endif()
       endif()
     endif()
   endif()
@@ -589,10 +612,10 @@ else()
 
   # -fstack-protector
   if (NOT WIN32)
-  add_c_flag_if_supported(-fstack-protector C_SECURITY_FLAGS)
-  add_cxx_flag_if_supported(-fstack-protector CXX_SECURITY_FLAGS)
-  add_c_flag_if_supported(-fstack-protector-strong C_SECURITY_FLAGS)
-  add_cxx_flag_if_supported(-fstack-protector-strong CXX_SECURITY_FLAGS)
+    add_c_flag_if_supported(-fstack-protector C_SECURITY_FLAGS)
+    add_cxx_flag_if_supported(-fstack-protector CXX_SECURITY_FLAGS)
+    add_c_flag_if_supported(-fstack-protector-strong C_SECURITY_FLAGS)
+    add_cxx_flag_if_supported(-fstack-protector-strong CXX_SECURITY_FLAGS)
   endif()
 
   # New in GCC 8.2
@@ -681,6 +704,10 @@ else()
       message(STATUS "Selecting VFP for ARMv6")
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=vfp")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=vfp")
+      if(DEPENDS)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -marm")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -marm")
+      endif()
     endif(ARM6)
 
     if(ARM7)
@@ -738,7 +765,12 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=default -DGTEST_HAS_TR1_TUPLE=0")
   endif()
 
-  set(DEBUG_FLAGS "-g3 -O0")
+  set(DEBUG_FLAGS "-g3")
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT (CMAKE_C_COMPILER_VERSION VERSION_LESS 4.8))
+    set(DEBUG_FLAGS "${DEBUG_FLAGS} -Og ")
+  else()
+    set(DEBUG_FLAGS "${DEBUG_FLAGS} -O0 ")
+  endif()
 
   # At least some CLANGs default to not enough for monero
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=900")
@@ -846,19 +878,23 @@ elseif(DRAGONFLY)
   set(EXTRA_LIBRARIES execinfo ${COMPAT})
 elseif(CMAKE_SYSTEM_NAME MATCHES "(SunOS|Solaris)")
   set(EXTRA_LIBRARIES socket nsl resolv)
-elseif(NOT MSVC)
+elseif(NOT MSVC AND NOT DEPENDS)
   find_library(RT rt)
   set(EXTRA_LIBRARIES ${RT})
 endif()
 
 list(APPEND EXTRA_LIBRARIES ${CMAKE_DL_LIBS})
 
-if (HIDAPI_FOUND)
+if (HIDAPI_FOUND OR LibUSB_COMPILE_TEST_PASSED)
   if (APPLE)
-    find_library(COREFOUNDATION CoreFoundation)
-    find_library(IOKIT IOKit)
-    list(APPEND EXTRA_LIBRARIES ${IOKIT})
-    list(APPEND EXTRA_LIBRARIES ${COREFOUNDATION})
+    if(DEPENDS)
+      list(APPEND EXTRA_LIBRARIES "-framework Foundation -framework IOKit")
+    else()
+      find_library(COREFOUNDATION CoreFoundation)
+      find_library(IOKIT IOKit)
+      list(APPEND EXTRA_LIBRARIES ${IOKIT})
+      list(APPEND EXTRA_LIBRARIES ${COREFOUNDATION})
+    endif()
   endif()
   if (WIN32)
     list(APPEND EXTRA_LIBRARIES setupapi)
@@ -884,7 +920,9 @@ if(ANDROID)
 endif()
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND ARCH_WIDTH EQUAL "32" AND NOT IOS AND NOT FREEBSD)
   find_library(ATOMIC atomic)
-  list(APPEND EXTRA_LIBRARIES ${ATOMIC})
+  if (ATOMIC_FOUND)
+    list(APPEND EXTRA_LIBRARIES ${ATOMIC})
+  endif()
 endif()
 
 find_path(ZMQ_INCLUDE_PATH zmq.hpp)
@@ -911,6 +949,10 @@ endif()
 
 add_subdirectory(contrib)
 add_subdirectory(src)
+
+if(BUILD_TESTS)
+  add_subdirectory(tests)
+endif()
 
 if(BUILD_DOCUMENTATION)
   set(DOC_GRAPHS "YES" CACHE STRING "Create dependency graphs (needs graphviz)")

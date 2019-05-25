@@ -195,9 +195,21 @@ bool t_command_parser_executor::print_height(const std::vector<std::string>& arg
 
 bool t_command_parser_executor::print_block(const std::vector<std::string>& args)
 {
+  bool include_hex = false;
+
+  // Assumes that optional flags come after mandatory argument <transaction_hash>
+  for (unsigned int i = 1; i < args.size(); ++i) {
+    if (args[i] == "+hex")
+      include_hex = true;
+    else
+    {
+      std::cout << "unexpected argument: " << args[i] << std::endl;
+      return true;
+    }
+  }
   if (args.empty())
   {
-    std::cout << "expected: print_block (<block_hash> | <block_height>)" << std::endl;
+    std::cout << "expected: print_block (<block_hash> | <block_height>) [+hex]" << std::endl;
     return false;
   }
 
@@ -205,14 +217,14 @@ bool t_command_parser_executor::print_block(const std::vector<std::string>& args
   try
   {
     uint64_t height = boost::lexical_cast<uint64_t>(arg);
-    return m_executor.print_block_by_height(height);
+    return m_executor.print_block_by_height(height, include_hex);
   }
   catch (const boost::bad_lexical_cast&)
   {
     crypto::hash block_hash;
     if (parse_hash256(arg, block_hash))
     {
-      return m_executor.print_block_by_hash(block_hash);
+      return m_executor.print_block_by_hash(block_hash, include_hex);
     }
   }
 
@@ -223,7 +235,6 @@ bool t_command_parser_executor::print_transaction(const std::vector<std::string>
 {
   bool include_hex = false;
   bool include_json = false;
-  bool prune = false;
 
   // Assumes that optional flags come after mandatory argument <transaction_hash>
   for (unsigned int i = 1; i < args.size(); ++i) {
@@ -231,8 +242,6 @@ bool t_command_parser_executor::print_transaction(const std::vector<std::string>
       include_hex = true;
     else if (args[i] == "+json")
       include_json = true;
-    else if (args[i] == "+prune")
-      prune = true;
     else
     {
       std::cout << "unexpected argument: " << args[i] << std::endl;
@@ -249,7 +258,7 @@ bool t_command_parser_executor::print_transaction(const std::vector<std::string>
   crypto::hash tx_hash;
   if (parse_hash256(str_hash, tx_hash))
   {
-    m_executor.print_transaction(tx_hash, include_hex, include_json, prune);
+    m_executor.print_transaction(tx_hash, include_hex, include_json);
   }
 
   return true;
@@ -680,13 +689,13 @@ bool t_command_parser_executor::print_tx_pubkey(const std::vector<std::string>& 
 
 bool t_command_parser_executor::alt_chain_info(const std::vector<std::string>& args)
 {
-  if(args.size())
+  if(args.size() > 1)
   {
-    std::cout << "No parameters allowed" << std::endl;
+    std::cout << "usage: alt_chain_info [block_hash]" << std::endl;
     return false;
   }
 
-  return m_executor.alt_chain_info();
+  return m_executor.alt_chain_info(args.size() == 1 ? args[0] : "");
 }
 
 bool t_command_parser_executor::print_blockchain_dynamic_stats(const std::vector<std::string>& args)

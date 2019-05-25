@@ -1,6 +1,6 @@
-// Copyright (c) 2019, The Nerva Project
+// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2018, The Masari Project
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are
@@ -80,18 +80,6 @@ typedef struct mdb_txn_cursors
 #define m_cur_txpool_meta	m_cursors->m_txc_txpool_meta
 #define m_cur_txpool_blob	m_cursors->m_txc_txpool_blob
 #define m_cur_hf_versions	m_cursors->m_txc_hf_versions
-
-typedef struct mdb_block_info_v1
-{
-  uint64_t bi_height;
-  uint64_t bi_timestamp;
-  uint64_t bi_coins;
-  uint64_t bi_size;
-  difficulty_type bi_diff;
-  crypto::hash bi_hash;
-  // TODO: bi_weight is unused but requires a migration to remove
-  difficulty_type bi_weight;
-} mdb_block_info;
 
 typedef struct mdb_rflags
 {
@@ -225,12 +213,6 @@ public:
 
   virtual difficulty_type get_block_cumulative_difficulty(const uint64_t& height) const;
 
-  virtual void get_height_info(const uint64_t& height, difficulty_type& difficulty, difficulty_type& cumulative_difficulty) const;
-
-  virtual void get_height_info(const crypto::hash& h, difficulty_type& difficulty, difficulty_type& cumulative_difficulty) const;
-
-  virtual mdb_block_info get_block_info(const uint64_t& height) const;
-
   virtual difficulty_type get_block_difficulty(const uint64_t& height) const;
 
   virtual uint64_t get_block_already_generated_coins(const uint64_t& height) const;
@@ -262,7 +244,7 @@ public:
 
   virtual uint64_t get_num_outputs(const uint64_t& amount) const;
 
-  virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool v2, bool include_commitment) const;
+  virtual output_data_t get_output_key_only(const uint64_t& amount, const uint64_t& index) const;
   virtual void get_output_key(const epee::span<const uint64_t> &amounts, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool v2, bool allow_partial = false) const;
 
   virtual tx_out_index get_output_tx_and_index_from_global(const uint64_t& index) const;
@@ -276,7 +258,7 @@ public:
 
   virtual bool has_key_image(const crypto::key_image& img) const;
 
-  virtual void add_txpool_tx(const transaction &tx, const txpool_tx_meta_t& meta);
+  virtual void add_txpool_tx(const crypto::hash &txid, const cryptonote::blobdata &blob, const txpool_tx_meta_t& meta);
   virtual void update_txpool_tx(const crypto::hash &txid, const txpool_tx_meta_t& meta);
   virtual uint64_t get_txpool_tx_count(bool include_unrelayed_txes = true) const;
   virtual bool txpool_has_tx(const crypto::hash &txid) const;
@@ -292,11 +274,11 @@ public:
   virtual bool for_all_outputs(std::function<bool(uint64_t amount, const crypto::hash &tx_hash, uint64_t height, size_t tx_idx)> f) const;
   virtual bool for_all_outputs(uint64_t amount, const std::function<bool(uint64_t height)> &f) const;
 
-  virtual uint64_t add_block( const block& blk
-                            , const size_t& block_size
+  virtual uint64_t add_block( const std::pair<block, blobdata>& blk
+                            , size_t block_size
                             , const difficulty_type& cumulative_difficulty
                             , const uint64_t& coins_generated
-                            , const std::vector<transaction>& txs
+                            , const std::vector<std::pair<transaction, blobdata>>& txs
                             );
 
   virtual void set_batch_transactions(bool batch_transactions);
@@ -305,11 +287,14 @@ public:
   virtual void batch_stop();
   virtual void batch_abort();
 
-  virtual void block_txn_start(bool readonly);
-  virtual void block_txn_stop();
-  virtual void block_txn_abort();
-  virtual bool block_rtxn_start(MDB_txn **mtxn, mdb_txn_cursors **mcur) const;
+  virtual void block_wtxn_start();
+  virtual void block_wtxn_stop();
+  virtual void block_wtxn_abort();
+  virtual bool block_rtxn_start() const;
   virtual void block_rtxn_stop() const;
+  virtual void block_rtxn_abort() const;
+
+  bool block_rtxn_start(MDB_txn **mtxn, mdb_txn_cursors **mcur) const;
 
   virtual void pop_block(block& blk, std::vector<transaction>& txs);
 
@@ -327,6 +312,13 @@ public:
    */
   std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff, uint64_t min_count) const;
 
+  bool get_output_distribution(uint64_t amount, uint64_t from_height, uint64_t to_height, std::vector<uint64_t> &distribution, uint64_t &base) const;
+
+  // helper functions
+  static int compare_uint64(const MDB_val *a, const MDB_val *b);
+  static int compare_hash32(const MDB_val *a, const MDB_val *b);
+  static int compare_string(const MDB_val *a, const MDB_val *b);
+
 private:
   void do_resize(uint64_t size_increase=0);
 
@@ -335,7 +327,7 @@ private:
   uint64_t get_estimated_batch_size(uint64_t batch_num_blocks, uint64_t batch_bytes) const;
 
   virtual void add_block(const block& blk
-                , const size_t& block_size
+                , size_t block_size
                 , const difficulty_type& cumulative_difficulty
                 , const uint64_t& coins_generated
                 , const crypto::hash& block_hash
@@ -343,7 +335,7 @@ private:
 
   virtual void remove_block();
 
-  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const transaction& tx, const crypto::hash& tx_hash);
+  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& tx, const crypto::hash& tx_hash);
 
   virtual void remove_transaction_data(const crypto::hash& tx_hash, const transaction& tx);
 
@@ -382,6 +374,9 @@ private:
 
   // fix up anything that may be wrong due to past bugs
   virtual void fixup();
+
+  // migrate from older DB version to current
+  void migrate(const uint32_t oldversion);
 
   void cleanup_batch();
 
@@ -433,7 +428,7 @@ private:
 #endif
 #endif
 
-  constexpr static float RESIZE_PERCENT = 0.8f;
+  constexpr static float RESIZE_PERCENT = 0.9f;
 };
 
 }  // namespace cryptonote

@@ -1,4 +1,5 @@
-// Copyright (c) 2017-2018, The Monero Project
+// Copyright (c) 2018-2019, The NERVA Project
+// Copyright (c) 2017-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -49,12 +50,12 @@ extern "C"
 
 //#define DEBUG_BP
 
-#if 1
+#if 0
 #define PERF_TIMER_START_BP(x) PERF_TIMER_START_UNIT(x, 1000000)
 #define PERF_TIMER_STOP_BP(x) PERF_TIMER_STOP(x)
 #else
-#define PERF_TIMER_START_BP(x) ((void*)0)
-#define PERF_TIMER_STOP_BP(x) ((void*)0)
+#define PERF_TIMER_START_BP(x) ((void)0)
+#define PERF_TIMER_STOP_BP(x) ((void)0)
 #endif
 
 #define STRAUS_SIZE_LIMIT 232
@@ -78,9 +79,9 @@ static ge_dsmp Gprecomp[64], Hprecomp[64];
 static ge_p3 Hi_p3[maxN*maxM], Gi_p3[maxN*maxM];
 static std::shared_ptr<straus_cached_data> straus_HiGi_cache;
 static std::shared_ptr<pippenger_cached_data> pippenger_HiGi_cache;
+static const rct::key TWO = { {0x02, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00  } };
 static const rct::key MINUS_ONE = { { 0xec, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10 } };
 static const rct::key MINUS_INV_EIGHT = { { 0x74, 0xa4, 0x19, 0x7a, 0xf0, 0x7d, 0x0b, 0xf7, 0x05, 0xc2, 0xda, 0x25, 0x2b, 0x5c, 0x0b, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a } };
-static const rct::key TWO = { {0x02, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00 , 0x00, 0x00, 0x00,0x00  } };
 static const rct::keyV oneN_v1 = vector_powers(rct::identity(), maxN);
 static const rct::keyV oneN_v2 = vector_dup(rct::identity(), maxN);
 static const rct::keyV twoN = vector_powers(TWO, maxN);
@@ -657,7 +658,7 @@ Bulletproof bulletproof_PROVE_v1(const rct::key &sv, const rct::key &gamma)
 
   PERF_TIMER_START_BP(PROVE_v);
   rct::addKeys2(V, gamma, sv, rct::H);
-  PERF_TIMER_STOP(PROVE_v);
+  PERF_TIMER_STOP_BP(PROVE_v);
 
   PERF_TIMER_START_BP(PROVE_aLaR);
   for (size_t i = N; i-- > 0; )
@@ -672,7 +673,7 @@ Bulletproof bulletproof_PROVE_v1(const rct::key &sv, const rct::key &gamma)
     }
     sc_sub(aR[i].bytes, aL[i].bytes, rct::identity().bytes);
   }
-  PERF_TIMER_STOP(PROVE_aLaR);
+  PERF_TIMER_STOP_BP(PROVE_aLaR);
 
   rct::key hash_cache = rct::hash_to_scalar(V);
 
@@ -745,7 +746,7 @@ Bulletproof bulletproof_PROVE_v1(const rct::key &sv, const rct::key &gamma)
   sc_add(test_t0.bytes, test_t0.bytes, k.bytes);
   CHECK_AND_ASSERT_THROW_MES(t0 == test_t0, "t0 check failed");
 #endif
-  PERF_TIMER_STOP(PROVE_step1);
+  PERF_TIMER_STOP_BP(PROVE_step1);
 
   PERF_TIMER_START_BP(PROVE_step2);
   const auto HyNsR = hadamard(yN, sR);
@@ -785,7 +786,7 @@ Bulletproof bulletproof_PROVE_v1(const rct::key &sv, const rct::key &gamma)
   // PAPER LINES 54-57
   rct::keyV l = vector_add(aL_vpIz, vector_scalar_v1(sL, x));
   rct::keyV r = vector_add(hadamard(yN, vector_add(aR_vpIz, vector_scalar_v1(sR, x))), vp2zsq);
-  PERF_TIMER_STOP(PROVE_step2);
+  PERF_TIMER_STOP_BP(PROVE_step2);
 
   PERF_TIMER_START_BP(PROVE_step3);
   rct::key t = inner_product_v1(l, r);
@@ -821,7 +822,7 @@ Bulletproof bulletproof_PROVE_v1(const rct::key &sv, const rct::key &gamma)
   rct::keyV R(logN);
   int round = 0;
   rct::keyV w(logN); // this is the challenge x in the inner product protocol
-  PERF_TIMER_STOP(PROVE_step3);
+  PERF_TIMER_STOP_BP(PROVE_step3);
 
   PERF_TIMER_START_BP(PROVE_step4);
   // PAPER LINE 13
@@ -856,7 +857,7 @@ Bulletproof bulletproof_PROVE_v1(const rct::key &sv, const rct::key &gamma)
 
     ++round;
   }
-  PERF_TIMER_STOP(PROVE_step4);
+  PERF_TIMER_STOP_BP(PROVE_step4);
 
   // PAPER LINE 58 (with inclusions from PAPER LINE 8 and PAPER LINE 20)
   return Bulletproof(V, A, S, T1, T2, taux, mu, L, R, aprime[0], bprime[0], t);
@@ -887,7 +888,7 @@ Bulletproof bulletproof_PROVE_v1(uint64_t v, const rct::key &gamma)
   sv.bytes[5] = (v >> 40) & 255;
   sv.bytes[6] = (v >> 48) & 255;
   sv.bytes[7] = (v >> 56) & 255;
-  PERF_TIMER_STOP(PROVE_v);
+  PERF_TIMER_STOP_BP(PROVE_v);
   return bulletproof_PROVE_v1(sv, gamma);
 }
 
@@ -1249,12 +1250,12 @@ bool bulletproof_VERIFY_v1(const Bulletproof &proof)
   rct::key y = hash_cache_mash(hash_cache, proof.A, proof.S);
   rct::key z = hash_cache = rct::hash_to_scalar(y);
   rct::key x = hash_cache_mash(hash_cache, z, proof.T1, proof.T2);
-  PERF_TIMER_STOP(VERIFY_start);
+  PERF_TIMER_STOP_BP(VERIFY_start);
 
   PERF_TIMER_START_BP(VERIFY_line_60);
   // Reconstruct the challenges
   rct::key x_ip = hash_cache_mash(hash_cache, x, proof.taux, proof.mu, proof.t);
-  PERF_TIMER_STOP(VERIFY_line_60);
+  PERF_TIMER_STOP_BP(VERIFY_line_60);
 
   PERF_TIMER_START_BP(VERIFY_line_61);
   // PAPER LINE 61
@@ -1270,7 +1271,7 @@ bool bulletproof_VERIFY_v1(const Bulletproof &proof)
   rct::key zcu;
   sc_mul(zcu.bytes, zsq.bytes, z.bytes);
   sc_mulsub(k.bytes, zcu.bytes, ip12_v1.bytes, k.bytes);
-  PERF_TIMER_STOP(VERIFY_line_61);
+  PERF_TIMER_STOP_BP(VERIFY_line_61);
 
   PERF_TIMER_START_BP(VERIFY_line_61rl);
   sc_muladd(tmp.bytes, z.bytes, ip1y.bytes, k.bytes);
@@ -1287,7 +1288,7 @@ bool bulletproof_VERIFY_v1(const Bulletproof &proof)
   sc_mul(xsq.bytes, x.bytes, x.bytes);
   tmp = rct::scalarmultKey(proof.T2, xsq);
   rct::addKeys(L61Right, L61Right, tmp);
-  PERF_TIMER_STOP(VERIFY_line_61rl);
+  PERF_TIMER_STOP_BP(VERIFY_line_61rl);
 
   if (!(L61Right == L61Left))
   {
@@ -1298,7 +1299,7 @@ bool bulletproof_VERIFY_v1(const Bulletproof &proof)
   PERF_TIMER_START_BP(VERIFY_line_62);
   // PAPER LINE 62
   rct::key P = rct::addKeys(proof.A, rct::scalarmultKey(proof.S, x));
-  PERF_TIMER_STOP(VERIFY_line_62);
+  PERF_TIMER_STOP_BP(VERIFY_line_62);
 
   // Compute the number of rounds for the inner product
   const size_t rounds = proof.L.size();
@@ -1312,7 +1313,7 @@ bool bulletproof_VERIFY_v1(const Bulletproof &proof)
   {
     w[i] = hash_cache_mash(hash_cache, proof.L[i], proof.R[i]);
   }
-  PERF_TIMER_STOP(VERIFY_line_21_22);
+  PERF_TIMER_STOP_BP(VERIFY_line_21_22);
 
   PERF_TIMER_START_BP(VERIFY_line_24_25);
   // Basically PAPER LINES 24-25
@@ -1326,7 +1327,7 @@ bool bulletproof_VERIFY_v1(const Bulletproof &proof)
   rct::keyV winv(rounds);
   for (size_t i = 0; i < rounds; ++i)
     winv[i] = invert_v1(w[i]);
-  PERF_TIMER_STOP(VERIFY_line_24_25_invert);
+  PERF_TIMER_STOP_BP(VERIFY_line_24_25_invert);
 
   for (size_t i = 0; i < N; ++i)
   {
@@ -1368,7 +1369,7 @@ bool bulletproof_VERIFY_v1(const Bulletproof &proof)
       sc_mul(ypow.bytes, ypow.bytes, y.bytes);
     }
   }
-  PERF_TIMER_STOP(VERIFY_line_24_25);
+  PERF_TIMER_STOP_BP(VERIFY_line_24_25);
 
   PERF_TIMER_START_BP(VERIFY_line_26);
   // PAPER LINE 26
@@ -1393,21 +1394,21 @@ bool bulletproof_VERIFY_v1(const Bulletproof &proof)
   }
   sc_mul(tmp.bytes, proof.t.bytes, x_ip.bytes);
   rct::addKeys(pprime, pprime, rct::scalarmultKey(rct::H, tmp));
-  PERF_TIMER_STOP(VERIFY_line_26);
+  PERF_TIMER_STOP_BP(VERIFY_line_26);
 
   PERF_TIMER_START_BP(VERIFY_step2_check);
   sc_mul(tmp.bytes, proof.a.bytes, proof.b.bytes);
   sc_mul(tmp.bytes, tmp.bytes, x_ip.bytes);
   tmp = rct::scalarmultKey(rct::H, tmp);
   rct::addKeys(tmp, tmp, inner_prod);
-  PERF_TIMER_STOP(VERIFY_step2_check);
+  PERF_TIMER_STOP_BP(VERIFY_step2_check);
   if (!(pprime == tmp))
   {
     MERROR("Verification failure at step 2");
     return false;
   }
 
-  PERF_TIMER_STOP(VERIFY);
+  PERF_TIMER_STOP_BP(VERIFY);
   return true;
 }
 
@@ -1435,6 +1436,7 @@ bool bulletproof_VERIFY_v2(const std::vector<const Bulletproof*> &proofs)
   size_t inv_offset = 0;
   std::vector<rct::key> to_invert;
   to_invert.reserve(11 * sizeof(proofs));
+  size_t max_logM = 0;
   for (const Bulletproof *p: proofs)
   {
     const Bulletproof &proof = *p;
@@ -1471,6 +1473,7 @@ bool bulletproof_VERIFY_v2(const std::vector<const Bulletproof*> &proofs)
     size_t M;
     for (pd.logM = 0; (M = 1<<pd.logM) <= maxM && M < proof.V.size(); ++pd.logM);
     CHECK_AND_ASSERT_MES(proof.L.size() == 6+pd.logM, false, "Proof is not the expected size");
+    max_logM = std::max(pd.logM, max_logM);
 
     const size_t rounds = pd.logM+logN;
     CHECK_AND_ASSERT_MES(rounds > 0, false, "Zero rounds");
@@ -1498,7 +1501,7 @@ bool bulletproof_VERIFY_v2(const std::vector<const Bulletproof*> &proofs)
   rct::key tmp;
 
   std::vector<MultiexpData> multiexp_data;
-  multiexp_data.reserve(nV + (2 * (10/*logM*/ + logN) + 4) * proofs.size() + 2 * maxMN);
+  multiexp_data.reserve(nV + (2 * (max_logM + logN) + 4) * proofs.size() + 2 * maxMN);
   multiexp_data.resize(2 * maxMN);
 
   PERF_TIMER_START_BP(VERIFY_line_24_25_invert);
@@ -1511,6 +1514,8 @@ bool bulletproof_VERIFY_v2(const std::vector<const Bulletproof*> &proofs)
   rct::keyV m_z4(maxMN, rct::zero()), m_z5(maxMN, rct::zero());
   rct::key m_y0 = rct::zero(), y1 = rct::zero();
   int proof_data_index = 0;
+  rct::keyV w_cache;
+  rct::keyV proof8_V, proof8_L, proof8_R;
   for (const Bulletproof *p: proofs)
   {
     const Bulletproof &proof = *p;
@@ -1523,9 +1528,9 @@ bool bulletproof_VERIFY_v2(const std::vector<const Bulletproof*> &proofs)
     const rct::key weight_z = rct::skGen();
 
     // pre-multiply some points by 8
-    rct::keyV proof8_V = proof.V; for (rct::key &k: proof8_V) k = rct::scalarmult8(k);
-    rct::keyV proof8_L = proof.L; for (rct::key &k: proof8_L) k = rct::scalarmult8(k);
-    rct::keyV proof8_R = proof.R; for (rct::key &k: proof8_R) k = rct::scalarmult8(k);
+    proof8_V.resize(proof.V.size()); for (size_t i = 0; i < proof.V.size(); ++i) proof8_V[i] = rct::scalarmult8(proof.V[i]);
+    proof8_L.resize(proof.L.size()); for (size_t i = 0; i < proof.L.size(); ++i) proof8_L[i] = rct::scalarmult8(proof.L[i]);
+    proof8_R.resize(proof.R.size()); for (size_t i = 0; i < proof.R.size(); ++i) proof8_R[i] = rct::scalarmult8(proof.R[i]);
     rct::key proof8_T1 = rct::scalarmult8(proof.T1);
     rct::key proof8_T2 = rct::scalarmult8(proof.T2);
     rct::key proof8_S = rct::scalarmult8(proof.S);
@@ -1586,7 +1591,7 @@ bool bulletproof_VERIFY_v2(const std::vector<const Bulletproof*> &proofs)
 
     // precalc
     PERF_TIMER_START_BP(VERIFY_line_24_25_precalc);
-    rct::keyV w_cache(1<<rounds);
+    w_cache.resize(1<<rounds);
     w_cache[0] = winv[0];
     w_cache[1] = pd.w[0];
     for (size_t j = 1; j < rounds; ++j)

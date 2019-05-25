@@ -195,7 +195,6 @@ bool t_daemon::run(bool interactive)
       MGINFO("Public RPC port " << public_rpc_port << " will be advertised to other peers over P2P");
       mp_internals->p2p.get().set_rpc_port(public_rpc_port);
     }
-
     
     mp_internals->p2p.run(); // blocks until p2p goes down
 

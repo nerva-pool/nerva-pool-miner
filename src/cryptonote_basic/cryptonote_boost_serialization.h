@@ -1,3 +1,4 @@
+// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
@@ -292,7 +293,9 @@ namespace boost
         x.type != rct::RCTTypeBulletproof1Full && x.type != rct::RCTTypeBulletproof1Simple && 
         x.type != rct::RCTTypeBulletproof2)
       throw boost::archive::archive_exception(boost::archive::archive_exception::other_exception, "Unsupported rct type");
-    if (x.type == rct::RCTTypeSimple)
+    // a & x.message; message is not serialized, as it can be reconstructed from the tx data
+    // a & x.mixRing; mixRing is not serialized, as it can be reconstructed from the offsets
+    if (x.type == rct::RCTTypeSimple) // moved to prunable with bulletproofs
       a & x.pseudoOuts;
     a & x.ecdhInfo;
     serializeOutPk(a, x.outPk, ver);
@@ -320,6 +323,8 @@ namespace boost
         x.type != rct::RCTTypeBulletproof1Full && x.type != rct::RCTTypeBulletproof1Simple && 
         x.type != rct::RCTTypeBulletproof2)
       throw boost::archive::archive_exception(boost::archive::archive_exception::other_exception, "Unsupported rct type");
+    // a & x.message; message is not serialized, as it can be reconstructed from the tx data
+    // a & x.mixRing; mixRing is not serialized, as it can be reconstructed from the offsets
     if (x.type == rct::RCTTypeSimple)
       a & x.pseudoOuts;
     a & x.ecdhInfo;

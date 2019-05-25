@@ -15,7 +15,7 @@
 #define ROTL64(x, y) (((x) << (y)) | ((x) >> (64 - (y))))
 #endif
 
-// compute a keccak hash (md) of given byte length from "in"
+// SHA3 Algorithm context.
 typedef struct KECCAK_CTX
 {
   // 1600 bits algorithm hashing state
@@ -25,6 +25,8 @@ typedef struct KECCAK_CTX
   // count of bytes in the message[] buffer
   size_t rest;
 } KECCAK_CTX;
+
+// compute a keccak hash (md) of given byte length from "in"
 void keccak(const uint8_t *in, size_t inlen, uint8_t *md, int mdlen);
 
 // update the state

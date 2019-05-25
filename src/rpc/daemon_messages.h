@@ -426,6 +426,18 @@ BEGIN_RPC_MESSAGE_CLASS(GetPerKBFeeEstimate);
   END_RPC_MESSAGE_RESPONSE;
 END_RPC_MESSAGE_CLASS;
 
+BEGIN_RPC_MESSAGE_CLASS(GetOutputDistribution);
+  BEGIN_RPC_MESSAGE_REQUEST;
+    RPC_MESSAGE_MEMBER(std::vector<uint64_t>, amounts);
+    RPC_MESSAGE_MEMBER(uint64_t, from_height);
+    RPC_MESSAGE_MEMBER(uint64_t, to_height);
+    RPC_MESSAGE_MEMBER(bool, cumulative);
+  END_RPC_MESSAGE_REQUEST;
+  BEGIN_RPC_MESSAGE_RESPONSE;
+    RPC_MESSAGE_MEMBER(std::vector<output_distribution>, distributions);
+  END_RPC_MESSAGE_RESPONSE;
+END_RPC_MESSAGE_CLASS;
+
 }  // namespace rpc
 
 }  // namespace cryptonote

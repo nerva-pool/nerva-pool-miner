@@ -1,3 +1,4 @@
+// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
@@ -101,6 +102,8 @@ namespace nodetool
   // hides boost::future and chrono stuff from mondo template file
   boost::optional<boost::asio::ip::tcp::socket>
   socks_connect_internal(const std::atomic<bool>& stop_signal, boost::asio::io_service& service, const boost::asio::ip::tcp::endpoint& proxy, const epee::net_utils::network_address& remote);
+
+
   template<class base_type>
   struct p2p_connection_context_t: base_type //t_payload_net_handler::connection_context //public net_utils::connection_context_base
   {
@@ -124,6 +127,7 @@ namespace nodetool
 
     typedef COMMAND_HANDSHAKE_T<typename t_payload_net_handler::payload_type> COMMAND_HANDSHAKE;
     typedef COMMAND_TIMED_SYNC_T<typename t_payload_net_handler::payload_type> COMMAND_TIMED_SYNC;
+
     typedef epee::net_utils::boosted_tcp_server<epee::levin::async_protocol_handler<p2p_connection_context>> net_server;
 
     struct network_zone;
@@ -207,18 +211,18 @@ namespace nodetool
     typedef t_payload_net_handler payload_net_handler;
 
     node_server(t_payload_net_handler& payload_handler)
-      :m_payload_handler(payload_handler),
+      : m_payload_handler(payload_handler),
         m_external_port(0),
         m_rpc_port(0),
-    m_allow_local_ip(false),
-    m_hide_my_port(false),
-    m_no_igd(false),
-    m_offline(false),
-    m_save_graph(false),
-    is_closing(false),
-    m_minimum_version(0),
-    m_min_version_override(false),
-    m_network_id()
+        m_allow_local_ip(false),
+        m_hide_my_port(false),
+        m_no_igd(false),
+        m_offline(false),
+        m_save_graph(false),
+        is_closing(false),
+        m_minimum_version(0),
+        m_min_version_override(false),
+        m_network_id()
     {}
     virtual ~node_server();
 
@@ -235,6 +239,8 @@ namespace nodetool
     // debug functions
     bool log_peerlist();
     bool log_connections();
+
+    // These functions only return information for the "public" zone
     virtual uint64_t get_public_connections_count();
     size_t get_public_outgoing_connections_count();
     size_t get_public_white_peers_count();
@@ -389,6 +395,7 @@ namespace nodetool
     //debug functions
     std::string print_connections_container();
 
+
   public:
 
     void set_save_graph(bool save_graph)
@@ -401,6 +408,7 @@ namespace nodetool
     {
       m_rpc_port = rpc_port;
     }
+
   private:
     std::string m_config_folder;
 
@@ -440,6 +448,8 @@ namespace nodetool
     std::vector<nodetool::peerlist_entry> m_command_line_peers;
     uint64_t m_peer_livetime;
     //keep connections to initiate some interactions
+
+
     static boost::optional<p2p_connection_context> public_connect(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
     static boost::optional<p2p_connection_context> socks_connect(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
 
@@ -450,6 +460,7 @@ namespace nodetool
     after configuration and before destruction, lock safety would need to be
     added. `std::map::operator[]` WILL insert! */
     std::map<epee::net_utils::zone, network_zone> m_network_zones;
+
 
     std::map<epee::net_utils::network_address, time_t> m_conn_fails_cache;
     epee::critical_section m_conn_fails_cache_lock;

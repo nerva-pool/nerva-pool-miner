@@ -34,11 +34,18 @@
 #include "ringct/rctTypes.h"
 #include "cryptonote_config.h"
 
-#define WITH_DEVICE_LEDGER 1
+
+#ifndef USE_DEVICE_LEDGER
+#define USE_DEVICE_LEDGER 1
+#endif
 
 #if !defined(HAVE_HIDAPI) 
-#undef  WITH_DEVICE_LEDGER
-#define WITH_DEVICE_LEDGER 0
+#undef  USE_DEVICE_LEDGER
+#define USE_DEVICE_LEDGER 0
+#endif
+
+#if USE_DEVICE_LEDGER
+#define WITH_DEVICE_LEDGER
 #endif
 
 // forward declaration needed because this header is included by headers in libcryptonote_basic which depends on libdevice
@@ -192,6 +199,7 @@ namespace hw {
         virtual void generate_tx_proof(const crypto::hash &prefix_hash, 
                                        const crypto::public_key &R, const crypto::public_key &A, const boost::optional<crypto::public_key> &B, const crypto::public_key &D, const crypto::secret_key &r, 
                                        crypto::signature &sig) = 0;
+
         virtual bool  open_tx(crypto::secret_key &tx_key) = 0;
 
         virtual bool  encrypt_payment_id(crypto::hash8 &payment_id, const crypto::public_key &public_key, const crypto::secret_key &secret_key) = 0;

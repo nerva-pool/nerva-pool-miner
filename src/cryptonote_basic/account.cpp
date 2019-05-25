@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -45,6 +45,8 @@ extern "C"
 #define MONERO_DEFAULT_LOG_CATEGORY "account"
 
 #define KEYS_ENCRYPTION_SALT 'k'
+
+
 using namespace std;
 
 DISABLE_VS_WARNINGS(4244 4345)
@@ -56,7 +58,6 @@ DISABLE_VS_WARNINGS(4244 4345)
   hw::device& account_keys::get_device() const  {
     return *m_device;
   }
-  
   //-----------------------------------------------------------------
   void account_keys::set_device( hw::device &hwdev)  {
     m_device = &hwdev;

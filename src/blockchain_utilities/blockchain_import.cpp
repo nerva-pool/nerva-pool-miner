@@ -1,5 +1,5 @@
-// Copyright (c) 2017-2018, The Masari Project
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2018-2019, The NERVA Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -34,9 +34,11 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
+#include <unistd.h>
 #include "misc_log_ex.h"
 #include "bootstrap_file.h"
 #include "bootstrap_serialization.h"
+#include "blocks/blocks.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "serialization/binary_utils.h" // dump_binary(), parse_binary()
 #include "serialization/json_utils.h" // dump_json()
@@ -71,23 +73,12 @@ uint64_t db_batch_size_verify = 5000;
 std::string refresh_string = "\r                                    \r";
 }
 
+
+
 namespace po = boost::program_options;
 
 using namespace cryptonote;
 using namespace epee;
-
-// db_mode: safe, fast, fastest
-int get_db_flags_from_mode(const std::string& db_mode)
-{
-  int db_flags = 0;
-  if (db_mode == "safe")
-    db_flags = DBF_SAFE;
-  else if (db_mode == "fast")
-    db_flags = DBF_FAST;
-  else if (db_mode == "fastest")
-    db_flags = DBF_FASTEST;
-  return db_flags;
-}
 
 int pop_blocks(cryptonote::core& core, int num_blocks)
 {
@@ -151,8 +142,20 @@ int check_flush(cryptonote::core &core, std::vector<block_complete_entry> &block
   }
   core.prevalidate_block_hashes(core.get_blockchain_storage().get_db().height(), hashes);
 
-  core.prepare_handle_incoming_blocks(blocks);
+  std::vector<block> pblocks;
+  if (!core.prepare_handle_incoming_blocks(blocks, pblocks))
+  {
+    MERROR("Failed to prepare to add blocks");
+    return 1;
+  }
+  if (!pblocks.empty() && pblocks.size() != blocks.size())
+  {
+    MERROR("Unexpected parsed blocks size");
+    core.cleanup_handle_incoming_blocks();
+    return 1;
+  }
 
+  size_t blockidx = 0;
   for(const block_complete_entry& block_entry: blocks)
   {
     // process transactions
@@ -173,7 +176,7 @@ int check_flush(cryptonote::core &core, std::vector<block_complete_entry> &block
 
     block_verification_context bvc = boost::value_initialized<block_verification_context>();
 
-    core.handle_incoming_block(block_entry.block, bvc, false); // <--- process block
+    core.handle_incoming_block(block_entry.block, pblocks.empty() ? NULL : &pblocks[blockidx++], bvc, false); // <--- process block
 
     if(bvc.m_verifivation_failed)
     {
@@ -244,7 +247,8 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
   }
 
   // 4 byte magic + (currently) 1024 byte header structures
-  bootstrap.seek_to_first_chunk(import_file);
+  uint8_t major_version, minor_version;
+  bootstrap.seek_to_first_chunk(import_file, major_version, minor_version);
 
   std::string str1;
   char buffer1[1024];
@@ -354,7 +358,7 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
     {
       std::cout << refresh_string << "block " << h-1
         << " / " << block_stop
-        << std::flush;
+        << "\r" << std::flush;
       std::cout << ENDL << ENDL;
       MINFO("Specified block number reached - stopping.  block: " << h-1 << "  total blocks: " << h);
       quit = 1;
@@ -390,7 +394,7 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
         {
           std::cout << refresh_string << "block " << h-1
             << " / " << block_stop
-            << std::flush;
+            << "\r" << std::flush;
         }
 
         if (opt_verify)
@@ -413,7 +417,7 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
         }
         else
         {
-          std::vector<transaction> txs;
+          std::vector<std::pair<transaction, blobdata>> txs;
           std::vector<transaction> archived_txs;
 
           archived_txs = bp.txs;
@@ -430,7 +434,7 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
             // because add_block() calls
             // add_transaction(blk_hash, blk.miner_tx) first, and
             // then a for loop for the transactions in txs.
-            txs.push_back(tx);
+            txs.push_back(std::make_pair(tx, tx_to_blob(tx)));
           }
 
           size_t block_size;
@@ -443,7 +447,7 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
 
           try
           {
-            core.get_blockchain_storage().get_db().add_block(b, block_size, cumulative_difficulty, coins_generated, txs);
+            core.get_blockchain_storage().get_db().add_block(std::make_pair(b, block_to_blob(b)), block_size, cumulative_difficulty, coins_generated, txs);
           }
           catch (const std::exception& e)
           {
@@ -655,9 +659,6 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  std::string db_type;
-  int db_flags = 0;
-
   MINFO("verify:  " << std::boolalpha << opt_verify << std::noboolalpha);
   if (opt_batch)
   {
@@ -681,7 +682,12 @@ int main(int argc, char* argv[])
   {
 
   core.disable_dns_checkpoints(true);
-  if (!core.init(vm, NULL))
+#if defined(PER_BLOCK_CHECKPOINT)
+  const GetCheckpointsCallback& get_checkpoints = blocks::GetCheckpointsData;
+#else
+  const GetCheckpointsCallback& get_checkpoints = nullptr;
+#endif
+  if (!core.init(vm, nullptr, get_checkpoints))
   {
     std::cerr << "Failed to initialize core" << ENDL;
     return 1;

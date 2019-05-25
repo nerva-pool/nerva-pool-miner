@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
@@ -1115,4 +1116,5 @@ std::string get_nix_version_display_string()
     const std::uint64_t divisor = size->bytes / 1024;
     return (boost::format(size->format) % (double(bytes) / divisor)).str();
   }
+
 }

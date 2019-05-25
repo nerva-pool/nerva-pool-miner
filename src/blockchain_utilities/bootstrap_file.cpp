@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -304,7 +304,7 @@ bool BootstrapFile::store_blockchain_raw(Blockchain* _blockchain_storage, tx_mem
     }
     if (m_cur_height % progress_interval == 0) {
       std::cout << refresh_string;
-      std::cout << "block " << m_cur_height << "/" << block_stop << std::flush;
+      std::cout << "block " << m_cur_height << "/" << block_stop << "\r" << std::flush;
     }
   }
   // NOTE: use of NUM_BLOCKS_PER_CHUNK is a placeholder in case multi-block chunks are later supported.
@@ -323,7 +323,7 @@ bool BootstrapFile::store_blockchain_raw(Blockchain* _blockchain_storage, tx_mem
   return BootstrapFile::close();
 }
 
-uint64_t BootstrapFile::seek_to_first_chunk(std::ifstream& import_file)
+uint64_t BootstrapFile::seek_to_first_chunk(std::ifstream& import_file, uint8_t &major_version, uint8_t &minor_version)
 {
   uint32_t file_magic;
 
@@ -371,6 +371,8 @@ uint64_t BootstrapFile::seek_to_first_chunk(std::ifstream& import_file)
   uint64_t full_header_size = sizeof(file_magic) + bfi.header_size;
   import_file.seekg(full_header_size);
 
+  major_version = bfi.major_version;
+  minor_version = bfi.minor_version;
   return full_header_size;
 }
 
@@ -400,18 +402,18 @@ uint64_t BootstrapFile::count_bytes(std::ifstream& import_file, uint64_t blocks,
     {
       std::cout << refresh_string;
       MWARNING("WARNING: chunk_size " << chunk_size << " > BUFFER_SIZE " << BUFFER_SIZE
-          << "  height: " << h-1);
+          << "  height: " << h-1 << ", offset " << bytes_read);
       throw std::runtime_error("Aborting: chunk size exceeds buffer size");
     }
     if (chunk_size > CHUNK_SIZE_WARNING_THRESHOLD)
     {
       std::cout << refresh_string;
       MDEBUG("NOTE: chunk_size " << chunk_size << " > " << CHUNK_SIZE_WARNING_THRESHOLD << " << height: "
-          << h-1);
+          << h-1 << ", offset " << bytes_read);
     }
     else if (chunk_size <= 0) {
       std::cout << refresh_string;
-      MDEBUG("ERROR: chunk_size " << chunk_size << " <= 0" << "  height: " << h-1);
+      MDEBUG("ERROR: chunk_size " << chunk_size << " <= 0" << "  height: " << h-1 << ", offset " << bytes_read);
       throw std::runtime_error("Aborting");
     }
     // skip to next expected block size value
@@ -461,7 +463,8 @@ uint64_t BootstrapFile::count_blocks(const std::string& import_file_path, std::s
   }
 
   uint64_t full_header_size; // 4 byte magic + length of header structures
-  full_header_size = seek_to_first_chunk(import_file);
+  uint8_t major_version, minor_version;
+  full_header_size = seek_to_first_chunk(import_file, major_version, minor_version);
 
   MINFO("Scanning blockchain from bootstrap file...");
   bool quit = false;
@@ -479,7 +482,7 @@ uint64_t BootstrapFile::count_blocks(const std::string& import_file_path, std::s
     bytes_read += count_bytes(import_file, progress_interval, blocks, quit);
     h += blocks;
     std::cout << "\r" << "block height: " << h-1 <<
-      "    " <<
+      "    \r" <<
       std::flush;
 
     // std::cout << refresh_string;

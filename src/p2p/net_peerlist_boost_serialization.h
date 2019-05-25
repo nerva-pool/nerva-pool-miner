@@ -60,6 +60,7 @@ namespace boost
     inline void serialize(Archive &a, epee::net_utils::network_address& na, const ver_type ver)
     {
       static constexpr const typename Archive::is_saving is_saving{};
+
       uint8_t type;
       if (is_saving)
         type = uint8_t(na.get_type_id());
@@ -68,7 +69,7 @@ namespace boost
       {
         case epee::net_utils::ipv4_network_address::get_type_id():
           do_serialize<epee::net_utils::ipv4_network_address>(is_saving, a, na);
-	  	  break; 
+          break;
         case net::tor_address::get_type_id():
           do_serialize<net::tor_address>(is_saving, a, na);
           break;

@@ -1,4 +1,5 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2019, The Nerva Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -35,6 +36,7 @@
 #include <boost/optional.hpp>
 #include <type_traits>
 #include <vector>
+#include <random>
 
 #include "common/pod-class.h"
 #include "memwipe.h"
