@@ -30,6 +30,7 @@
 // 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
+#include <memory>
 #include <boost/preprocessor/stringize.hpp>
 #include "include_base_utils.h"
 #include "string_tools.h"
@@ -1474,6 +1475,9 @@ namespace cryptonote
     submit_req.push_back(boost::value_initialized<std::string>());
     res.height = m_core.get_blockchain_storage().get_current_blockchain_height();
 
+    crypto::cn_hash_context_t *hash_context = crypto::cn_hash_context_create();
+    const std::unique_ptr<crypto::cn_hash_context_t, decltype(&crypto::cn_hash_context_free)> hash_context_ptr(hash_context, &crypto::cn_hash_context_free);
+    Blockchain& bc = m_core.get_blockchain_storage();
     for(size_t i = 0; i < req.amount_of_blocks; i++)
     {
       bool r = on_getblocktemplate(template_req, template_res, error_resp, ctx);
@@ -1497,7 +1501,7 @@ namespace cryptonote
         return false;
       }
       b.nonce = req.starting_nonce;
-      miner::find_nonce_for_given_block(b, template_res.difficulty, template_res.height);
+      miner::find_nonce_for_given_block(hash_context, &bc, b, template_res.difficulty, template_res.height);
 
       submit_req.front() = string_tools::buff_to_hex_nodelimer(block_to_blob(b));
       r = on_submitblock(submit_req, submit_res, error_resp, ctx);

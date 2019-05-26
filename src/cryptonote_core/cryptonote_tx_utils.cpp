@@ -39,8 +39,11 @@ using namespace epee;
 #include "common/apply_permutation.h"
 #include "cryptonote_tx_utils.h"
 #include "cryptonote_config.h"
+#include "blockchain_db/blockchain_db.h"
 #include "cryptonote_basic/miner.h"
+#include "cryptonote_basic/random_numbers.h"
 #include "cryptonote_basic/tx_extra.h"
+#include "cryptonote_core/blockchain.h"
 #include "crypto/crypto.h"
 #include "crypto/hash.h"
 #include "ringct/rctSigs.h"
@@ -620,9 +623,151 @@ namespace cryptonote
     bl.minor_version = CURRENT_BLOCK_MINOR_VERSION;
     bl.timestamp = 0;
     bl.nonce = config::GENESIS_NONCE;
-    miner::find_nonce_for_given_block(bl, 1, 0);
+    crypto::cn_hash_context_t *hash_context = crypto::cn_hash_context_create();
+    miner::find_nonce_for_given_block(hash_context, NULL, bl, 1, 0);
+    crypto::cn_hash_context_free(hash_context);
     bl.invalidate_hashes();
     return true;
   }
   //---------------------------------------------------------------
+  bool get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t height)
+  {
+    if (b.major_version < 7) {
+      blobdata bd = get_block_hashing_blob(b);
+      const int variant = b.major_version >= 5 ? 1 : 0;
+      const size_t base_iters = b.major_version >= 6 ? 0x40000 : 0x80000;
+      crypto::cn_slow_hash(context, bd.data(), bd.size(), res, variant, base_iters + ((height + 1) % 1024));
+      return true;
+    }
+    switch (b.major_version) {
+    case 7:
+      return get_block_longhash_v7_8(context, bc, b, res, height, 1);
+    case 8:
+      return get_block_longhash_v7_8(context, bc, b, res, height, 256);
+    case 9:
+      return get_block_longhash_v9(context, bc, b, res, height);
+    case 10:
+      return get_block_longhash_v10(context, bc, b, res, height);
+    case 11:
+    default:
+      return get_block_longhash_v11(context, bc, b, res, height);
+    }
+  }
+  //---------------------------------------------------------------
+
+  bool get_block_longhash_v11(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height)
+  {
+    // Guard against chain splits by only taking data from blocks with at least
+    // 256 ancestors.
+    assert(height > 257);
+    uint64_t stable_height = height - 256;
+    BlockchainDB& db = bc->get_db();
+
+    if (context->cached_height != height)
+    {
+      db.get_cna_v2_data(&context->random_values, stable_height, CN_SCRATCHPAD_MEMORY);
+      context->cached_height = height;
+    }
+
+    // Make the hashing context unique per nonce by seeding it with a hash
+    // of the hashing blob for a given nonce.
+    blobdata bd = get_block_hashing_blob(b);
+    crypto::hash h;
+    get_blob_hash(bd, h);
+
+    HC128_State rng_state;
+    HC128_Init(&rng_state, (unsigned char*)h.data, (unsigned char*)h.data+16);
+
+    db.get_cna_v5_data(context->salt, &rng_state, stable_height);
+
+    HC128_NextKeys(&rng_state);
+    size_t rng_key_idx = 0;
+    // xx: [4, 8]
+    const uint32_t xx = (uint32_t)4U + HC128_U32(&rng_state, &rng_key_idx, 5U);
+    // yy: [4, 8]
+    const uint32_t yy = (uint32_t)4U + HC128_U32(&rng_state, &rng_key_idx, 5U);
+    // init_size_blk: 2, 4, or 8  (2 << [0, 2])
+    const uint8_t init_size_blk = (uint8_t)2U << ((uint8_t)HC128_U32(&rng_state, &rng_key_idx, 3U));
+    // iters_divisor: [1, 64]
+    const uint32_t iters_divisor = (uint32_t)1U + HC128_U32(&rng_state, &rng_key_idx, 64U);
+    const uint32_t iters = ((height + 1) % iters_divisor);
+
+    crypto::cn_slow_hash_v11(context, bd.data(), bd.size(), res, iters, init_size_blk, xx, yy);
+
+    return true;
+  }
+
+  bool get_block_longhash_v10(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height)
+  {
+    const uint64_t ht = height - 256;
+    BlockchainDB& db = bc->get_db();
+
+    if (context->cached_height != height)
+    {
+      db.get_cna_v2_data(&context->random_values, ht, CN_SCRATCHPAD_MEMORY);
+      context->cached_height = height;
+    }
+
+    blobdata bd = get_block_hashing_blob(b);
+
+    uint32_t seed = b.nonce ^ height;
+    crypto::hash h;
+    get_blob_hash(bd, h);
+    for (int i = 0; i < 32; i += 4)
+      seed ^= *(uint32_t*)&h.data[i];
+
+    db.get_cna_v4_data(context->salt, ht, seed);
+
+    angrywasp::mersenne_twister mt(seed);
+
+    uint8_t init_blk_sizes[3];
+    for (size_t i = 0; i < 3; i++)
+      init_blk_sizes[i] = (2 << (mt.generate_uint() % 3));
+    const uint8_t init_blk_size = init_blk_sizes[seed % 3];
+
+    uint16_t xx = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
+    uint16_t yy = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
+    uint16_t zz = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
+    uint16_t ww = (uint16_t)(seed % mt.next(1, 10000));
+
+    crypto::cn_slow_hash_v10(context, bd.data(), bd.size(), res, ((height + 1) % 64), init_blk_size, xx, yy, zz, ww);
+
+    return true;
+  }
+
+  bool get_block_longhash_v9(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height)
+  {
+    const uint64_t ht = height - 256;
+    BlockchainDB& db = bc->get_db();
+
+    if (context->cached_height != height)
+    {
+      db.get_cna_v2_data(&context->random_values, ht, CN_SCRATCHPAD_MEMORY - 1);
+      context->cached_height = height;
+    }
+
+    db.get_cna_v3_data(context->salt, ht, b.nonce ^ (uint32_t)ht);
+
+    blobdata bd = get_block_hashing_blob(b);
+    crypto::cn_slow_hash_v9(context, bd.data(), bd.size(), res, 0x40000 + ((height + 1) % 64));
+
+    return true;
+  }
+
+  bool get_block_longhash_v7_8(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height, uint64_t data_offset)
+  {
+    BlockchainDB& db = bc->get_db();
+
+    if (context->cached_height != height)
+    {
+      db.get_cna_v2_data(&context->random_values, height - data_offset, CN_SCRATCHPAD_MEMORY - 1);
+      context->cached_height = height;
+    }
+
+    blobdata bd = get_block_hashing_blob(b);
+    crypto::cn_slow_hash_v7_8(context, bd.data(), bd.size(), res, 0x40000 + ((height + 1) % 64));
+
+    return true;
+  }
+
 }

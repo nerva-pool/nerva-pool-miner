@@ -791,6 +791,7 @@ public:
   virtual void block_rtxn_abort() const = 0;
 
   virtual void set_hard_fork(HardFork* hf);
+  virtual void set_expected_min_height(uint64_t height) = 0;
 
   // adds a block with the given metadata to the top of the blockchain, returns the new height
   /**
@@ -897,12 +898,10 @@ public:
    */
   virtual cryptonote::blobdata get_block_blob_from_height(const uint64_t& height) const = 0;
 
-  virtual void get_v3_data(char* salt, uint64_t height, uint32_t seed) const = 0;
-  virtual void get_v4_data(char* salt, uint64_t height, uint32_t seed) const = 0;
-  virtual void get_v5_data(HC128_State* rng_state, uint64_t height, char* out) const = 0;
-
-  virtual void build_cache(uint64_t height) const = 0;
-
+  virtual void get_cna_v2_data(crypto::cn_random_values_t *rv, uint64_t height, uint32_t seed) = 0;
+  virtual void get_cna_v3_data(char *out, uint64_t height, uint32_t seed) = 0;
+  virtual void get_cna_v4_data(char *out, uint64_t height, uint32_t seed)  = 0;
+  virtual void get_cna_v5_data(char *out, HC128_State *rng_state, uint64_t height) = 0;
 
   /**
    * @brief fetch a block by height

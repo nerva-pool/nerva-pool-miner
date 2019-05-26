@@ -72,37 +72,28 @@ namespace crypto {
     return h;
   }
 
-  inline void cn_slow_hash_v11(const void *data, size_t length, hash &hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy){
-    cn_slow_hash_v11(data, length, reinterpret_cast<char *>(&hash), iters, r, sp_bytes, init_size_blk, xx, yy);
+  inline void cn_slow_hash_v11(cn_hash_context_t *context, const void *data, size_t length, hash &hash, size_t iters, uint8_t init_size_blk, uint16_t xx, uint16_t yy) {
+    cn_slow_hash_v11(context, data, length, reinterpret_cast<char *>(&hash), iters, init_size_blk, xx, yy);
   }
 
-  inline void cn_slow_hash_v10(const void *data, size_t length, hash &hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww) {
-    cn_slow_hash_v10(data, length, reinterpret_cast<char *>(&hash), iters, r, sp_bytes, init_size_blk, xx, yy, zz, ww);
+  inline void cn_slow_hash_v10(cn_hash_context_t *context, const void *data, size_t length, hash &hash, size_t iters, uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww) {
+    cn_slow_hash_v10(context, data, length, reinterpret_cast<char *>(&hash), iters, init_size_blk, xx, yy, zz, ww);
   }
  
-  inline void cn_slow_hash_v9(const void *data, size_t length, hash &hash, size_t iters, random_values *r, char *sp_bytes) {
-    cn_slow_hash_v9(data, length, reinterpret_cast<char *>(&hash), iters, r, sp_bytes);
+  inline void cn_slow_hash_v9(cn_hash_context_t *context, const void *data, size_t length, hash &hash, size_t iters) {
+    cn_slow_hash_v9(context, data, length, reinterpret_cast<char *>(&hash), iters);
   }
 
-  inline void cn_slow_hash_v7_8(const void *data, size_t length, hash &hash, size_t iters, random_values *r) {
-    cn_slow_hash_v7_8(data, length, reinterpret_cast<char *>(&hash), iters, r);
+  inline void cn_slow_hash_v7_8(cn_hash_context_t *context, const void *data, size_t length, hash &hash, size_t iters) {
+    cn_slow_hash_v7_8(context, data, length, reinterpret_cast<char *>(&hash), iters);
   }
 
-  inline void cn_slow_hash(const void *data, std::size_t length, hash &hash, int variant = 0, size_t iters = 0x40000) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), variant, 0, iters);
-  }
-
-  inline void cn_slow_hash_prehashed(const void *data, std::size_t length, hash &hash, int variant = 0, size_t iters = 0x40000) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), variant, 1, iters);
+  inline void cn_slow_hash(cn_hash_context_t *context, const void *data, std::size_t length, hash &hash, int variant = 0, size_t iters = 0x40000) {
+    cn_slow_hash(context, data, length, reinterpret_cast<char *>(&hash), variant, 0, iters);
   }
 
   inline void tree_hash(const hash *hashes, std::size_t count, hash &root_hash) {
     tree_hash(reinterpret_cast<const char (*)[HASH_SIZE]>(hashes), count, reinterpret_cast<char *>(&root_hash));
-  }
-
-  inline char* get_salt(void)
-  {
-    return get_salt_state();
   }
 
   inline std::ostream &operator <<(std::ostream &o, const crypto::hash &v) {

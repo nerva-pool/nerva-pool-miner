@@ -36,6 +36,8 @@
 #include <boost/algorithm/string.hpp>
 #include "misc_language.h"
 #include "syncobj.h"
+#include "crypto/hash.h"
+#include "cryptonote_core/cryptonote_tx_utils.h"
 #include "cryptonote_basic_impl.h"
 #include "cryptonote_format_utils.h"
 #include "file_io_utils.h"
@@ -82,8 +84,6 @@ using namespace epee;
 #include "miner.h"
 
 
-extern "C" void slow_hash_allocate_state();
-extern "C" void slow_hash_free_state();
 namespace cryptonote
 {
 
@@ -100,8 +100,8 @@ namespace cryptonote
   }
 
 
-  miner::miner(cryptonote::Blockchain* bc, i_miner_handler* phandler):m_stop(1),
-    m_blockchain(bc),
+  miner::miner(i_miner_handler* phandler, Blockchain* pbc):m_stop(1),
+    m_blockchain(pbc),
     m_template(boost::value_initialized<block>()),
     m_template_no(0),
     m_diffic(0),
@@ -468,12 +468,12 @@ namespace cryptonote
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::find_nonce_for_given_block(block& bl, const difficulty_type& diffic, uint64_t height)
+  bool miner::find_nonce_for_given_block(crypto::cn_hash_context_t *context, Blockchain *bc, block& bl, const difficulty_type& diffic, uint64_t height)
   {
     for(; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++)
     {
       crypto::hash h;
-      get_block_longhash(bl, h, height, NULL);
+      get_block_longhash(context, bc, bl, h, height);
 
       if(check_hash(h, diffic))
       {
@@ -528,8 +528,13 @@ namespace cryptonote
     uint64_t height = 0;
     difficulty_type local_diff = 0;
     uint32_t local_template_ver = 0;
+    crypto::cn_hash_context_t *hash_context = crypto::cn_hash_context_create();
+    if (hash_context == NULL)
+    {
+      MERROR("Unable to allocate hash context, terminating miner thread");
+      return false;
+    }
     block b;
-    slow_hash_allocate_state();
     ++m_threads_active;
     while(!m_stop)
     {
@@ -572,7 +577,7 @@ namespace cryptonote
 
       b.nonce = nonce;
       crypto::hash h;
-      get_block_longhash(b, h, height, m_blockchain);
+      get_block_longhash(hash_context, m_blockchain, b, h, height);
 
       if(check_hash(h, local_diff))
       {
@@ -594,7 +599,7 @@ namespace cryptonote
       ++m_hashes;
       ++m_total_hashes;
     }
-    slow_hash_free_state();
+    crypto::cn_hash_context_free(hash_context);
     MGINFO("Miner thread stopped ["<< th_local_index << "]");
     --m_threads_active;
     return true;

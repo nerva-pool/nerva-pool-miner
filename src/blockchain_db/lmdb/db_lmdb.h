@@ -29,7 +29,9 @@
 #pragma once
 
 #include <atomic>
+#include <vector>
 
+#include "syncobj.h"
 #include "blockchain_db/blockchain_db.h"
 #include "cryptonote_basic/blobdatatype.h" // for type blobdata
 #include "ringct/rctTypes.h"
@@ -41,6 +43,20 @@
 
 namespace cryptonote
 {
+
+typedef struct mdb_block_info_1
+{
+  uint64_t bi_height;
+  uint64_t bi_timestamp;
+  uint64_t bi_coins;
+  uint64_t bi_size;
+  difficulty_type bi_diff;
+  crypto::hash bi_hash;
+  // TODO: bi_weight is unused but eventually supplants bi_size
+  difficulty_type bi_weight;
+} mdb_block_info_1;
+
+typedef mdb_block_info_1 mdb_block_info;
 
 typedef struct txindex {
     crypto::hash key;
@@ -187,6 +203,8 @@ public:
 
   virtual void unlock();
 
+  virtual void set_expected_min_height(uint64_t height);
+
   virtual bool block_exists(const crypto::hash& h, uint64_t *height = NULL) const;
 
   virtual uint64_t get_block_height(const crypto::hash& h) const;
@@ -197,11 +215,10 @@ public:
 
   virtual cryptonote::blobdata get_block_blob_from_height(const uint64_t& height) const;
 
-  virtual void get_v3_data(char* salt, uint64_t height, uint32_t seed) const;
-  virtual void get_v4_data(char* salt, uint64_t height, uint32_t seed) const;
-  virtual void get_v5_data(HC128_State* rng_state, uint64_t height, char* out) const;
-
-  virtual void build_cache(uint64_t height) const;
+  virtual void get_cna_v2_data(crypto::cn_random_values_t *rv, uint64_t height, uint32_t seed);
+  virtual void get_cna_v3_data(char *out, uint64_t height, uint32_t seed);
+  virtual void get_cna_v4_data(char *out, uint64_t height, uint32_t seed);
+  virtual void get_cna_v5_data(char *out, HC128_State *rng_state, uint64_t height);
 
   virtual std::vector<uint64_t> get_block_cumulative_rct_outputs(const std::vector<uint64_t> &heights) const;
 
@@ -360,6 +377,8 @@ private:
 
   uint64_t num_outputs() const;
 
+  virtual void build_block_cache(uint64_t height);
+
   // Hard fork
   virtual void set_hard_fork_version(uint64_t height, uint8_t version);
   virtual uint8_t get_hard_fork_version(uint64_t height) const;
@@ -416,6 +435,11 @@ private:
 
   mdb_txn_cursors m_wcursors;
   mutable boost::thread_specific_ptr<mdb_threadinfo> m_tinfo;
+
+  std::vector<mdb_block_info> m_block_cache;
+  std::atomic<uint64_t> m_block_cache_height;
+  mutable epee::critical_section m_block_cache_lock;
+
 
 #if defined(__arm__)
   // force a value so it can compile with 32-bit ARM

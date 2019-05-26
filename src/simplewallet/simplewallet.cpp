@@ -3478,8 +3478,10 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
       {
         if (m_restore_multisig_wallet)
         {
+          crypto::cn_hash_context_t *hash_context = crypto::cn_hash_context_create();
           crypto::secret_key key;
-          crypto::cn_slow_hash(seed_pass.data(), seed_pass.size(), (crypto::hash&)key);
+          crypto::cn_slow_hash(hash_context, seed_pass.data(), seed_pass.size(), (crypto::hash&)key);
+          crypto::cn_hash_context_free(hash_context);
           sc_reduce32((unsigned char*)key.data);
           multisig_keys = m_wallet->decrypt<epee::wipeable_string>(std::string(multisig_keys.data(), multisig_keys.size()), key, true);
         }

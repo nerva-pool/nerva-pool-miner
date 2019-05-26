@@ -35,8 +35,16 @@
 #include <boost/serialization/utility.hpp>
 #include "ringct/rctOps.h"
 
+namespace crypto
+{
+  struct cn_hash_context;
+  typedef struct cn_hash_context cn_hash_context_t;
+}
+
 namespace cryptonote
 {
+  class Blockchain;
+
   //---------------------------------------------------------------
   bool construct_miner_tx(size_t height, size_t median_size, uint64_t already_generated_coins, size_t current_block_size, uint64_t fee, const account_public_address &miner_address, 
     transaction& tx, const blobdata& extra_nonce = blobdata(), size_t max_outs = 999, uint8_t hard_fork_version = 1);
@@ -107,6 +115,11 @@ namespace cryptonote
                                       crypto::public_key &out_eph_public_key) ;
 
   bool generate_genesis_block(block& bl);
+  bool get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t height);
+  bool get_block_longhash_v11(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height);
+  bool get_block_longhash_v10(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height);
+  bool get_block_longhash_v9(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height);
+  bool get_block_longhash_v7_8(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height, uint64_t data_offset);
 }
 
 namespace boost

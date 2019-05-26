@@ -42,6 +42,12 @@
 #include <windows.h>
 #endif
 
+namespace crypto
+{
+  struct cn_hash_context;
+  typedef struct cn_hash_context cn_hash_context_t;
+}
+
 namespace cryptonote
 {
   class Blockchain;
@@ -60,7 +66,7 @@ namespace cryptonote
   class miner
   {
   public: 
-    miner(cryptonote::Blockchain* bc, i_miner_handler* phandler);
+    miner(i_miner_handler* phandler, Blockchain* pbc);
     ~miner();
     bool init(const boost::program_options::variables_map& vm, network_type nettype);
     static void init_options(boost::program_options::options_description& desc);
@@ -76,7 +82,7 @@ namespace cryptonote
     bool on_idle();
     void on_synchronized();
     //synchronous analog (for fast calls)
-    static bool find_nonce_for_given_block(block& bl, const difficulty_type& diffic, uint64_t height);
+    static bool find_nonce_for_given_block(crypto::cn_hash_context_t *context, Blockchain *bc, block& bl, const difficulty_type& diffic, uint64_t height);
     void pause();
     void resume();
     void do_print_hashrate(bool do_hr);
