@@ -1164,12 +1164,12 @@ namespace rct {
       // we can get deep throws from ge_frombytes_vartime if input isn't valid
       catch (const std::exception &e)
       {
-        LOG_PRINT_L1("Error in verRct: " << e.what());
+        LOG_PRINT_L1("Error in verRctSemanticsSimple_v1: " << e.what());
         return false;
       }
       catch (...)
       {
-        LOG_PRINT_L1("Error in verRct, but not an actual exception");
+        LOG_PRINT_L1("Error in verRctSemanticsSimple_v1, but not an actual exception");
         return false;
       }
     }
@@ -1316,7 +1316,7 @@ namespace rct {
 
         for (size_t i = 0; i < results.size(); ++i) {
           if (!results[i]) {
-            LOG_PRINT_L1("verRctMGSimple failed for input " << i);
+            LOG_PRINT_L1("verRctMGSimple_v1 failed for input " << i);
             return false;
           }
         }
@@ -1326,12 +1326,12 @@ namespace rct {
       // we can get deep throws from ge_frombytes_vartime if input isn't valid
       catch (const std::exception &e)
       {
-        LOG_PRINT_L1("Error in verRct: " << e.what());
+        LOG_PRINT_L1("Error in verRctNonSemanticsSimple_v1: " << e.what());
         return false;
       }
       catch (...)
       {
-        LOG_PRINT_L1("Error in verRct, but not an actual exception");
+        LOG_PRINT_L1("Error in verRctNonSemanticsSimple_v1, but not an actual exception");
         return false;
       }
     }
@@ -1371,7 +1371,7 @@ namespace rct {
 
         for (size_t i = 0; i < results.size(); ++i) {
           if (!results[i]) {
-            LOG_PRINT_L1("verRctMGSimple failed for input " << i);
+            LOG_PRINT_L1("verRctMGSimple_v2 failed for input " << i);
             return false;
           }
         }
