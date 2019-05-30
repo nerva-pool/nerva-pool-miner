@@ -780,7 +780,7 @@ std::string get_nix_version_display_string()
 #if !defined NO_AES
     if (!crypto::has_aesni())
     {
-        MERROR(
+        MGUSER_RED(
             "This executable requires AES-NI support, which is not available on your machine."
             " To correct this issue, try rebuilding with compilation flag -DNO_AES.");
         return false;
