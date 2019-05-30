@@ -1268,7 +1268,9 @@ public:
   inline output_data_t get_output_key_and_commitment(const uint64_t& amount, const uint64_t& index, bool v2)
   {
     output_data_t result = get_output_key_only(amount, index);
-    if (amount == 0)
+    // Zero amounts already contain a zero-commitment, so only generate
+    // one for non-zero amounts
+    if (amount != 0)
     {
       result.commitment = rct::zeroCommit(amount, v2);
     }
