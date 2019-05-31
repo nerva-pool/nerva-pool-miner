@@ -169,7 +169,7 @@ BOOL SetLockPagesPrivilege(HANDLE hProcess, BOOL bEnable)
     randomize_scratchpad(r, scratchpad);
 
 
-#if !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
+#if !defined(NO_AES) && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
 
 #include <emmintrin.h>
 #if defined(_MSC_VER)
@@ -424,6 +424,8 @@ STATIC INLINE void aes_pseudo_round_xor(const uint8_t *in, uint8_t *out, const u
 
 #else
 
+#define CN_USE_SOFTWARE_AES 1
+
 STATIC size_t e2i(const uint8_t *a, size_t count) { return (*((uint64_t *)a) / AES_BLOCK_SIZE) & (count - 1); }
 
 STATIC void mul(const uint8_t *a, const uint8_t *b, uint8_t *res)
@@ -531,7 +533,7 @@ STATIC void xor64(uint8_t *left, const uint8_t *right)
     uint8_t d[AES_BLOCK_SIZE];                                                                               \
     size_t i, j;                                                                                             \
     uint8_t aes_key[AES_KEY_SIZE];                                                                           \
-    oaes_ctx *aes_ctx = (oaes_ctx *)oaes_alloc();                                                            \
+    oaes_ctx * const aes_ctx = (oaes_ctx *)context->oaes_ctx;                                                \
     static void (*const extra_hashes[4])(const void *, size_t, char *) = {                                   \
     hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein};                                  \
 
@@ -566,7 +568,6 @@ STATIC void xor64(uint8_t *left, const uint8_t *right)
     memcpy(state.init, text, init_size_byte);                                                                \
     hash_permutation(&state.hs);                                                                             \
     extra_hashes[state.hs.b[0] & 3](&state, 200, hash);                                                      \
-    oaes_free((OAES_CTX **)&aes_ctx);                                                                        \
     free(text);                                                                                              
 
 #define xor_u64()                                                             \
@@ -576,6 +577,6 @@ STATIC void xor64(uint8_t *left, const uint8_t *right)
         b[i] = state.k[AES_BLOCK_SIZE + i] ^ state.k[AES_BLOCK_SIZE * 3 + i]; \
     }
 
-#endif // !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
+#endif // !defined(NO_AES) && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
 
 #endif // SLOW_HASH_H

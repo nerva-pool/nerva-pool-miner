@@ -82,15 +82,21 @@ cn_hash_context_t *cn_hash_context_create(void)
     if (ctx == NULL) {
         return NULL;
     }
+    #if defined(CN_USE_SOFTWARE_AES)
+    ctx->oaes_ctx = oaes_alloc();
+    if (ctx->oaes_ctx == NULL) {
+        free(ctx);
+        return NULL;
+    }
+    #endif
     ctx->scratchpad_is_mapped = allocate_hugepage(CN_SCRATCHPAD_MEMORY, (void **)&(ctx->scratchpad));
     if (ctx->scratchpad == NULL) {
-        free(ctx);
+        cn_hash_context_free(ctx);
         return NULL;
     }
     ctx->salt_is_mapped = allocate_hugepage(CN_SALT_MEMORY, (void **)&(ctx->salt));
     if (ctx->salt == NULL) {
-        free_hugepage(ctx->scratchpad, CN_SCRATCHPAD_MEMORY, ctx->scratchpad_is_mapped);
-        free(ctx);
+        cn_hash_context_free(ctx);
         return NULL;
     }
     return ctx;
@@ -99,6 +105,11 @@ cn_hash_context_t *cn_hash_context_create(void)
 void cn_hash_context_free(cn_hash_context_t *context)
 {
     assert(context != NULL);
+    #if defined(CN_USE_SOFTWARE_AES)
+    if (context->oaes_ctx != NULL) {
+        oaes_free((OAES_CTX **)&(context->oaes_ctx));
+    }
+    #endif
     if (context->scratchpad != NULL) {
         free_hugepage(context->scratchpad, CN_SCRATCHPAD_MEMORY, context->scratchpad_is_mapped);
         context->scratchpad = NULL;
@@ -111,7 +122,7 @@ void cn_hash_context_free(cn_hash_context_t *context)
 }
 
 
-#if !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
+#if !defined(CN_USE_SOFTWARE_AES)
 
 void cn_slow_hash_v11(cn_hash_context_t *context, const void *data, size_t length, char *hash, size_t iters, uint8_t init_size_blk, uint16_t xx, uint16_t yy)
 {
@@ -483,4 +494,4 @@ void cn_slow_hash(cn_hash_context_t *context, const void *data, size_t length, c
     finalize_hash();
 }
 
-#endif
+#endif // !defined(CN_USE_SOFTWARE_AES)

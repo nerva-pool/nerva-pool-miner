@@ -112,6 +112,9 @@ typedef struct cn_random_values
 
 typedef struct cn_hash_context
 {
+  #if defined(NO_AES) || !(defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
+  void *oaes_ctx;
+  #endif
   uint8_t *scratchpad;
   int scratchpad_is_mapped;
   char *salt;
