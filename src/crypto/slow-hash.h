@@ -531,7 +531,7 @@ STATIC void xor64(uint8_t *left, const uint8_t *right)
     uint8_t d[AES_BLOCK_SIZE];                                                                               \
     size_t i, j;                                                                                             \
     uint8_t aes_key[AES_KEY_SIZE];                                                                           \
-    oaes_ctx *aes_ctx;                                                                                       \
+    oaes_ctx *aes_ctx = (oaes_ctx *)oaes_alloc();                                                            \
     static void (*const extra_hashes[4])(const void *, size_t, char *) = {                                   \
     hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein};                                  \
 
@@ -539,7 +539,6 @@ STATIC void xor64(uint8_t *left, const uint8_t *right)
     hash_process(&state.hs, data, length);                                                                   \
     memcpy(text, state.init, init_size_byte);                                                                \
     memcpy(aes_key, state.hs.b, AES_KEY_SIZE);                                                               \
-    aes_ctx = (oaes_ctx *)oaes_alloc();                                                                      \
     uint8_t tweak1_2[8];                                                                                     \
     memcpy(&tweak1_2, &state.hs.b[192], sizeof(tweak1_2));                                                   \
     xor64(tweak1_2, NONCE_POINTER);                                                                          \

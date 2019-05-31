@@ -452,7 +452,6 @@ void cn_slow_hash(cn_hash_context_t *context, const void *data, size_t length, c
     
     memcpy(text, state.init, init_size_byte);
     memcpy(aes_key, state.hs.b, AES_KEY_SIZE);
-    aes_ctx = (oaes_ctx *) oaes_alloc();
 
     uint8_t tweak1_2[8] = {0};
     if (variant > 0)
