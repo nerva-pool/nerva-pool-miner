@@ -1059,222 +1059,6 @@ namespace cryptonote
     return p;
   }
   //---------------------------------------------------------------
-
-  uint64_t cached_height = 0;
-  uint8_t* cn_bytes = NULL;
-  random_values *r = NULL;
-  critical_section m_v2_lock;
-
-  bool v2_initialized = false;
-  
-  void generate_v2_data(uint64_t ht, uint32_t sp_size, const cryptonote::Blockchain* bc)
-  {
-    if (!v2_initialized)
-    {
-      cn_bytes = (uint8_t*)malloc(128);
-      r = (random_values *)malloc(sizeof(random_values));
-      v2_initialized = true;
-    }
-
-    crypto::hash h0 = bc->get_block_id_by_height(ht);
-
-    uint8_t b1 = (uint8_t)(h0.data[0] ^ h0.data[16]);
-    uint8_t b2 = (uint8_t)(h0.data[4] ^ h0.data[20]);
-    uint8_t b3 = (uint8_t)(h0.data[8] ^ h0.data[24]);
-    uint8_t b4 = (uint8_t)(h0.data[12] ^ h0.data[28]);
-
-    crypto::hash h1 = bc->get_block_id_by_height(ht - b1);
-    crypto::hash h2 = bc->get_block_id_by_height(ht - b2);
-    crypto::hash h3 = bc->get_block_id_by_height(ht - b3);
-    crypto::hash h4 = bc->get_block_id_by_height(ht - b4);
-
-    int j = 0;
-    for (int i = 0; i < 128; i += 16)
-    {
-      std::memcpy(cn_bytes + i, h1.data + j, 4);
-      std::memcpy(cn_bytes + i + 4, h2.data + j, 4);
-      std::memcpy(cn_bytes + i + 8, h3.data + j, 4);
-      std::memcpy(cn_bytes + i + 12, h4.data + j, 4);
-      j += 4;
-    }
-
-    j = 0;
-    for (int i = 0; i < 128; i += 8)
-    {
-      r->operators[j] = (cn_bytes[i + 1] ^ cn_bytes[i + 3]) >> 5;
-      r->values[j] = cn_bytes[i + 5] ^ cn_bytes[i + 7];
-
-      r->indices[j++] = (
-        cn_bytes[i] << 24 | 
-        cn_bytes[i + 2] << 16 | 
-        cn_bytes[i + 4] << 8 | 
-        cn_bytes[i + 6]) % sp_size; 
-
-      r->operators[j] = (cn_bytes[i] ^ cn_bytes[i + 2]) >> 5;
-      r->values[j] = cn_bytes[i + 4] ^ cn_bytes[i + 6];
-              
-      r->indices[j++] = (
-        cn_bytes[i + 1] << 24 | 
-        cn_bytes[i + 3] << 16 | 
-        cn_bytes[i + 5] << 8 | 
-        cn_bytes[i + 7]) % sp_size;
-    }
-  }
-
-  bool get_block_longhash_v11(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
-  {
-    // Guard against chain splits by only taking data from blocks with at least
-    // 256 ancestors.
-    assert(height > 257);
-    uint64_t stable_height = height - 256;
-
-    if (height != cached_height || !v2_initialized)
-    {
-      CRITICAL_REGION_BEGIN(m_v2_lock);
-        cached_height = height;
-        generate_v2_data(stable_height, 1048576, bc);
-      CRITICAL_REGION_END();
-    }
-
-    // Make the hashing context unique per nonce by seeding it with a hash
-    // of the hashing blob for a given nonce.
-    blobdata bd = get_block_hashing_blob(b);
-    crypto::hash h;
-    get_blob_hash(bd, h);
-
-    HC128_State rng_state;
-    HC128_Init(&rng_state, (unsigned char*)h.data, (unsigned char*)h.data+16);
-
-    char *salt = crypto::get_salt();
-    bc->get_db().get_v5_data(&rng_state, stable_height, salt);
-
-    HC128_NextKeys(&rng_state);
-    size_t rng_key_idx = 0;
-    // xx: [4, 8]
-    const uint32_t xx = (uint32_t)4U + HC128_U32(&rng_state, &rng_key_idx, 5U);
-    // yy: [4, 8]
-    const uint32_t yy = (uint32_t)4U + HC128_U32(&rng_state, &rng_key_idx, 5U);
-    // init_size_blk: 2, 4, or 8  (2 << [0, 2])
-    const uint8_t init_size_blk = (uint8_t)2U << ((uint8_t)HC128_U32(&rng_state, &rng_key_idx, 3U));
-    // iters_divisor: [1, 64]
-    const uint32_t iters_divisor = (uint32_t)1U + HC128_U32(&rng_state, &rng_key_idx, 64U);
-    const uint32_t iters = ((height + 1) % iters_divisor);
-
-    crypto::cn_slow_hash_v11(bd.data(), bd.size(), res, iters, r, salt, init_size_blk, xx, yy);
-
-    return true;
-  }
-
-  uint8_t lookup[3] { 2, 4, 8 };
-
-  bool get_block_longhash_v10(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
-  {
-    blobdata bd = get_block_hashing_blob(b);
-    uint64_t ht = height - 256;
-
-    if (height != cached_height || !v2_initialized)
-    {
-      CRITICAL_REGION_BEGIN(m_v2_lock);
-        cached_height = height;
-        generate_v2_data(ht, 1048576, bc);
-      CRITICAL_REGION_END();
-    }
-
-    uint32_t seed = b.nonce ^ height;
-
-    crypto::hash h;
-    get_blob_hash(bd, h);
-
-    for (int i = 0; i < 32; i += 4)
-      seed ^= *(uint32_t*)&h.data[i];
-
-    char* salt = crypto::get_salt();
-
-    bc->get_db().get_v4_data(salt, (uint32_t)ht, seed);
-
-    uint32_t m = seed % 3;
-
-    uint8_t temp_lookup_1[3];
-    angrywasp::mersenne_twister mt(seed);
-
-    for (int i = 0; i < 3; i++)
-      temp_lookup_1[i] = lookup[mt.generate_uint() % 3];
-
-    uint16_t xx = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
-    uint16_t yy = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
-    uint16_t zz = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
-    uint16_t ww = (uint16_t)(seed % mt.next(1, 10000));
-
-    crypto::cn_slow_hash_v10(bd.data(), bd.size(), res, ((height + 1) % 64), r, salt, temp_lookup_1[m], xx, yy, zz, ww);
-
-    return true;
-  }
-
-  bool get_block_longhash_v9(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
-  {
-    blobdata bd = get_block_hashing_blob(b);
-    uint64_t ht = height - 256;
-
-    if (height != cached_height || !v2_initialized)
-    {
-      CRITICAL_REGION_BEGIN(m_v2_lock);
-        cached_height = height;
-        generate_v2_data(ht, (1 << 20) - 1, bc);
-      CRITICAL_REGION_END();
-    }
-
-    char* salt = (char*)malloc(128 * 32);
-
-    bc->get_db().get_v3_data(salt, (uint32_t)ht, b.nonce ^ (uint32_t)ht);
-    crypto::cn_slow_hash_v9(bd.data(), bd.size(), res, 0x40000 + ((height + 1) % 64), r, salt);
-    
-    free(salt);
-
-    return true;
-  }
-
-  bool get_block_longhash_v7_8(const block& b, crypto::hash& res, uint64_t height, uint32_t sub, const cryptonote::Blockchain* bc)
-  {
-    blobdata bd = get_block_hashing_blob(b);
-
-    if (height != cached_height || !v2_initialized)
-    {
-      CRITICAL_REGION_BEGIN(m_v2_lock);
-        cached_height = height;
-        generate_v2_data(height - sub, (1 << 20) - 1, bc);
-      CRITICAL_REGION_END();
-    }
-
-    crypto::cn_slow_hash_v7_8(bd.data(), bd.size(), res, 0x40000 + ((height + 1) % 64), r);
-
-    return true;
-  }
-
-  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height, const cryptonote::Blockchain* bc)
-  {
-    switch (b.major_version)
-    {
-      case 11:
-        return get_block_longhash_v11(b, res, height, bc);
-      case 10:
-        return get_block_longhash_v10(b, res, height, bc);
-      case 9:
-        return get_block_longhash_v9(b, res, height, bc);
-      case 8:
-      case 7:
-        return get_block_longhash_v7_8(b, res, height, b.major_version == 7 ? 1 : 256, bc);
-      default:
-      {
-        blobdata bd = get_block_hashing_blob(b);
-        int v = b.major_version >= 5 ? 1 : 0;
-        int i = b.major_version >= 6 ? 0x40000 : 0x80000;
-        crypto::cn_slow_hash(bd.data(), bd.size(), res, v, i + ((height + 1) % 1024));
-        return true;
-      }
-    }
-  }
-  
-  //---------------------------------------------------------------
   std::vector<uint64_t> relative_output_offsets_to_absolute(const std::vector<uint64_t>& off)
   {
     std::vector<uint64_t> res = off;
@@ -1293,13 +1077,6 @@ namespace cryptonote
       res[i] -= res[i-1];
 
     return res;
-  }
-  //---------------------------------------------------------------
-  crypto::hash get_block_longhash(const block& b, uint64_t height, const cryptonote::Blockchain* bc)
-  {
-    crypto::hash p = null_hash;
-    get_block_longhash(b, p, height, bc);
-    return p;
   }
   //---------------------------------------------------------------
   bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b, crypto::hash *block_hash)
@@ -1394,7 +1171,9 @@ namespace cryptonote
   crypto::secret_key encrypt_key(crypto::secret_key key, const epee::wipeable_string &passphrase)
   {
     crypto::hash hash;
-    crypto::cn_slow_hash(passphrase.data(), passphrase.size(), hash);
+    crypto::cn_hash_context_t *context = crypto::cn_hash_context_create();
+    crypto::cn_slow_hash(context, passphrase.data(), passphrase.size(), hash);
+    crypto::cn_hash_context_free(context);
     sc_add((unsigned char*)key.data, (const unsigned char*)key.data, (const unsigned char*)hash.data);
     return key;
   }
@@ -1402,7 +1181,9 @@ namespace cryptonote
   crypto::secret_key decrypt_key(crypto::secret_key key, const epee::wipeable_string &passphrase)
   {
     crypto::hash hash;
-    crypto::cn_slow_hash(passphrase.data(), passphrase.size(), hash);
+    crypto::cn_hash_context_t *context = crypto::cn_hash_context_create();
+    crypto::cn_slow_hash(context, passphrase.data(), passphrase.size(), hash);
+    crypto::cn_hash_context_free(context);
     sc_sub((unsigned char*)key.data, (const unsigned char*)key.data, (const unsigned char*)hash.data);
     return key;
   }

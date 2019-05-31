@@ -44,23 +44,67 @@
 #include "int-util.h"
 #include "oaes_lib.h"
 
-#define MEMORY 1048576
-#define SALT_MEMORY 262144
 #define AES_BLOCK_SIZE 16
 #define AES_KEY_SIZE 32
 #define INIT_SIZE_BLK 8
 extern void aesb_single_round(const uint8_t *in, uint8_t *out, const uint8_t *expandedKey);
 extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *expandedKey);
 
-#define NONCE_POINTER (((const uint8_t *)data) + 35)
-
 #if defined(_MSC_VER)
-#define THREADV __declspec(thread)
+  #include <windows.h>
+  #define STATIC
+  #define INLINE __inline
+  #if !defined(RDATA_ALIGN16)
+    #define RDATA_ALIGN16 __declspec(align(16))
+  #endif
+#elif defined(__MINGW32__)
+  #include <windows.h>
+  #define STATIC static
+  #define INLINE inline
+  #if !defined(RDATA_ALIGN16)
+    #define RDATA_ALIGN16 __attribute__((aligned(16)))
+  #endif
 #else
-#define THREADV __thread
+  #include <sys/mman.h>
+  #define STATIC static
+  #define INLINE inline
+  #if !defined(RDATA_ALIGN16)
+    #define RDATA_ALIGN16 __attribute__((aligned(16)))
+  #endif
 #endif
 
-#if !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
+#if defined(_MSC_VER) || defined(__MINGW32__)
+BOOL SetLockPagesPrivilege(HANDLE hProcess, BOOL bEnable)
+{
+    struct
+    {
+        DWORD count;
+        LUID_AND_ATTRIBUTES privilege[1];
+    } info;
+
+    HANDLE token;
+    if (!OpenProcessToken(hProcess, TOKEN_ADJUST_PRIVILEGES, &token))
+        return FALSE;
+
+    info.count = 1;
+    info.privilege[0].Attributes = bEnable ? SE_PRIVILEGE_ENABLED : 0;
+
+    if (!LookupPrivilegeValue(NULL, SE_LOCK_CN_SCRATCHPAD_MEMORY_NAME, &(info.privilege[0].Luid)))
+        return FALSE;
+
+    if (!AdjustTokenPrivileges(token, FALSE, (PTOKEN_PRIVILEGES)&info, 0, NULL, NULL))
+        return FALSE;
+
+    if (GetLastError() != ERROR_SUCCESS)
+        return FALSE;
+
+    CloseHandle(token);
+
+    return TRUE;
+}
+#endif
+
+#define NONCE_POINTER (((const uint8_t *)data) + 35)
 
 #define VARIANT1_1(p)                                          \
     const uint8_t tmp = ((const uint8_t *)(p))[11];            \
@@ -71,61 +115,98 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
 #define VARIANT1_2(p) \
     xor64(p, tweak1_2);
 
-#include <emmintrin.h>
+#define salt_pad(salt, salt_hash, a, b, c, d)          \
+    extra_hashes[a % 3](salt, 200, salt_hash);         \
+    temp_1 = (uint16_t)(iters ^ (b ^ c));              \
+    offset_1 = temp_1 * ((d % 3) + 1);                 \
+    for (j = 0; j < 32; j++)                           \
+        (salt)[offset_1 + j] ^= (salt_hash)[j];        \
+    x = 0;                                             \
+    offset_1 = (d % 64) + 1;                           \
+    offset_2 = ((temp_1 * offset_1) % 125) + 4;        \
+    for (j = offset_1; j < CN_SCRATCHPAD_MEMORY; j += offset_2)      \
+        hp_state[j] ^= (salt)[x++];
 
+#define randomize_scratchpad(r, scratchpad)            \
+    for (int i = 0; i < CN_RANDOM_VALUES; i++)         \
+    {                                                  \
+        switch ((r).operators[i])                       \
+        {                                              \
+        case ADD:                                      \
+            scratchpad[(r).indices[i]] += (r).values[i]; \
+            break;                                     \
+        case SUB:                                      \
+            scratchpad[(r).indices[i]] -= (r).values[i]; \
+            break;                                     \
+        case XOR:                                      \
+            scratchpad[(r).indices[i]] ^= (r).values[i]; \
+            break;                                     \
+        case OR:                                       \
+            scratchpad[(r).indices[i]] |= (r).values[i]; \
+            break;                                     \
+        case AND:                                      \
+            scratchpad[(r).indices[i]] &= (r).values[i]; \
+            break;                                     \
+        case COMP:                                     \
+            scratchpad[(r).indices[i]] = ~(r).values[i]; \
+            break;                                     \
+        case EQ:                                       \
+            scratchpad[(r).indices[i]] = (r).values[i];  \
+            break;                                     \
+        }                                              \
+    }
+
+#define randomize_scratchpad_256k(r, salt, scratchpad)     \
+    uint32_t x = 0;                                        \
+    for (uint32_t i = 0; i < CN_SCRATCHPAD_MEMORY; i += 4) \
+        scratchpad[i] ^= salt[x++];                        \
+    randomize_scratchpad(r, scratchpad);
+
+#define randomize_scratchpad_4k(r, salt, scratchpad)         \
+    uint32_t x = 0;                                          \
+    for (uint32_t i = 0; i < CN_SCRATCHPAD_MEMORY; i += 256) \
+        scratchpad[i] ^= salt[x++];                          \
+    randomize_scratchpad(r, scratchpad);
+
+
+#if !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
+
+#include <emmintrin.h>
 #if defined(_MSC_VER)
-#include <intrin.h>
-#include <windows.h>
-#define STATIC
-#define INLINE __inline
-#if !defined(RDATA_ALIGN16)
-#define RDATA_ALIGN16 __declspec(align(16))
-#endif
+  #include <intrin.h>
 #elif defined(__MINGW32__)
-#include <intrin.h>
-#include <windows.h>
-#define STATIC static
-#define INLINE inline
-#if !defined(RDATA_ALIGN16)
-#define RDATA_ALIGN16 __attribute__((aligned(16)))
-#endif
+  #include <intrin.h>
 #else
-#include <wmmintrin.h>
-#include <sys/mman.h>
-#define STATIC static
-#define INLINE inline
-#if !defined(RDATA_ALIGN16)
-#define RDATA_ALIGN16 __attribute__((aligned(16)))
-#endif
+  #include <wmmintrin.h>
 #endif
 
 #if defined(__INTEL_COMPILER)
-#define ASM __asm__
+  #define ASM __asm__
 #elif !defined(_MSC_VER)
-#define ASM __asm__
+  #define ASM __asm__
 #else
-#define ASM __asm
+  #define ASM __asm
 #endif
 
 #define U64(x) ((uint64_t *)(x))
 #define R128(x) ((__m128i *)(x))
 
-#define state_index(x) (((*((uint64_t *)x) >> 4) & ((MEMORY / AES_BLOCK_SIZE) - 1)) << 4)
+#define state_index(x) (((*((uint64_t *)x) >> 4) & ((CN_SCRATCHPAD_MEMORY / AES_BLOCK_SIZE) - 1)) << 4)
 #if defined(_MSC_VER)
-#if !defined(_WIN64)
-#define __mul() lo = mul128(c[0], b[0], &hi);
+  #if !defined(_WIN64)
+    #define __mul() lo = mul128(c[0], b[0], &hi);
+  #else
+    #define __mul() lo = _umul128(c[0], b[0], &hi);
+  #endif
 #else
-#define __mul() lo = _umul128(c[0], b[0], &hi);
-#endif
-#else
-#if defined(__x86_64__)
-#define __mul() ASM("mulq %3\n\t"            \
-                    : "=d"(hi), "=a"(lo)     \
-                    : "%a"(c[0]), "rm"(b[0]) \
-                    : "cc");
-#else
-#define __mul() lo = mul128(c[0], b[0], &hi);
-#endif
+  #if defined(__x86_64__)
+    #define __mul() ASM("mulq %3\n\t" \
+      : "=d"(hi), "=a"(lo)     \
+      : "%a"(c[0]), "rm"(b[0]) \
+      : "cc");
+  #else
+    #define __mul() lo = mul128(c[0], b[0], &hi);
+  #endif
 #endif
 
 #define pre_aes()                            \
@@ -185,7 +266,6 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
     uint64_t *p = NULL;                                                         \
     static void (*const extra_hashes[4])(const void *, size_t, char *) = {      \
         hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein}; \
-    slow_hash_allocate_state(); 
 
 #define xor_u64()                                            \
     U64(a)[0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];  \
@@ -198,7 +278,7 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
     memcpy(text, state.init, init_size_byte);                                          \
     const uint64_t tweak1_2 = (state.hs.w[24] ^ (*((const uint64_t *)NONCE_POINTER))); \
     aes_expand_key(state.hs.b, expandedKey);                                           \
-    for (i = 0; i < MEMORY / init_size_byte; i++)                                      \
+    for (i = 0; i < CN_SCRATCHPAD_MEMORY / init_size_byte; i++)                        \
     {                                                                                  \
         aes_pseudo_round(text, text, expandedKey, init_size_blk);                      \
         memcpy(&hp_state[i * init_size_byte], text, init_size_byte);                   \
@@ -207,7 +287,7 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
 #define finalize_hash()                                                                              \
     memcpy(text, state.init, init_size_byte);                                                        \
     aes_expand_key(&state.hs.b[32], expandedKey);                                                    \
-    for (i = 0; i < MEMORY / init_size_byte; i++)                                                    \
+    for (i = 0; i < CN_SCRATCHPAD_MEMORY / init_size_byte; i++)                                      \
     {                                                                                                \
         aes_pseudo_round_xor(text, text, expandedKey, &hp_state[i * init_size_byte], init_size_blk); \
     }                                                                                                \
@@ -215,21 +295,6 @@ extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
     hash_permutation(&state.hs);                                                                     \
     extra_hashes[state.hs.b[0] & 3](&state, 200, hash);                                              \
     free(text);
-
-#if defined(_MSC_VER)
-#define cpuid(info, x) __cpuidex(info, x, 0)
-#else
-void cpuid(int CPUInfo[4], int InfoType)
-{
-    ASM __volatile__(
-        "cpuid"
-        : "=a"(CPUInfo[0]),
-          "=b"(CPUInfo[1]),
-          "=c"(CPUInfo[2]),
-          "=d"(CPUInfo[3])
-        : "a"(InfoType), "c"(0));
-}
-#endif
 
 STATIC INLINE void xor_blocks(uint8_t *a, const uint8_t *b)
 {
@@ -357,42 +422,11 @@ STATIC INLINE void aes_pseudo_round_xor(const uint8_t *in, uint8_t *out, const u
     }
 }
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
-BOOL SetLockPagesPrivilege(HANDLE hProcess, BOOL bEnable)
-{
-    struct
-    {
-        DWORD count;
-        LUID_AND_ATTRIBUTES privilege[1];
-    } info;
-
-    HANDLE token;
-    if (!OpenProcessToken(hProcess, TOKEN_ADJUST_PRIVILEGES, &token))
-        return FALSE;
-
-    info.count = 1;
-    info.privilege[0].Attributes = bEnable ? SE_PRIVILEGE_ENABLED : 0;
-
-    if (!LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &(info.privilege[0].Luid)))
-        return FALSE;
-
-    if (!AdjustTokenPrivileges(token, FALSE, (PTOKEN_PRIVILEGES)&info, 0, NULL, NULL))
-        return FALSE;
-
-    if (GetLastError() != ERROR_SUCCESS)
-        return FALSE;
-
-    CloseHandle(token);
-
-    return TRUE;
-}
-#endif
-
 #else
 
-static size_t e2i(const uint8_t *a, size_t count) { return (*((uint64_t *)a) / AES_BLOCK_SIZE) & (count - 1); }
+STATIC size_t e2i(const uint8_t *a, size_t count) { return (*((uint64_t *)a) / AES_BLOCK_SIZE) & (count - 1); }
 
-static void mul(const uint8_t *a, const uint8_t *b, uint8_t *res)
+STATIC void mul(const uint8_t *a, const uint8_t *b, uint8_t *res)
 {
     uint64_t a0, b0;
     uint64_t hi, lo;
@@ -404,7 +438,7 @@ static void mul(const uint8_t *a, const uint8_t *b, uint8_t *res)
     ((uint64_t *)res)[1] = SWAP64LE(lo);
 }
 
-static void sum_half_blocks(uint8_t *a, const uint8_t *b)
+STATIC void sum_half_blocks(uint8_t *a, const uint8_t *b)
 {
     uint64_t a0, a1, b0, b1;
 
@@ -420,12 +454,12 @@ static void sum_half_blocks(uint8_t *a, const uint8_t *b)
 
 #define U64(x) ((uint64_t *)(x))
 
-static void copy_block(uint8_t *dst, const uint8_t *src)
+STATIC void copy_block(uint8_t *dst, const uint8_t *src)
 {
     memcpy(dst, src, AES_BLOCK_SIZE);
 }
 
-static void swap_blocks(uint8_t *a, uint8_t *b)
+STATIC void swap_blocks(uint8_t *a, uint8_t *b)
 {
     uint64_t t[2];
     U64(t)[0] = U64(a)[0];
@@ -436,37 +470,28 @@ static void swap_blocks(uint8_t *a, uint8_t *b)
     U64(b)[1] = U64(t)[1];
 }
 
-static void xor_blocks(uint8_t *a, const uint8_t *b)
+STATIC void xor_blocks(uint8_t *a, const uint8_t *b)
 {
     size_t i;
     for (i = 0; i < AES_BLOCK_SIZE; i++)
         a[i] ^= b[i];
 }
 
-static void xor64(uint8_t *left, const uint8_t *right)
+STATIC void xor64(uint8_t *left, const uint8_t *right)
 {
     size_t i;
     for (i = 0; i < 8; ++i)
         left[i] ^= right[i];
 }
 
-#define VARIANT1_1(p)                                          \
-    const uint8_t tmp = ((const uint8_t *)(p))[11];            \
-    static const uint32_t table = 0x75310;                     \
-    const uint8_t index = (((tmp >> 3) & 6) | (tmp & 1)) << 1; \
-    ((uint8_t *)(p))[11] = tmp ^ ((table >> index) & 0x30);
-
-#define VARIANT1_2(p)                                          \
-    xor64(p, tweak1_2);
-
 #define aes_sw_variant()                                   \
-    j = e2i(a, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;  \
+    j = e2i(a, CN_SCRATCHPAD_MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;  \
     copy_block(c1, &hp_state[j]);                          \
     aesb_single_round(c1, c1, a);                          \
     copy_block(&hp_state[j], c1);                          \
     xor_blocks(&hp_state[j], b);                           \
     VARIANT1_1(&hp_state[j]);                              \
-    j = e2i(c1, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE; \
+    j = e2i(c1, CN_SCRATCHPAD_MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE; \
     copy_block(c2, &hp_state[j]);                          \
     mul(c1, c2, d);                                        \
     swap_blocks(a, c1);                                    \
@@ -479,12 +504,12 @@ static void xor64(uint8_t *left, const uint8_t *right)
     copy_block(a, c1);
 
 #define aes_sw_novariant()                                 \
-    j = e2i(a, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;  \
+    j = e2i(a, CN_SCRATCHPAD_MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;  \
     copy_block(c1, &hp_state[j]);                          \
     aesb_single_round(c1, c1, a);                          \
     copy_block(&hp_state[j], c1);                          \
     xor_blocks(&hp_state[j], b);                           \
-    j = e2i(c1, MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE; \
+    j = e2i(c1, CN_SCRATCHPAD_MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE; \
     copy_block(c2, &hp_state[j]);                          \
     mul(c1, c2, d);                                        \
     swap_blocks(a, c1);                                    \
@@ -506,21 +531,19 @@ static void xor64(uint8_t *left, const uint8_t *right)
     uint8_t d[AES_BLOCK_SIZE];                                                                               \
     size_t i, j;                                                                                             \
     uint8_t aes_key[AES_KEY_SIZE];                                                                           \
-    oaes_ctx *aes_ctx;                                                                                       \
+    oaes_ctx *aes_ctx = (oaes_ctx *)oaes_alloc();                                                            \
     static void (*const extra_hashes[4])(const void *, size_t, char *) = {                                   \
     hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein};                                  \
-    slow_hash_allocate_state();
 
 #define expand_key()                                                                                         \
     hash_process(&state.hs, data, length);                                                                   \
     memcpy(text, state.init, init_size_byte);                                                                \
     memcpy(aes_key, state.hs.b, AES_KEY_SIZE);                                                               \
-    aes_ctx = (oaes_ctx *)oaes_alloc();                                                                      \
     uint8_t tweak1_2[8];                                                                                     \
     memcpy(&tweak1_2, &state.hs.b[192], sizeof(tweak1_2));                                                   \
     xor64(tweak1_2, NONCE_POINTER);                                                                          \
     oaes_key_import_data(aes_ctx, aes_key, AES_KEY_SIZE);                                                    \
-    for (i = 0; i < MEMORY / init_size_byte; i++)                                                            \
+    for (i = 0; i < CN_SCRATCHPAD_MEMORY / init_size_byte; i++)                                              \
     {                                                                                                        \
         for (j = 0; j < init_size_blk; j++)                                                                  \
         {                                                                                                    \
@@ -532,7 +555,7 @@ static void xor64(uint8_t *left, const uint8_t *right)
 #define finalize_hash()                                                                                      \
     memcpy(text, state.init, init_size_byte);                                                                \
     oaes_key_import_data(aes_ctx, &state.hs.b[32], AES_KEY_SIZE);                                            \
-    for (i = 0; i < MEMORY / init_size_byte; i++)                                                            \
+    for (i = 0; i < CN_SCRATCHPAD_MEMORY / init_size_byte; i++)                                              \
     {                                                                                                        \
         for (j = 0; j < init_size_blk; j++)                                                                  \
         {                                                                                                    \
@@ -553,62 +576,6 @@ static void xor64(uint8_t *left, const uint8_t *right)
         b[i] = state.k[AES_BLOCK_SIZE + i] ^ state.k[AES_BLOCK_SIZE * 3 + i]; \
     }
 
-#endif
+#endif // !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
 
-void slow_hash_allocate_state(void);
-void slow_hash_free_state(void);
-
-#define salt_pad(a, b, c, d)                           \
-    extra_hashes[a % 3](sp_bytes, 200, salt_hash);     \
-    temp_1 = (uint16_t)(iters ^ (b ^ c));              \
-    offset_1 = temp_1 * ((d % 3) + 1);                 \
-    for (j = 0; j < 32; j++)                           \
-        sp_bytes[offset_1 + j] ^= salt_hash[j];        \
-    x = 0;                                             \
-    offset_1 = (d % 64) + 1;                           \
-    offset_2 = ((temp_1 * offset_1) % 125) + 4;        \
-    for (j = offset_1; j < MEMORY; j += offset_2)      \
-        hp_state[j] ^= sp_bytes[x++];
-
-#define randomize_scratchpad(r, scratchpad)            \
-    for (int i = 0; i < RANDOM_VALUES; i++)            \
-    {                                                  \
-        switch (r->operators[i])                       \
-        {                                              \
-        case ADD:                                      \
-            scratchpad[r->indices[i]] += r->values[i]; \
-            break;                                     \
-        case SUB:                                      \
-            scratchpad[r->indices[i]] -= r->values[i]; \
-            break;                                     \
-        case XOR:                                      \
-            scratchpad[r->indices[i]] ^= r->values[i]; \
-            break;                                     \
-        case OR:                                       \
-            scratchpad[r->indices[i]] |= r->values[i]; \
-            break;                                     \
-        case AND:                                      \
-            scratchpad[r->indices[i]] &= r->values[i]; \
-            break;                                     \
-        case COMP:                                     \
-            scratchpad[r->indices[i]] = ~r->values[i]; \
-            break;                                     \
-        case EQ:                                       \
-            scratchpad[r->indices[i]] = r->values[i];  \
-            break;                                     \
-        }                                              \
-    }
-
-#define randomize_scratchpad_256k(r, salt, scratchpad) \
-    uint32_t x = 0;                                    \
-    for (uint32_t i = 0; i < MEMORY; i += 4)           \
-        scratchpad[i] ^= salt[x++];                    \
-    randomize_scratchpad(r, scratchpad);
-
-#define randomize_scratchpad_4k(r, salt, scratchpad)   \
-    uint32_t x = 0;                                    \
-    for (uint32_t i = 0; i < MEMORY; i += 256)         \
-        scratchpad[i] ^= salt[x++];                    \
-    randomize_scratchpad(r, scratchpad);
-
-#endif
+#endif // SLOW_HASH_H

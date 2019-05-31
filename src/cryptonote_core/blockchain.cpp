@@ -73,7 +73,6 @@ using namespace crypto;
 
 using namespace cryptonote;
 using epee::string_tools::pod_to_hex;
-extern "C" void slow_hash_allocate_state();
 
 DISABLE_VS_WARNINGS(4267)
 
@@ -301,6 +300,13 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
   CRITICAL_REGION_LOCAL(m_tx_pool);
   CRITICAL_REGION_LOCAL1(m_blockchain_lock);
 
+  m_hash_context = crypto::cn_hash_context_create();
+  if (m_hash_context == nullptr)
+  {
+    MERROR("Failed to allocate hash context");
+    return false;
+  }
+
   if (db == nullptr)
   {
     LOG_ERROR("Attempted to init Blockchain with null DB");
@@ -346,11 +352,15 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
 
   m_db->set_hard_fork(m_hardfork);
 
+  const uint64_t db_height = m_db->height();
+  const uint64_t max_fork_height = m_hardfork->get_earliest_ideal_height_for_version(m_hardfork->get_ideal_version());
+  m_db->set_expected_min_height(std::max(db_height, max_fork_height));
+
   // if the blockchain is new, add the genesis block
   // this feels kinda kludgy to do it this way, but can be looked at later.
   // TODO: add function to create and store genesis block,
   //       taking testnet into account
-  if(!m_db->height())
+  if(!db_height)
   {
     MINFO("Blockchain not loaded, generating genesis block.");
     block bl;
@@ -529,6 +539,10 @@ bool Blockchain::deinit()
   m_hardfork = NULL;
   delete m_db;
   m_db = NULL;
+
+  crypto::cn_hash_context_free(m_hash_context);
+  m_hash_context = NULL;
+
   return true;
 }
 //------------------------------------------------------------------
@@ -1591,7 +1605,7 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     difficulty_type current_diff = get_next_difficulty_for_alternative_chain(alt_chain, bei);
     CHECK_AND_ASSERT_MES(current_diff, false, "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!");
     crypto::hash proof_of_work = null_hash;
-    get_block_longhash(bei.bl, proof_of_work, bei.height, this);
+    get_block_longhash(m_hash_context, this, bei.bl, proof_of_work, bei.height);
     if(!check_hash(proof_of_work, current_diff))
     {
       MERROR_VER("Block with id: " << id << std::endl << " for alternative chain, does not have enough proof of work: " << proof_of_work << std::endl << " expected difficulty: " << current_diff);
@@ -3252,7 +3266,7 @@ leave:
   const bool quicksync_verified = m_quicksync.check_block(blockchain_height, id);
   if (!quicksync_verified)
   {
-    proof_of_work = get_block_longhash(bl, blockchain_height, this);
+    get_block_longhash(m_hash_context, this, bl, proof_of_work, blockchain_height);
     
     // validate proof_of_work versus difficulty target
     if(!check_hash(proof_of_work, current_diffic))
@@ -3838,7 +3852,6 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
   uint64_t bytes = 0;
   size_t total_txs = 0;
   blocks.clear();
-  slow_hash_allocate_state();
 
   // Order of locking must be:
   //  m_incoming_tx_lock (optional)

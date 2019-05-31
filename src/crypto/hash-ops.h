@@ -1,3 +1,4 @@
+// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
@@ -78,9 +79,6 @@ enum {
   HASH_DATA_AREA = 136
 };
 
-void cn_fast_hash(const void *data, size_t length, char *hash);
-void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters);
-
 void hash_extra_blake(const void *data, size_t length, char *hash);
 void hash_extra_groestl(const void *data, size_t length, char *hash);
 void hash_extra_jh(const void *data, size_t length, char *hash);
@@ -88,7 +86,11 @@ void hash_extra_skein(const void *data, size_t length, char *hash);
 
 void tree_hash(const char (*hashes)[HASH_SIZE], size_t count, char *root_hash);
 
-#define RANDOM_VALUES 32
+void cn_fast_hash(const void *data, size_t length, char *hash);
+
+#define CN_SCRATCHPAD_MEMORY 1048576
+#define CN_SALT_MEMORY 262144
+#define CN_RANDOM_VALUES 32
 
 enum {
   NOP = 0,
@@ -101,15 +103,28 @@ enum {
   EQ
 };
 
-typedef struct randomizer_values
+typedef struct cn_random_values
 {
-  uint8_t operators[RANDOM_VALUES];
-  uint32_t indices[RANDOM_VALUES];
-  int8_t values[RANDOM_VALUES];
-} random_values;
+  uint8_t operators[CN_RANDOM_VALUES];
+  uint32_t indices[CN_RANDOM_VALUES];
+  int8_t values[CN_RANDOM_VALUES];
+} cn_random_values_t;
 
-void  cn_slow_hash_v11(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy);
-void  cn_slow_hash_v10(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes, uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww);
-void  cn_slow_hash_v9(const void *data, size_t length, char *hash, size_t iters, random_values *r, char *sp_bytes);
-void  cn_slow_hash_v7_8(const void *data, size_t length, char *hash, size_t iters, random_values *r);
-char* get_salt_state(void);
+typedef struct cn_hash_context
+{
+  uint8_t *scratchpad;
+  int scratchpad_is_mapped;
+  char *salt;
+  int salt_is_mapped;
+  cn_random_values_t random_values;
+  uint64_t cached_height;
+} cn_hash_context_t;
+
+cn_hash_context_t *cn_hash_context_create(void);
+void cn_hash_context_free(cn_hash_context_t *context);
+
+void cn_slow_hash(cn_hash_context_t *context, const void *data, size_t length, char *hash, int variant, int prehashed, size_t iters);
+void cn_slow_hash_v11(cn_hash_context_t *context, const void *data, size_t length, char *hash, size_t iters, uint8_t init_size_blk, uint16_t xx, uint16_t yy);
+void cn_slow_hash_v10(cn_hash_context_t *context, const void *data, size_t length, char *hash, size_t iters, uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww);
+void cn_slow_hash_v9(cn_hash_context_t *context, const void *data, size_t length, char *hash, size_t iters);
+void cn_slow_hash_v7_8(cn_hash_context_t *context, const void *data, size_t length, char *hash, size_t iters);

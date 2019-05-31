@@ -1009,6 +1009,7 @@ namespace cryptonote
 
     typedef std::map<uint64_t, std::vector<std::pair<crypto::hash, size_t>>> outputs_container; //crypto::hash - tx hash, size_t - index of out in transaction
 
+    crypto::cn_hash_context_t *m_hash_context;
 
     BlockchainDB* m_db;
 
