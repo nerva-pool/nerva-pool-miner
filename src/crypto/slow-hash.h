@@ -89,7 +89,7 @@ BOOL SetLockPagesPrivilege(HANDLE hProcess, BOOL bEnable)
     info.count = 1;
     info.privilege[0].Attributes = bEnable ? SE_PRIVILEGE_ENABLED : 0;
 
-    if (!LookupPrivilegeValue(NULL, SE_LOCK_CN_SCRATCHPAD_MEMORY_NAME, &(info.privilege[0].Luid)))
+    if (!LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &(info.privilege[0].Luid)))
         return FALSE;
 
     if (!AdjustTokenPrivileges(token, FALSE, (PTOKEN_PRIVILEGES)&info, 0, NULL, NULL))

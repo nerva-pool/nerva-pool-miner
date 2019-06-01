@@ -48,18 +48,23 @@ static int allocate_hugepage(size_t size, void **hp)
 {
 #if defined(_MSC_VER) || defined(__MINGW32__)
     SetLockPagesPrivilege(GetCurrentProcess(), TRUE);
-    *hp = VirtualAlloc(hp_state, size, MEM_LARGE_PAGES | MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    *hp = VirtualAlloc(*hp, size, MEM_LARGE_PAGES | MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (*hp == NULL) {
+        *hp = malloc(size);
+        return 0;
+    }
 #else
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__NetBSD__)
     *hp = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, 0, 0);
 #else
     *hp = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, 0, 0);
 #endif
-#endif
     if (*hp == MAP_FAILED) {
         *hp = malloc(size);
         return 0;
     }
+#endif
+
     return 1;
 }
 
