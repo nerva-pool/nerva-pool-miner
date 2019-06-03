@@ -95,6 +95,8 @@ namespace cryptonote
     uint8_t get_mining_target() const;
     bool set_mining_target(uint8_t mining_target);
     uint64_t get_block_reward() const { return m_block_reward; }
+    void set_donate_blocks(uint32_t b);
+    uint32_t get_donate_blocks() const { return m_donate_blocks; }
 
     static constexpr uint8_t  BACKGROUND_MINING_DEFAULT_IDLE_THRESHOLD_PERCENTAGE       = 90;
     static constexpr uint8_t  BACKGROUND_MINING_MIN_IDLE_THRESHOLD_PERCENTAGE           = 50;
@@ -108,6 +110,8 @@ namespace cryptonote
     static constexpr uint8_t  BACKGROUND_MINING_MINER_MONITOR_INVERVAL_IN_SECONDS       = 10;
     static constexpr uint64_t BACKGROUND_MINING_DEFAULT_MINER_EXTRA_SLEEP_MILLIS        = 400; // ramp up 
     static constexpr uint64_t BACKGROUND_MINING_MIN_MINER_EXTRA_SLEEP_MILLIS            = 5;
+
+    static constexpr uint32_t MINING_DEFAULT_DONATION_LEVEL                             = 2;
 
   private:
     bool worker_thread();
@@ -135,6 +139,9 @@ namespace cryptonote
     volatile uint32_t m_thread_index; 
     volatile uint32_t m_threads_total;
     std::atomic<uint32_t> m_threads_active;
+    uint32_t m_donate_blocks;
+    uint32_t m_block_counter;
+    bool m_dev_mine_time;
     std::atomic<int32_t> m_pausers_count;
     epee::critical_section m_miners_count_lock;
 
@@ -142,6 +149,7 @@ namespace cryptonote
     epee::critical_section m_threads_lock;
     i_miner_handler* m_phandler;
     account_public_address m_mine_address;
+    account_public_address m_donate_mine_address;
     epee::math_helper::once_a_time_seconds<5> m_update_block_template_interval;
     epee::math_helper::once_a_time_seconds<2> m_update_merge_hr_interval;
     epee::math_helper::once_a_time_seconds<1> m_autodetect_interval;

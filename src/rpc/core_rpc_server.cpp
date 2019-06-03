@@ -1039,6 +1039,15 @@ namespace cryptonote
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------
+  bool core_rpc_server::on_set_donation_level(const COMMAND_RPC_DONATE_MINING::request& req, COMMAND_RPC_DONATE_MINING::response& res, const connection_context *ctx)
+  {
+    PERF_TIMER(on_set_donation_level);
+    cryptonote::miner &miner= m_core.get_miner();
+    miner.set_donate_blocks(req.blocks);
+    res.status = CORE_RPC_STATUS_OK;
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::on_stop_mining(const COMMAND_RPC_STOP_MINING::request& req, COMMAND_RPC_STOP_MINING::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_stop_mining);
@@ -2209,15 +2218,15 @@ namespace cryptonote
   bool core_rpc_server::on_update(const COMMAND_RPC_UPDATE::request& req, COMMAND_RPC_UPDATE::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_update);
-    static const char software[] = "nerva";
+    static const char software[] = "nerva-cli";
 #ifdef BUILD_TAG
     static const char buildtag[] = BOOST_PP_STRINGIZE(BUILD_TAG);
 #else
     static const char buildtag[] = "x64";
 #endif
 
-    std::string version, hash;
-    if (!tools::check_updates(software, buildtag, version, hash))
+    std::string version, codename, notice;
+    if (!tools::check_updates(software, version, codename, notice))
     {
       res.status = "Error checking for updates";
       return true;
@@ -2230,8 +2239,9 @@ namespace cryptonote
     }
     res.update = true;
     res.version = version;
+    res.codename = codename;
     res.uri = tools::get_update_url(software, buildtag, version);
-    res.hash = hash;
+    res.release_note = notice;
     
     res.status = CORE_RPC_STATUS_OK;
     return true;

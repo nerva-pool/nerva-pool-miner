@@ -1,0 +1,30 @@
+#!/bin/bash
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+
+ver=$(awk '/#define DEF_MONERO_VERSION /{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
+name=$(awk '/#define DEF_MONERO_RELEASE_NAME /{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
+export NERVA_VERSION=$(echo ${ver} | tr -d '"')
+export NERVA_CODENAME=$(echo ${name} | tr -d '"')
+echo Version detected as ${NERVA_VERSION}: ${NERVA_CODENAME}
+
+mkdir -p ${BUILDER_DIR}/build/release-aes
+cd ${BUILDER_DIR}/build/release-aes
+cmake -D CMAKE_BUILD_TYPE=release -D STATIC=ON NO_AES=OFF -D BUILD_TAG="docker" ../../..
+make -j4
+
+mkdir -p ${BUILDER_DIR}/build/release-noaes
+cd ${BUILDER_DIR}/build/release-noaes
+cmake -D CMAKE_BUILD_TYPE=release -D STATIC=ON NO_AES=ON -D BUILD_TAG="docker" ../../..
+make -j4
+
+mv ${BUILDER_DIR}/build/release-aes/bin/nervad ${BUILDER_DIR}/build/release-aes/bin/nervad-aes
+mv ${BUILDER_DIR}/build/release-noaes/bin/nervad ${BUILDER_DIR}/build/release-noaes/bin/nervad-noaes
+
+zip -rj ${NERVA_DIR}/nerva-v${NERVA_VERSION}_docker.zip \
+	${BUILDER_DIR}/build/release-aes/bin/nervad-aes \
+	${BUILDER_DIR}/build/release-noaes/bin/nervad-noaes \
+	${BUILDER_DIR}/build/release-aes/bin/nerva-wallet-cli \
+	${BUILDER_DIR}/build/release-aes/bin/nerva-wallet-rpc \
+

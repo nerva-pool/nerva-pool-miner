@@ -153,6 +153,8 @@
 
 #define DEFAULT_TXPOOL_MAX_SIZE 648000000ull // 3 days at 300000, in bytes
 
+#define DONATION_ADDR "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q"
+
 struct hard_fork
 {
     uint8_t version;

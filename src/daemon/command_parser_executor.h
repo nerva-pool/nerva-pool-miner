@@ -90,6 +90,8 @@ public:
 
   bool start_mining(const std::vector<std::string>& args);
 
+  bool donate_mining(const std::vector<std::string>& args);
+
   bool stop_mining(const std::vector<std::string>& args);
 
   bool mining_status(const std::vector<std::string>& args);

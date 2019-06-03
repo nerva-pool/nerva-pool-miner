@@ -413,6 +413,24 @@ bool t_command_parser_executor::start_mining(const std::vector<std::string>& arg
   return true;
 }
 
+bool t_command_parser_executor::donate_mining(const std::vector<std::string>& args)
+{
+  if (args.empty())
+  {
+    std::cout << "expected: donate_level <blocks>" << std::endl;
+    return true;
+  }
+
+  uint32_t blocks_count = 0;
+  bool ok = epee::string_tools::get_xtype_from_string(blocks_count, args[0]);
+  blocks_count = ok ? blocks_count : 0;
+
+  if (blocks_count > 100)
+    blocks_count = 100;
+
+  return m_executor.donate_mining(blocks_count);
+}
+
 bool t_command_parser_executor::stop_mining(const std::vector<std::string>& args)
 {
   if (!args.empty()) return false;

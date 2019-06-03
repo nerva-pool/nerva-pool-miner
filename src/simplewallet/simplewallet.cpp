@@ -68,6 +68,7 @@
 #include "version.h"
 #include <stdexcept>
 #include "wallet/message_store.h"
+#include "cryptonote_config.h"
 
 #ifdef WIN32
 #include <boost/locale.hpp>
@@ -149,6 +150,7 @@ namespace
   const command_line::arg_descriptor< std::vector<std::string> > arg_command = {"command", ""};
 
   const char* USAGE_START_MINING("start_mining [<number_of_threads>] [bg_mining] [ignore_battery]");
+  const char* USAGE_SET_DONATE_LEVEL("donate_level [<number_of_blocks>]");
   const char* USAGE_SET_DAEMON("set_daemon <host>[:<port>] [trusted|untrusted]");
   const char* USAGE_SHOW_BALANCE("balance [detail]");
   const char* USAGE_INCOMING_TRANSFERS("incoming_transfers [available|unavailable] [verbose] [uses] [index=<N1>[,<N2>[,...]]]");
@@ -2622,6 +2624,10 @@ simple_wallet::simple_wallet()
                            boost::bind(&simple_wallet::start_mining, this, _1),
                            tr(USAGE_START_MINING),
                            tr("Start mining in the daemon (bg_mining and ignore_battery are optional booleans)."));
+  m_cmd_binder.set_handler("donate_level",
+                           boost::bind(&simple_wallet::set_donate_level, this, _1),
+                           tr(USAGE_SET_DONATE_LEVEL),
+                           tr("Set the amount of time to mine to the dev wallet."));
   m_cmd_binder.set_handler("stop_mining",
                            boost::bind(&simple_wallet::stop_mining, this, _1),
                            tr("Stop mining in the daemon."));
@@ -4691,6 +4697,51 @@ bool simple_wallet::start_mining(const std::vector<std::string>& args)
   return true;
 }
 //----------------------------------------------------------------------------------------------------
+bool simple_wallet::set_donate_level(const std::vector<std::string>& args)
+{
+  if (!m_wallet->is_trusted_daemon())
+  {
+    fail_msg_writer() << tr("this command requires a trusted daemon. Enable with --trusted-daemon");
+    return true;
+  }
+
+  if (!try_connect_to_daemon())
+    return true;
+
+  if (!m_wallet)
+  {
+    fail_msg_writer() << tr("wallet is null");
+    return true;
+  }
+
+  if (args.size() != 1)
+  {
+    fail_msg_writer() << tr("expected only one argument");
+    return true;
+  }
+
+  COMMAND_RPC_DONATE_MINING::request req = AUTO_VAL_INIT(req); 
+
+  uint32_t num = 0;
+  bool ok = string_tools::get_xtype_from_string(num, args[0]);
+  req.blocks = num;
+
+  if (!ok)
+  {
+    PRINT_USAGE(USAGE_SET_DONATE_LEVEL);
+    return true;
+  }
+
+  COMMAND_RPC_DONATE_MINING::response res;
+  bool r = m_wallet->invoke_http_json("/set_donate_level", req, res);
+  std::string err = interpret_rpc_response(r, res.status);
+  if (err.empty())
+    success_msg_writer() << tr("Donation level set");
+  else
+    fail_msg_writer() << tr("Donation level not set: ") << err;
+  return true;
+}
+//----------------------------------------------------------------------------------------------------
 bool simple_wallet::stop_mining(const std::vector<std::string>& args)
 {
   if (!try_connect_to_daemon())
@@ -6486,23 +6537,23 @@ bool simple_wallet::donate(const std::vector<std::string> &args_)
   {
     // if not mainnet, convert donation address string to the relevant network type
     address_parse_info info;
-    if (!cryptonote::get_account_address_from_str(info, cryptonote::MAINNET, XNV_DONATION_ADDR))
+    if (!cryptonote::get_account_address_from_str(info, cryptonote::MAINNET, DONATION_ADDR))
     {
-      fail_msg_writer() << tr("Failed to parse donation address: ") << XNV_DONATION_ADDR;
+      fail_msg_writer() << tr("Failed to parse donation address: ") << DONATION_ADDR;
       return true;
     }
     address_str = cryptonote::get_account_address_as_str(m_wallet->nettype(), info.is_subaddress, info.address);
   }
   else
   {
-    address_str = XNV_DONATION_ADDR;
+    address_str = DONATION_ADDR;
   }
   local_args.push_back(address_str);
   local_args.push_back(amount_str);
   if (!payment_id_str.empty())
     local_args.push_back(payment_id_str);
   if (m_wallet->nettype() == cryptonote::MAINNET)
-    message_writer() << (boost::format(tr("Donating %s %s to The NERVA Project (getnerva.org or %s).")) % amount_str % cryptonote::get_unit(cryptonote::get_default_decimal_point()) % XNV_DONATION_ADDR).str();
+    message_writer() << (boost::format(tr("Donating %s %s to The NERVA Project (getnerva.org or %s).")) % amount_str % cryptonote::get_unit(cryptonote::get_default_decimal_point()) % DONATION_ADDR).str();
   else
     message_writer() << (boost::format(tr("Donating %s %s to %s.")) % amount_str % cryptonote::get_unit(cryptonote::get_default_decimal_point()) % address_str).str();
   transfer(local_args);

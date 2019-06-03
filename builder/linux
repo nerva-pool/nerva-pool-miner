@@ -23,7 +23,7 @@ fi
 
 mkdir -p ${BUILDER_DIR}/build/release
 cd ${BUILDER_DIR}/build/release
-cmake -D CMAKE_BUILD_TYPE=release -D STATIC=${STATIC} -D BUILD_TAG="linux-x64" ../../..
+cmake -D CMAKE_BUILD_TYPE=release -D STATIC=${STATIC} -D BUILD_TAG="linux" ../../..
 make -j6
 
 #Construct installer script
@@ -46,4 +46,4 @@ chmod +x $lscript
 cp ${BUILDER_DIR}/${REPO_NAME}-logo-white.png ${BUILDER_DIR}/build/release/bin/${REPO_NAME}-logo-white.png
 cp ${BUILDER_DIR}/${REPO_NAME}-logo-black.png ${BUILDER_DIR}/build/release/bin/${REPO_NAME}-logo-black.png
 
-zip -rj ${NERVA_DIR}/${REPO_NAME}-v${NERVA_VERSION}_linux-x64.zip ${BUILDER_DIR}/build/release/bin/*
+zip -rj ${NERVA_DIR}/${REPO_NAME}-v${NERVA_VERSION}_linux.zip ${BUILDER_DIR}/build/release/bin/*

@@ -33,6 +33,6 @@
 
 namespace tools
 {
-  bool check_updates(const std::string &software, const std::string &buildtag, std::string &version, std::string &hash);
+  bool check_updates(const std::string &software, std::string &version, std::string &codename, std::string &notice);
   std::string get_update_url(const std::string &software, const std::string &buildtag, const std::string &version);
 }

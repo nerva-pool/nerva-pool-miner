@@ -1005,13 +1005,7 @@ namespace cryptonote
      enum {
        UPDATES_DISABLED,
        UPDATES_NOTIFY,
-       UPDATES_DOWNLOAD,
-       UPDATES_UPDATE,
      } check_updates_level;
-
-     tools::download_async_handle m_update_download;
-     size_t m_last_update_length;
-     boost::mutex m_update_mutex;
 
      bool m_offline;
      bool m_pad_transactions;

@@ -2837,6 +2837,30 @@ namespace tools
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------
+    bool wallet_rpc_server::on_set_donate_level(const wallet_rpc::COMMAND_RPC_DONATE_MINING::request& req, wallet_rpc::COMMAND_RPC_DONATE_MINING::response& res, epee::json_rpc::error& er, const connection_context *ctx)
+  {
+    if (!m_wallet) return not_open(er);
+    if (!m_wallet->is_trusted_daemon())
+    {
+      er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
+      er.message = "This command requires a trusted daemon.";
+      return false;
+    }
+
+    cryptonote::COMMAND_RPC_DONATE_MINING::request daemon_req = AUTO_VAL_INIT(daemon_req); 
+    daemon_req.blocks = req.blocks;
+
+    cryptonote::COMMAND_RPC_DONATE_MINING::response daemon_res;
+    bool r = m_wallet->invoke_http_json("/set_donate_level", daemon_req, daemon_res);
+    if (!r || daemon_res.status != CORE_RPC_STATUS_OK)
+    {
+      er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
+      er.message = "Couldn't set donation level due to unknown error.";
+      return false;
+    }
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
   bool wallet_rpc_server::on_stop_mining(const wallet_rpc::COMMAND_RPC_STOP_MINING::request& req, wallet_rpc::COMMAND_RPC_STOP_MINING::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);

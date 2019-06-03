@@ -38,12 +38,10 @@
 
 namespace tools
 {
-  bool check_updates(const std::string &software, const std::string &buildtag, std::string &version, std::string &hash)
+  bool check_updates(const std::string &software, std::string &version, std::string &codename, std::string &notice)
   {
     std::vector<std::string> records;
     bool found = false;
-
-    MDEBUG("Checking updates for " << buildtag << " " << software);
 
     static const std::vector<std::string> dns_urls = {
       "update.getnerva.org",
@@ -62,33 +60,22 @@ namespace tools
         continue;
       }
 
-      if (software != fields[0] || buildtag != fields[1])
+      if (software != fields[0])
         continue;
-
-      bool alnum = true;
-      for (auto c: fields[3])
-        if (!isalnum(c))
-          alnum = false;
-      if (fields[3].size() != 64 && !alnum)
-      {
-        MWARNING("Invalid hash: " << fields[3]);
-        continue;
-      }
 
       // use highest version
       if (found)
       {
-        int cmp = vercmp(version.c_str(), fields[2].c_str());
+        int cmp = vercmp(version.c_str(), fields[1].c_str());
         if (cmp > 0)
           continue;
-        if (cmp == 0 && hash != fields[3])
-          MWARNING("Two matches found for " << software << " version " << version << " on " << buildtag);
       }
 
-      version = fields[2];
-      hash = fields[3];
+      version = fields[1];
+      codename = fields[2];
+      notice = fields[3];
 
-      LOG_PRINT_L1("Found new version " << version << " with hash " << hash);
+      LOG_PRINT_L1("Found new version " << version << ":" << codename);
       found = true;
     }
     return found;

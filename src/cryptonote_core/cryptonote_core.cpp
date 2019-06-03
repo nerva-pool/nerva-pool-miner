@@ -41,7 +41,6 @@ using namespace epee;
 #include "common/command_line.h"
 #include "common/util.h"
 #include "common/updates.h"
-#include "common/download.h"
 #include "common/threadpool.h"
 #include "common/command_line.h"
 #include "warnings.h"
@@ -214,7 +213,6 @@ namespace cryptonote
               m_last_dns_checkpoints_update(0),
               m_last_json_checkpoints_update(0),
               m_disable_dns_checkpoints(false),
-              m_update_download(0),
               m_nettype(UNDEFINED),
               m_update_available(false),
               m_pad_transactions(false)
@@ -283,15 +281,6 @@ namespace cryptonote
   {
     m_miner.stop();
     m_blockchain_storage.cancel();
-
-    tools::download_async_handle handle;
-    {
-      boost::lock_guard<boost::mutex> lock(m_update_mutex);
-      handle = m_update_download;
-      m_update_download = 0;
-    }
-    if (handle)
-      tools::download_cancel(handle);
   }
   //-----------------------------------------------------------------------------------
   void core::init_options(boost::program_options::options_description& desc)
@@ -658,10 +647,6 @@ namespace cryptonote
       check_updates_level = UPDATES_DISABLED;
     else if (check_updates_string == "notify")
       check_updates_level = UPDATES_NOTIFY;
-    else if (check_updates_string == "download")
-      check_updates_level = UPDATES_DOWNLOAD;
-    else if (check_updates_string == "update")
-      check_updates_level = UPDATES_UPDATE;
     else {
       MERROR("Invalid argument to --dns-versions-check: " << check_updates_string);
       return false;
@@ -1654,7 +1639,7 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------
   bool core::check_updates()
   {
-    static const char software[] = "nerva";
+    static const char software[] = "nerva-cli";
 #ifdef BUILD_TAG
     static const char buildtag[] = BOOST_PP_STRINGIZE(BUILD_TAG);
 #else
@@ -1667,118 +1652,20 @@ namespace cryptonote
     if (check_updates_level == UPDATES_DISABLED)
       return true;
 
-    std::string version, hash;
+    std::string version, codename, notice;
     MCDEBUG("updates", "Checking for a new " << software << " version for " << buildtag);
-    if (!tools::check_updates(software, buildtag, version, hash))
+    if (!tools::check_updates(software, version, codename, notice))
       return false;
 
     if (tools::vercmp(version.c_str(), MONERO_VERSION) <= 0)
-    {
-      m_update_available = false;
       return true;
-    }
 
     std::string url = tools::get_update_url(software, buildtag, version);
     MGUSER_CYAN(ENDL
-    << "Version " << version << " of " << software << " for " << buildtag << " is available" << ENDL
+    << "Version " << version << ":" << codename << " is available" << ENDL
     << url << ENDL
-    << "SHA256: " << hash);
-    m_update_available = true;
+    << "Release note: " << notice);
 
-    if (check_updates_level == UPDATES_NOTIFY)
-      return true;
-
-    std::string filename;
-    const char *slash = strrchr(url.c_str(), '/');
-    if (slash)
-      filename = slash + 1;
-    else
-      filename = std::string(software) + "-update-" + version;
-    boost::filesystem::path path(epee::string_tools::get_current_module_folder());
-    path /= filename;
-
-    boost::unique_lock<boost::mutex> lock(m_update_mutex);
-
-    if (m_update_download != 0)
-    {
-      MCDEBUG("updates", "Already downloading update");
-      return true;
-    }
-
-    crypto::hash file_hash;
-    if (!tools::sha256sum(path.string(), file_hash) || (hash != epee::string_tools::pod_to_hex(file_hash)))
-    {
-      MCDEBUG("updates", "We don't have that file already, downloading");
-      const std::string tmppath = path.string() + ".tmp";
-      if (epee::file_io_utils::is_file_exist(tmppath))
-      {
-        MCDEBUG("updates", "We have part of the file already, resuming download");
-      }
-      m_last_update_length = 0;
-      m_update_download = tools::download_async(tmppath, url, [this, hash, path](const std::string &tmppath, const std::string &uri, bool success) {
-        bool remove = false, good = true;
-        if (success)
-        {
-          crypto::hash file_hash;
-          if (!tools::sha256sum(tmppath, file_hash))
-          {
-            MCERROR("updates", "Failed to hash " << tmppath);
-            remove = true;
-            good = false;
-          }
-          else if (hash != epee::string_tools::pod_to_hex(file_hash))
-          {
-            MCERROR("updates", "Download from " << uri << " does not match the expected hash");
-            remove = true;
-            good = false;
-          }
-        }
-        else
-        {
-          MCERROR("updates", "Failed to download " << uri);
-          good = false;
-        }
-        boost::unique_lock<boost::mutex> lock(m_update_mutex);
-        m_update_download = 0;
-        if (success && !remove)
-        {
-          std::error_code e = tools::replace_file(tmppath, path.string());
-          if (e)
-          {
-            MCERROR("updates", "Failed to rename downloaded file");
-            good = false;
-          }
-        }
-        else if (remove)
-        {
-          if (!boost::filesystem::remove(tmppath))
-          {
-            MCERROR("updates", "Failed to remove invalid downloaded file");
-            good = false;
-          }
-        }
-        if (good)
-          MCLOG_CYAN(el::Level::Info, "updates", "New version downloaded to " << path.string());
-      }, [this](const std::string &path, const std::string &uri, size_t length, ssize_t content_length) {
-        if (length >= m_last_update_length + 1024 * 1024 * 10)
-        {
-          m_last_update_length = length;
-          MCDEBUG("updates", "Downloaded " << length << "/" << (content_length ? std::to_string(content_length) : "unknown"));
-        }
-        return true;
-      });
-    }
-    else
-    {
-      MCDEBUG("updates", "We already have " << path << " with expected hash");
-    }
-
-    lock.unlock();
-
-    if (check_updates_level == UPDATES_DOWNLOAD)
-      return true;
-
-    MCERROR("updates", "Download/update not implemented yet");
     return true;
   }
   //-----------------------------------------------------------------------------------------------

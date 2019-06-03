@@ -683,6 +683,29 @@ namespace cryptonote
     typedef epee::misc_utils::struct_init<response_t> response;
   };
   //-----------------------------------------------
+  struct COMMAND_RPC_DONATE_MINING
+  {
+    struct request_t
+    {
+      uint32_t blocks;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(blocks)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t
+    {
+      std::string status;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(status)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+  //-----------------------------------------------
   struct COMMAND_RPC_GET_INFO
   {
     struct request_t
@@ -2054,15 +2077,17 @@ namespace cryptonote
       std::string status;
       bool update;
       std::string version;
+      std::string codename;
       std::string uri;
-      std::string hash;
+      std::string release_note;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
         KV_SERIALIZE(update)
         KV_SERIALIZE(version)
+        KV_SERIALIZE(codename)
         KV_SERIALIZE(uri)
-        KV_SERIALIZE(hash)
+        KV_SERIALIZE(release_note)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;

@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2018, The Monero Project
 // 
@@ -1967,6 +1968,26 @@ namespace wallet_rpc
         KV_SERIALIZE(threads_count)
         KV_SERIALIZE(do_background_mining)        
         KV_SERIALIZE(ignore_battery)        
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+
+  struct COMMAND_RPC_DONATE_MINING
+  {
+    struct request_t
+    {
+      uint32_t    blocks;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(blocks)      
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<request_t> request;

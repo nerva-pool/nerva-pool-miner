@@ -1,3 +1,4 @@
+// Copyright (c) 2018-2018, The NERVA Project
 // Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
@@ -1209,6 +1210,33 @@ bool t_rpc_command_executor::start_mining(cryptonote::account_public_address add
   return true;
 }
 
+bool t_rpc_command_executor::donate_mining(uint32_t blocks_count)
+{
+  cryptonote::COMMAND_RPC_DONATE_MINING::request req;
+  cryptonote::COMMAND_RPC_DONATE_MINING::response res;
+  req.blocks = blocks_count;
+  
+  std::string fail_message = "Donation level unchanged";
+
+  if (m_is_rpc)
+  {
+    if (m_rpc_client->rpc_request(req, res, "/set_donate_level", fail_message.c_str()))
+    {
+      tools::success_msg_writer() << "Mining started";
+    }
+  }
+  else
+  {
+    if (!m_rpc_server->on_set_donation_level(req, res) || res.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << make_error(fail_message, res.status);
+      return true;
+    }
+  }
+
+  return true;
+}
+
 bool t_rpc_command_executor::stop_mining() {
   cryptonote::COMMAND_RPC_STOP_MINING::request req;
   cryptonote::COMMAND_RPC_STOP_MINING::response res;
@@ -2044,7 +2072,7 @@ bool t_rpc_command_executor::update()
     return true;
   }
 
-  tools::msg_writer() << "Update available: v" << res.version << ENDL << res.uri << ENDL << "SHA256: " << res.hash;
+  tools::msg_writer() << "Update available- v" << res.version << ":" << res.codename << ENDL << res.uri << ENDL << "Release note: " << res.release_note;
   return true;
 }
 

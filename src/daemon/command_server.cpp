@@ -1,3 +1,4 @@
+// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
@@ -112,6 +113,12 @@ t_command_server::t_command_server(
     , std::bind(&t_command_parser_executor::start_mining, &m_parser, p::_1)
     , "start_mining <addr> [<threads>|auto] [do_background_mining] [ignore_battery]"
     , "Start mining for specified address. Defaults to 1 thread and no background mining. Use \"auto\" to autodetect optimal number of threads."
+    );
+  m_command_lookup.set_handler(
+      "donate_level"
+    , std::bind(&t_command_parser_executor::donate_mining, &m_parser, p::_1)
+    , "donate_level <blocks>"
+    , "Amount of time to spend mining to the donation fund."
     );
   m_command_lookup.set_handler(
       "stop_mining"
