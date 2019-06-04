@@ -5032,7 +5032,7 @@ bool simple_wallet::refresh_main(uint64_t start_height, enum ResetType reset, bo
     ok = true;
     // Clear line "Height xxx of xxx"
     std::cout << "\r                                                                \r";
-    success_msg_writer(true) << tr("Refresh done, blocks received: ") << fetched_blocks;
+    success_msg_writer(true) << tr("Refresh done, blocks scanned: ") << fetched_blocks;
     if (is_init)
       print_accounts();
     show_balance_unlocked();
@@ -5074,7 +5074,7 @@ bool simple_wallet::refresh_main(uint64_t start_height, enum ResetType reset, bo
 
   if (!ok)
   {
-    fail_msg_writer() << tr("refresh failed: ") << ss.str() << ". " << tr("Blocks received: ") << fetched_blocks;
+    fail_msg_writer() << tr("refresh failed: ") << ss.str() << ". " << tr("Blocks scanned: ") << fetched_blocks;
   }
 
   return true;
