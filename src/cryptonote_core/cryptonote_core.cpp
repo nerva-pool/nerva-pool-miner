@@ -162,7 +162,7 @@ namespace cryptonote
   };
   static const command_line::arg_descriptor<std::string> arg_check_updates = {
     "check-updates"
-  , "Check for new versions of nerva: [disabled|notify|download|update]"
+  , "Check for new versions of nerva: [disabled|notify]"
   , "notify"
   };
   static const command_line::arg_descriptor<size_t> arg_max_txpool_size  = {

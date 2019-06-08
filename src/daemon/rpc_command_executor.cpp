@@ -2072,7 +2072,7 @@ bool t_rpc_command_executor::update()
     return true;
   }
 
-  tools::msg_writer() << "Update available- v" << res.version << ":" << res.codename << ENDL << res.uri << ENDL << "Release note: " << res.release_note;
+  tools::msg_writer() << "Update available: v" << res.version << ":" << res.codename << ENDL << res.uri << ENDL << "Release note: " << res.release_note;
   return true;
 }
 

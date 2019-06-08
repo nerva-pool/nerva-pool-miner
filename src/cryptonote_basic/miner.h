@@ -111,7 +111,7 @@ namespace cryptonote
     static constexpr uint64_t BACKGROUND_MINING_DEFAULT_MINER_EXTRA_SLEEP_MILLIS        = 400; // ramp up 
     static constexpr uint64_t BACKGROUND_MINING_MIN_MINER_EXTRA_SLEEP_MILLIS            = 5;
 
-    static constexpr uint32_t MINING_DEFAULT_DONATION_LEVEL                             = 2;
+    static constexpr uint32_t MINING_DEFAULT_DONATION_LEVEL                             = 0;
 
   private:
     bool worker_thread();
