@@ -192,86 +192,88 @@ set_property(TARGET quicksync_export
 install(TARGETS quicksync_export DESTINATION bin)
 
 
-monero_add_executable(blockchain_usage
-  ${blockchain_usage_sources}
-  ${blockchain_usage_private_headers})
+if(BUILD_EXTRAS)
+  monero_add_executable(blockchain_usage
+    ${blockchain_usage_sources}
+    ${blockchain_usage_private_headers})
 
-target_link_libraries(blockchain_usage
-  PRIVATE
-    cryptonote_core
-    blockchain_db
-    version
-    epee
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${EXTRA_LIBRARIES})
+  target_link_libraries(blockchain_usage
+    PRIVATE
+      cryptonote_core
+      blockchain_db
+      version
+      epee
+      ${Boost_FILESYSTEM_LIBRARY}
+      ${Boost_SYSTEM_LIBRARY}
+      ${Boost_THREAD_LIBRARY}
+      ${CMAKE_THREAD_LIBS_INIT}
+      ${EXTRA_LIBRARIES})
 
-set_property(TARGET blockchain_usage
-	PROPERTY
-	OUTPUT_NAME "nerva-blockchain-usage")
-install(TARGETS blockchain_usage DESTINATION bin)
+  set_property(TARGET blockchain_usage
+      PROPERTY
+      OUTPUT_NAME "nerva-blockchain-usage")
+  install(TARGETS blockchain_usage DESTINATION bin)
 
-monero_add_executable(blockchain_ancestry
-  ${blockchain_ancestry_sources}
-  ${blockchain_ancestry_private_headers})
+  monero_add_executable(blockchain_ancestry
+    ${blockchain_ancestry_sources}
+    ${blockchain_ancestry_private_headers})
 
-target_link_libraries(blockchain_ancestry
-  PRIVATE
-    cryptonote_core
-    blockchain_db
-    version
-    epee
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${EXTRA_LIBRARIES})
+  target_link_libraries(blockchain_ancestry
+    PRIVATE
+      cryptonote_core
+      blockchain_db
+      version
+      epee
+      ${Boost_FILESYSTEM_LIBRARY}
+      ${Boost_SYSTEM_LIBRARY}
+      ${Boost_THREAD_LIBRARY}
+      ${CMAKE_THREAD_LIBS_INIT}
+      ${EXTRA_LIBRARIES})
 
-set_property(TARGET blockchain_ancestry
-	PROPERTY
-	OUTPUT_NAME "nerva-blockchain-ancestry")
-install(TARGETS blockchain_ancestry DESTINATION bin)
+  set_property(TARGET blockchain_ancestry
+      PROPERTY
+      OUTPUT_NAME "nerva-blockchain-ancestry")
+  install(TARGETS blockchain_ancestry DESTINATION bin)
 
-monero_add_executable(blockchain_depth
-  ${blockchain_depth_sources}
-  ${blockchain_depth_private_headers})
+  monero_add_executable(blockchain_depth
+    ${blockchain_depth_sources}
+    ${blockchain_depth_private_headers})
 
-target_link_libraries(blockchain_depth
-  PRIVATE
-    cryptonote_core
-    blockchain_db
-    version
-    epee
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${EXTRA_LIBRARIES})
+  target_link_libraries(blockchain_depth
+    PRIVATE
+      cryptonote_core
+      blockchain_db
+      version
+      epee
+      ${Boost_FILESYSTEM_LIBRARY}
+      ${Boost_SYSTEM_LIBRARY}
+      ${Boost_THREAD_LIBRARY}
+      ${CMAKE_THREAD_LIBS_INIT}
+      ${EXTRA_LIBRARIES})
 
-set_property(TARGET blockchain_depth
-	PROPERTY
-	OUTPUT_NAME "nerva-blockchain-depth")
-install(TARGETS blockchain_depth DESTINATION bin)
+  set_property(TARGET blockchain_depth
+      PROPERTY
+      OUTPUT_NAME "nerva-blockchain-depth")
+  install(TARGETS blockchain_depth DESTINATION bin)
 
-monero_add_executable(blockchain_stats
-  ${blockchain_stats_sources}
-  ${blockchain_stats_private_headers})
+  monero_add_executable(blockchain_stats
+    ${blockchain_stats_sources}
+    ${blockchain_stats_private_headers})
 
-target_link_libraries(blockchain_stats
-  PRIVATE
-    cryptonote_core
-    blockchain_db
-    version
-    epee
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${EXTRA_LIBRARIES})
+  target_link_libraries(blockchain_stats
+    PRIVATE
+      cryptonote_core
+      blockchain_db
+      version
+      epee
+      ${Boost_FILESYSTEM_LIBRARY}
+      ${Boost_SYSTEM_LIBRARY}
+      ${Boost_THREAD_LIBRARY}
+      ${CMAKE_THREAD_LIBS_INIT}
+      ${EXTRA_LIBRARIES})
 
-set_property(TARGET blockchain_stats
-	PROPERTY
-	OUTPUT_NAME "nerva-blockchain-stats")
-install(TARGETS blockchain_stats DESTINATION bin)
+  set_property(TARGET blockchain_stats
+      PROPERTY
+      OUTPUT_NAME "nerva-blockchain-stats")
+  install(TARGETS blockchain_stats DESTINATION bin)
+endif()
