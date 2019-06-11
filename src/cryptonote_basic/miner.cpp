@@ -37,11 +37,12 @@
 #include "misc_language.h"
 #include "syncobj.h"
 #include "crypto/hash.h"
-#include "cryptonote_core/cryptonote_tx_utils.h"
 #include "cryptonote_basic_impl.h"
 #include "cryptonote_format_utils.h"
+#include "cryptonote_core/cryptonote_tx_utils.h"
 #include "file_io_utils.h"
 #include "common/command_line.h"
+#include "common/util.h"
 #include "string_coding.h"
 #include "string_tools.h"
 #include "storages/portable_storage_template_helper.h"
@@ -102,12 +103,12 @@ namespace cryptonote
 
 
   miner::miner(i_miner_handler* phandler, Blockchain* pbc):m_stop(1),
-    m_blockchain(pbc),
     m_template(boost::value_initialized<block>()),
     m_template_no(0),
     m_diffic(0),
     m_thread_index(0),
     m_phandler(phandler),
+    m_pbc(pbc),
     m_height(0),
     m_threads_active(0),
     m_pausers_count(0),
@@ -159,14 +160,14 @@ namespace cryptonote
         m_block_counter = 0; 
 
       //if counter is within dev mining window
-      m_dev_mine_time = (m_block_counter >= (100 - m_donate_blocks));
+      m_dev_mine_time = (m_block_counter > (100 - m_donate_blocks));
 
 #if defined(ONE_TIME_NOTIFY)
       if (m_dev_mine_time != m_last_dev_mine_time)
       {
         uint32_t remaining = 100 - m_block_counter;
         if (m_dev_mine_time)
-          MGUSER_YELLOW("Mining to the dev fund for the next " << remaining << " blocks");
+          MGUSER_YELLOW("Mining to the dev fund for the next " << remaining + 1 << " blocks");
         else
           MGUSER_YELLOW("Resumed mining to your regular mining address");
 
@@ -175,7 +176,7 @@ namespace cryptonote
 #else
       uint32_t remaining = 100 - m_block_counter;
       if (m_dev_mine_time)
-        MGUSER_YELLOW("Mining to the dev fund for the next " << remaining << " blocks");
+        MGUSER_YELLOW("Mining to the dev fund for the next " << remaining + 1 << " blocks");
 #endif
 
       last_height = height;
@@ -500,6 +501,7 @@ namespace cryptonote
 
     m_block_counter = 0;
   }
+  extern "C" void rx_stop_mining(void);
   //-----------------------------------------------------------------------------------------------------
   bool miner::stop()
   {
@@ -532,15 +534,16 @@ namespace cryptonote
     MINFO("Mining has been stopped, " << m_threads.size() << " finished" );
     m_threads.clear();
     m_threads_autodetect.clear();
+    rx_stop_mining();
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::find_nonce_for_given_block(crypto::cn_hash_context_t *context, Blockchain *bc, block& bl, const difficulty_type& diffic, uint64_t height)
+  bool miner::find_nonce_for_given_block(crypto::cn_hash_context_t *context, Blockchain *pbc, block& bl, const difficulty_type& diffic, uint64_t height)
   {
     for(; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++)
     {
       crypto::hash h;
-      get_block_longhash(context, bc, bl, h, height);
+      get_block_longhash(context, pbc, bl, h, height, tools::get_max_concurrency());
 
       if(check_hash(h, diffic))
       {
@@ -641,7 +644,7 @@ namespace cryptonote
 
       b.nonce = nonce;
       crypto::hash h;
-      get_block_longhash(hash_context, m_blockchain, b, h, height);
+      get_block_longhash(hash_context, m_pbc, b, h, height, tools::get_max_concurrency());
 
       if(check_hash(h, local_diff))
       {
