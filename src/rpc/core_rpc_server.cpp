@@ -1039,8 +1039,15 @@ namespace cryptonote
   bool core_rpc_server::on_set_donation_level(const COMMAND_RPC_DONATE_MINING::request& req, COMMAND_RPC_DONATE_MINING::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_set_donation_level);
-    cryptonote::miner &miner= m_core.get_miner();
-    miner.set_donate_blocks(req.blocks);
+    cryptonote::miner &miner = m_core.get_miner();
+    if(!miner.set_donate_percent(req.blocks))
+    {
+      res.status = "Invalid donation level";
+      res.blocks = miner.get_donate_percent();
+      LOG_PRINT_L0(res.status);
+      return true;
+    }
+    res.blocks = miner.get_donate_percent();
     res.status = CORE_RPC_STATUS_OK;
     return true;
   }

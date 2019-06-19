@@ -1224,7 +1224,7 @@ bool t_rpc_command_executor::donate_mining(uint32_t blocks_count)
   {
     if (m_rpc_client->rpc_request(req, res, "/set_donate_level", fail_message.c_str()))
     {
-      tools::success_msg_writer() << "Mining started";
+      tools::success_msg_writer() << "Donation level set";
     }
   }
   else
@@ -1233,6 +1233,15 @@ bool t_rpc_command_executor::donate_mining(uint32_t blocks_count)
     {
       tools::fail_msg_writer() << make_error(fail_message, res.status);
       return true;
+    }
+    const uint8_t donate_percent = res.blocks;
+    if (donate_percent > 0)
+    {
+      tools::success_msg_writer() << "Mining set to donate " << (unsigned)donate_percent << "% of blocks to the dev fund. Thank you for your support.";
+    }
+    else
+    {
+      tools::success_msg_writer() << "Mining donations disabled.";
     }
   }
 

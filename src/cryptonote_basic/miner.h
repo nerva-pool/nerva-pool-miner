@@ -56,6 +56,7 @@ namespace cryptonote
   {
     virtual bool handle_block_found(block& b, block_verification_context &bvc) = 0;
     virtual bool get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce) = 0;
+    virtual uint64_t get_current_blockchain_height() const = 0;
   protected:
     ~i_miner_handler(){};
   };
@@ -95,8 +96,8 @@ namespace cryptonote
     uint8_t get_mining_target() const;
     bool set_mining_target(uint8_t mining_target);
     uint64_t get_block_reward() const { return m_block_reward; }
-    void set_donate_blocks(uint32_t b);
-    uint32_t get_donate_blocks() const { return m_donate_blocks; }
+    bool set_donate_percent(uint8_t donate_percent);
+    uint8_t get_donate_percent() const { return m_donate_percent; }
 
     static constexpr uint8_t  BACKGROUND_MINING_DEFAULT_IDLE_THRESHOLD_PERCENTAGE       = 90;
     static constexpr uint8_t  BACKGROUND_MINING_MIN_IDLE_THRESHOLD_PERCENTAGE           = 50;
@@ -139,9 +140,9 @@ namespace cryptonote
     volatile uint32_t m_thread_index; 
     volatile uint32_t m_threads_total;
     std::atomic<uint32_t> m_threads_active;
-    uint32_t m_donate_blocks;
-    uint32_t m_block_counter;
-    bool m_dev_mine_time;
+    uint8_t m_donate_percent;
+    uint8_t m_donate_counter;
+    volatile bool m_donating;
     std::atomic<int32_t> m_pausers_count;
     epee::critical_section m_miners_count_lock;
 

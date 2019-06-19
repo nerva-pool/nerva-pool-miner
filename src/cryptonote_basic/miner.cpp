@@ -91,7 +91,7 @@ namespace cryptonote
   {
     const command_line::arg_descriptor<std::string> arg_extra_messages =  {"extra-messages-file", "Specify file for extra messages to include into coinbase transactions", "", true};
     const command_line::arg_descriptor<std::string> arg_start_mining =    {"start-mining", "Specify wallet address to mining for", "", true};
-    const command_line::arg_descriptor<uint32_t>    arg_donate_mining =    {"donate-level", "Specify a percentage of blocks to mine to the development wallet", miner::MINING_DEFAULT_DONATION_LEVEL, true};
+    const command_line::arg_descriptor<uint16_t>    arg_donate_mining =    {"donate-level", "Specify a percentage of blocks to mine to the development wallet", miner::MINING_DEFAULT_DONATION_LEVEL, true};
     const command_line::arg_descriptor<uint32_t>      arg_mining_threads =  {"mining-threads", "Specify mining threads count", 0, true};
     const command_line::arg_descriptor<bool>        arg_bg_mining_enable =  {"bg-mining-enable", "enable/disable background mining", true, true};
     const command_line::arg_descriptor<bool>        arg_bg_mining_ignore_battery =  {"bg-mining-ignore-battery", "if true, assumes plugged in when unable to query system power status", false, true};    
@@ -112,9 +112,9 @@ namespace cryptonote
     m_threads_active(0),
     m_pausers_count(0),
     m_threads_total(0),
-    m_donate_blocks(MINING_DEFAULT_DONATION_LEVEL),
-    m_block_counter(0),
-    m_dev_mine_time(false),
+    m_donate_percent(MINING_DEFAULT_DONATION_LEVEL),
+    m_donate_counter(0),
+    m_donating(false),
     m_starter_nonce(0),
     m_last_hr_merge_time(0),
     m_hashes(0),
@@ -138,8 +138,6 @@ namespace cryptonote
     catch (...) { /* ignore */ }
   }
   //-----------------------------------------------------------------------------------------------------
-  bool m_last_dev_mine_time = false;
-  uint64_t last_height = 0;
   bool miner::set_block_template(const block& bl, const difficulty_type& di, uint64_t height, uint64_t block_reward)
   {
     CRITICAL_REGION_LOCAL(m_template_lock);
@@ -149,38 +147,6 @@ namespace cryptonote
     m_block_reward = block_reward;
     ++m_template_no;
     m_starter_nonce = crypto::rand<uint32_t>();
-
-    if (height != last_height)
-    {
-      m_block_counter++;
-
-      //reset counter
-      if (m_block_counter > 100)
-        m_block_counter = 0; 
-
-      //if counter is within dev mining window
-      m_dev_mine_time = (m_block_counter >= (100 - m_donate_blocks));
-
-#if defined(ONE_TIME_NOTIFY)
-      if (m_dev_mine_time != m_last_dev_mine_time)
-      {
-        uint32_t remaining = 100 - m_block_counter;
-        if (m_dev_mine_time)
-          MGUSER_YELLOW("Mining to the dev fund for the next " << remaining << " blocks");
-        else
-          MGUSER_YELLOW("Resumed mining to your regular mining address");
-
-        m_last_dev_mine_time = m_dev_mine_time;
-      }
-#else
-      uint32_t remaining = 100 - m_block_counter;
-      if (m_dev_mine_time)
-        MGUSER_YELLOW("Mining to the dev fund for the next " << remaining << " blocks");
-#endif
-
-      last_height = height;
-    }
-
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -196,7 +162,6 @@ namespace cryptonote
   {
     block bl;
     difficulty_type di = AUTO_VAL_INIT(di);
-    uint64_t height = AUTO_VAL_INIT(height);
     uint64_t expected_reward; //only used for RPC calls - could possibly be useful here too?
 
     cryptonote::blobdata extra_nonce;
@@ -205,14 +170,73 @@ namespace cryptonote
       extra_nonce = m_extra_messages[m_config.current_extra_message_index];
     }
 
-    account_public_address adr = m_dev_mine_time ? m_donate_mine_address : m_mine_address;
+    // Count the number of distinct block template heights the miner targets,
+    // and use this count as the basis for donation percentages. This method
+    // ignores out-of-band updates to the chain which did not cause the miner
+    // to target a new block height, as the miner could not possibly have found
+    // blocks at these unused heights.
+    uint64_t height;
+    bool donate_block_changed;
+    bool donate;
+    bool show_donation_msg;
+    check_donate:
+    CRITICAL_REGION_BEGIN(m_template_lock);
+    height = m_phandler->get_current_blockchain_height();
+    if(height > m_height)
+    {
+      m_donate_counter++;
+      if(m_donate_counter > 100)
+      {
+        m_donate_counter = 0;
+      }
+      donate_block_changed = true;
 
-    if(!m_phandler->get_block_template(bl, adr, di, height, expected_reward, extra_nonce))
+      const uint8_t threshold = (uint8_t)100U - m_donate_percent;
+      donate = (m_donate_counter > threshold);
+      if(donate != m_donating)
+      {
+        m_donating = donate;
+        show_donation_msg = true;
+      }
+      else
+      {
+        show_donation_msg = false;
+      }
+    }
+    else
+    {
+      donate_block_changed = false;
+      donate = m_donating;
+      show_donation_msg = false;
+    }
+    CRITICAL_REGION_END();
+
+    account_public_address adr = donate ? m_donate_mine_address : m_mine_address;
+    uint64_t tpl_height;
+    if(!m_phandler->get_block_template(bl, adr, di, tpl_height, expected_reward, extra_nonce))
     {
       LOG_ERROR("Failed to get_block_template(), stopping mining");
       return false;
     }
-    set_block_template(bl, di, height, expected_reward);
+    if(tpl_height > height && !donate_block_changed)
+    {
+      // The block template height differs from the chain height polled for
+      // donation accounting. If the donate block counter has already been
+      // incremented, ignore the change in the template, as this block is
+      // already considered new; otherwise, re-run the donation logic,
+      // as a donation may now be due, or no longer due.
+      goto check_donate;
+    }
+    set_block_template(bl, di, tpl_height, expected_reward);
+
+    if(show_donation_msg)
+    {
+      if(donate)
+        MGUSER_YELLOW("Mining to the dev fund for the next " << (unsigned)m_donate_percent << " blocks");
+      else
+        MGUSER_YELLOW("Resumed mining to your regular mining address");
+    }
+
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -381,7 +405,11 @@ namespace cryptonote
 
     if(command_line::has_arg(vm, arg_donate_mining))
     {
-      m_donate_blocks = command_line::get_arg(vm, arg_donate_mining);
+      if(!set_donate_percent(command_line::get_arg(vm, arg_donate_mining)))
+      {
+        MGUSER_RED("Invalid donation percentage (" << command_line::get_arg(vm, arg_donate_mining) << "), starting miner canceled");
+        return false;
+      }
     }
 
     // Background mining parameters
@@ -467,7 +495,10 @@ namespace cryptonote
       MINFO("Ignoring battery");
     }
 
-    set_donate_blocks(m_donate_blocks);
+    if(m_donate_percent > 0)
+    {
+      MGUSER_YELLOW("Mining set to donate " << (unsigned)m_donate_percent << "% of blocks to the dev fund. Thank you for your support.");
+    }
 
     return true;
   }
@@ -485,20 +516,6 @@ namespace cryptonote
   void miner::send_stop_signal()
   {
     boost::interprocess::ipcdetail::atomic_write32(&m_stop, 1);
-  }
-  //-----------------------------------------------------------------------------------------------------
-  void miner::set_donate_blocks(uint32_t b)
-  { 
-    if (b > 100)
-      b = 100;
-
-    m_donate_blocks = b; 
-
-    MGUSER_YELLOW("Mining set to donate " << m_donate_blocks << "% to the dev fund");
-    if (m_donate_blocks > 0)
-      MGUSER_YELLOW("Thankyou for your support.");
-
-    m_block_counter = 0;
   }
   //-----------------------------------------------------------------------------------------------------
   bool miner::stop()
@@ -666,6 +683,13 @@ namespace cryptonote
     crypto::cn_hash_context_free(hash_context);
     MGINFO("Miner thread stopped ["<< th_local_index << "]");
     --m_threads_active;
+    return true;
+  }
+  //-----------------------------------------------------------------------------------------------------
+  bool miner::set_donate_percent(uint8_t donate_percent)
+  {
+    if (donate_percent > 100) return false;
+    m_donate_percent = donate_percent;
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
