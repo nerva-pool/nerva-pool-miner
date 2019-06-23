@@ -687,7 +687,7 @@ namespace cryptonote
   {
     struct request_t
     {
-      uint32_t blocks;
+      uint8_t blocks;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(blocks)
@@ -698,9 +698,11 @@ namespace cryptonote
     struct response_t
     {
       std::string status;
+      uint8_t blocks;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
+        KV_SERIALIZE(blocks)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;
