@@ -380,21 +380,17 @@ namespace cryptonote
       MINFO("Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index);
     }
 
+    address_parse_info addr_info;
+
     if(command_line::has_arg(vm, arg_start_mining))
     {
-      address_parse_info info;
-      if(!cryptonote::get_account_address_from_str(info, nettype, command_line::get_arg(vm, arg_start_mining)) || info.is_subaddress)
+      if(!cryptonote::get_account_address_from_str(addr_info, nettype, command_line::get_arg(vm, arg_start_mining)) || addr_info.is_subaddress)
       {
         LOG_ERROR("Target account address " << command_line::get_arg(vm, arg_start_mining) << " has wrong format, starting daemon canceled");
         return false;
       }
-      m_mine_address = info.address;
+      m_mine_address = addr_info.address;
 
-      if(!cryptonote::get_account_address_from_str(info, nettype, DONATION_ADDR))
-      {
-        return false;
-      }
-      m_donate_mine_address = info.address;
       m_threads_total = 0;
       m_do_mining = true;
       if(command_line::has_arg(vm, arg_mining_threads))
@@ -411,6 +407,12 @@ namespace cryptonote
         return false;
       }
     }
+    if(!cryptonote::get_account_address_from_str(addr_info, nettype, DONATION_ADDR))
+    {
+      LOG_ERROR("Invalid donation address, starting daemon canceled");
+      return false;
+    }
+    m_donate_mine_address = addr_info.address;
 
     // Background mining parameters
     // Let init set all parameters even if background mining is not enabled, they can start later with params set
