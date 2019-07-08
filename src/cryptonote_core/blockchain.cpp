@@ -1655,7 +1655,7 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
       {
         seedhash = get_block_id_by_height(seedheight);
       }
-      get_altblock_longhash(bei.bl, proof_of_work, get_current_blockchain_height(), bei.height, seedheight, seedhash);
+      get_altblock_longhash(m_hash_context, this, bei.bl, proof_of_work, get_current_blockchain_height(), bei.height, seedheight, seedhash);
     } else
     {
       get_block_longhash(m_hash_context, this, bei.bl, proof_of_work, bei.height, 0);

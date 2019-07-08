@@ -631,10 +631,23 @@ namespace cryptonote
     return true;
   }
   //---------------------------------------------------------------
-  void get_altblock_longhash(const block& b, crypto::hash& res, const uint64_t main_height, const uint64_t height, const uint64_t seed_height, const crypto::hash& seed_hash)
+  void get_altblock_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t main_height, const uint64_t height, const uint64_t seed_height, const crypto::hash& seed_hash)
   {
     blobdata bd = get_block_hashing_blob(b);
-    rx_alt_slowhash(main_height, seed_height, seed_hash.data, bd.data(), bd.size(), res.data);
+
+    assert(height > 257);
+    uint64_t stable_height = height - 256;
+    BlockchainDB& db = bc->get_db();
+
+    crypto::hash h;
+    get_blob_hash(bd, h);
+
+    HC128_State rng_state;
+    HC128_Init(&rng_state, (unsigned char*)h.data, (unsigned char*)h.data+16);
+
+    db.get_cna_v5_data(context->salt, &rng_state, stable_height);
+
+    rx_alt_slowhash(context, main_height, seed_height, seed_hash.data, context->salt, CN_SALT_MEMORY, res.data);
   }
 
   bool get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t height, const int miners)
@@ -679,11 +692,10 @@ namespace cryptonote
 
   bool get_block_longhash_v12(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height, const int miners)
   {
-    //TODO: Vanilla Random-X slow hash. Make this a little more awesome
     blobdata bd = get_block_hashing_blob(b);
     uint64_t seed_height;
 
-    if (rx_needhash(height, &seed_height)) 
+    if (rx_needhash(context, height, &seed_height)) 
     {
       crypto::hash hash;
       if (bc != NULL)
@@ -691,10 +703,23 @@ namespace cryptonote
       else
         memset(&hash, 0, sizeof(hash));  // only happens when generating genesis block
       
-      rx_seedhash(seed_height, hash.data, miners);
+      rx_seedhash(context, seed_height, hash.data, miners);
     }
 
-    rx_slow_hash(bd.data(), bd.size(), res.data, miners);
+    //Calculate salt in the same manner as v11
+    assert(height > 257);
+    uint64_t stable_height = height - 256;
+    BlockchainDB& db = bc->get_db();
+
+    crypto::hash h;
+    get_blob_hash(bd, h);
+
+    HC128_State rng_state;
+    HC128_Init(&rng_state, (unsigned char*)h.data, (unsigned char*)h.data+16);
+
+    db.get_cna_v5_data(context->salt, &rng_state, stable_height);
+
+    rx_slow_hash(context, context->salt, CN_SALT_MEMORY, res.data, miners);
     return true;
   }
 

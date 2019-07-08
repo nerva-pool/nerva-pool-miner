@@ -39,12 +39,6 @@
 #include "c_threads.h"
 #include "hash-ops.h"
 
-#if defined(_MSC_VER)
-#define THREADV __declspec(thread)
-#else
-#define THREADV __thread
-#endif
-
 static CTHR_MUTEX_TYPE rx_mutex = CTHR_MUTEX_INIT;
 
 typedef struct rx_state {
@@ -55,8 +49,6 @@ typedef struct rx_state {
 static rx_state rx_s[2];
 
 static randomx_dataset *rx_dataset;
-THREADV int rx_s_toggle;
-THREADV randomx_vm *rx_vm = NULL;
 
 static void local_abort(const char *msg)
 {
@@ -68,60 +60,7 @@ static void local_abort(const char *msg)
 #endif
 }
 
-/**
- * @brief uses cpuid to determine if the CPU supports the AES instructions
- * @return true if the CPU supports AES, false otherwise
- */
 
-static inline int force_software_aes(void)
-{
-  static int use = -1;
-
-  if (use != -1)
-    return use;
-
-  const char *env = getenv("MONERO_USE_SOFTWARE_AES");
-  if (!env) {
-    use = 0;
-  }
-  else if (!strcmp(env, "0") || !strcmp(env, "no")) {
-    use = 0;
-  }
-  else {
-    use = 1;
-  }
-  return use;
-}
-
-static void cpuid(int CPUInfo[4], int InfoType)
-{
-#if defined(__x86_64__)
-    __asm __volatile__
-    (
-    "cpuid":
-        "=a" (CPUInfo[0]),
-        "=b" (CPUInfo[1]),
-        "=c" (CPUInfo[2]),
-        "=d" (CPUInfo[3]) :
-            "a" (InfoType), "c" (0)
-        );
-#endif
-}
-static inline int check_aes_hw(void)
-{
-#if defined(__x86_64__)
-    int cpuid_results[4];
-    static int supported = -1;
-
-    if(supported >= 0)
-        return supported;
-
-    cpuid(cpuid_results,1);
-    return supported = cpuid_results[2] & (1 << 25);
-#else
-    return 0;
-#endif
-}
 
 static volatile int use_rx_jit_flag = -1;
 
@@ -172,19 +111,19 @@ void rx_seedheights(const uint64_t height, uint64_t *seedheight, uint64_t *nexth
   *nextheight = rx_seedheight(height + SEEDHASH_EPOCH_LAG);
 }
 
-bool rx_needhash(const uint64_t height, uint64_t *seedheight) {
+bool rx_needhash(cn_hash_context_t *context, const uint64_t height, uint64_t *seedheight) {
   rx_state *rx_sp;
   uint64_t s_height = rx_seedheight(height);
   int toggle = (s_height & SEEDHASH_EPOCH_BLOCKS) != 0;
   bool ret;
-  bool changed = (toggle != rx_s_toggle);
+  bool changed = (toggle != context->rx_s_toggle);
   *seedheight = s_height;
-  rx_s_toggle = toggle;
-  rx_sp = &rx_s[rx_s_toggle];
+  context->rx_s_toggle = toggle;
+  rx_sp = &rx_s[context->rx_s_toggle];
   ret = (rx_sp->rs_cache == NULL) || (rx_sp->rs_height != s_height);
   /* if cache is ok but we've flipped caches, reset vm */
-  if (!ret && changed && rx_vm != NULL)
-    randomx_vm_set_cache(rx_vm, rx_sp->rs_cache);
+  if (!ret && changed && context->rx_vm != NULL)
+    randomx_vm_set_cache(context->rx_vm, rx_sp->rs_cache);
   return ret;
 }
 
@@ -238,7 +177,7 @@ static void rx_initdata(randomx_cache *rs_cache, const int miners) {
   }
 }
 
-static void rx_seedhash_int(rx_state *rx_sp, const uint64_t height, const char *hash, const int miners) {
+static void rx_seedhash_int(cn_hash_context_t *context, rx_state *rx_sp, const uint64_t height, const char *hash, const int miners) {
   randomx_flags flags = RANDOMX_FLAG_DEFAULT;
   randomx_cache *cache;
   CTHR_MUTEX_LOCK(rx_mutex);
@@ -261,53 +200,56 @@ static void rx_seedhash_int(rx_state *rx_sp, const uint64_t height, const char *
       rx_sp->rs_cache = cache;
   }
   CTHR_MUTEX_UNLOCK(rx_mutex);
-  if (rx_vm != NULL)
-    randomx_vm_set_cache(rx_vm, rx_sp->rs_cache);
+  if (context->rx_vm != NULL)
+    randomx_vm_set_cache(context->rx_vm, rx_sp->rs_cache);
 }
 
-void rx_seedhash(const uint64_t height, const char *hash, const int miners) {
-  rx_state *rx_sp = &rx_s[rx_s_toggle];
-  rx_seedhash_int(rx_sp, height, hash, miners);
+void rx_seedhash(cn_hash_context_t *context, const uint64_t height, const char *hash, const int miners) {
+  rx_state *rx_sp = &rx_s[context->rx_s_toggle];
+  rx_seedhash_int(context, rx_sp, height, hash, miners);
 }
 
 static char rx_althash[32];	// seedhash for alternate blocks
 
-void rx_alt_slowhash(const uint64_t mainheight, const uint64_t seedheight, const char *seedhash, const void *data, size_t length, char *hash) {
+void rx_alt_slowhash(cn_hash_context_t *context, const uint64_t mainheight, const uint64_t seedheight, const char *seedhash, const void *data, size_t length, char *hash) {
   uint64_t s_height = rx_seedheight(mainheight);
   int alt_toggle = (s_height & SEEDHASH_EPOCH_BLOCKS) == 0;
   rx_state *rx_sp = &rx_s[alt_toggle];
   if (rx_sp->rs_height != seedheight || rx_sp->rs_cache == NULL || memcmp(hash, rx_althash, sizeof(rx_althash))) {
     memcpy(rx_althash, seedhash, sizeof(rx_althash));
     rx_sp->rs_height = 1;
-    rx_seedhash_int(rx_sp, seedheight, seedhash, 0);
+    rx_seedhash_int(context, rx_sp, seedheight, seedhash, 0);
   }
-  if (rx_vm == NULL) {
+  if (context->rx_vm == NULL) {
     randomx_flags flags = RANDOMX_FLAG_DEFAULT;
     if (use_rx_jit())
       flags |= RANDOMX_FLAG_JIT;
-    if(!force_software_aes() && check_aes_hw())
+#if !defined(CN_USE_SOFTWARE_AES)
       flags |= RANDOMX_FLAG_HARD_AES;
-    rx_vm = randomx_create_vm(flags | RANDOMX_FLAG_LARGE_PAGES, rx_sp->rs_cache, NULL);
-    if(rx_vm == NULL) //large pages failed
-      rx_vm = randomx_create_vm(flags, rx_sp->rs_cache, NULL);
-    if(rx_vm == NULL) {//fallback if everything fails
+#endif
+    context->rx_vm = randomx_create_vm(flags | RANDOMX_FLAG_LARGE_PAGES, rx_sp->rs_cache, NULL);
+    if(context->rx_vm == NULL) //large pages failed
+      context->rx_vm = randomx_create_vm(flags, rx_sp->rs_cache, NULL);
+    if(context->rx_vm == NULL) {//fallback if everything fails
       flags = RANDOMX_FLAG_DEFAULT;
-      rx_vm = randomx_create_vm(flags, rx_sp->rs_cache, NULL);
+      context->rx_vm = randomx_create_vm(flags, rx_sp->rs_cache, NULL);
     }
-    if (rx_vm == NULL)
+    if (context->rx_vm == NULL)
       local_abort("Couldn't allocate RandomX VM");
   }
-  randomx_calculate_hash(rx_vm, data, length, hash);
+
+  randomx_calculate_hash(context->rx_vm, data, length, hash);
 }
 
-void rx_slow_hash(const void *data, size_t length, char *hash, int miners) {
-  if (rx_vm == NULL) {
-    rx_state *rx_sp = &rx_s[rx_s_toggle];
+void rx_slow_hash(cn_hash_context_t *context, const void *data, size_t length, char *hash, int miners) {
+  if (context->rx_vm == NULL) {
+    rx_state *rx_sp = &rx_s[context->rx_s_toggle];
     randomx_flags flags = RANDOMX_FLAG_DEFAULT;
     if (use_rx_jit())
       flags |= RANDOMX_FLAG_JIT;
-    if(!force_software_aes() && check_aes_hw())
-      flags |= RANDOMX_FLAG_HARD_AES;
+#if !defined(CN_USE_SOFTWARE_AES)
+    flags |= RANDOMX_FLAG_HARD_AES;
+#endif
     if (miners) {
       if (rx_dataset == NULL) {
         CTHR_MUTEX_LOCK(rx_mutex);
@@ -325,27 +267,17 @@ void rx_slow_hash(const void *data, size_t length, char *hash, int miners) {
       else
         miners = 0;
     }
-    rx_vm = randomx_create_vm(flags | RANDOMX_FLAG_LARGE_PAGES, rx_sp->rs_cache, rx_dataset);
-    if(rx_vm == NULL) //large pages failed
-      rx_vm = randomx_create_vm(flags, rx_sp->rs_cache, rx_dataset);
-    if(rx_vm == NULL) {//fallback if everything fails
+    context->rx_vm = randomx_create_vm(flags | RANDOMX_FLAG_LARGE_PAGES, rx_sp->rs_cache, rx_dataset);
+    if(context->rx_vm == NULL) //large pages failed
+      context->rx_vm = randomx_create_vm(flags, rx_sp->rs_cache, rx_dataset);
+    if(context->rx_vm == NULL) {//fallback if everything fails
       flags = RANDOMX_FLAG_DEFAULT | (miners ? RANDOMX_FLAG_FULL_MEM : 0);
-      rx_vm = randomx_create_vm(flags, rx_sp->rs_cache, rx_dataset);
+      context->rx_vm = randomx_create_vm(flags, rx_sp->rs_cache, rx_dataset);
     }
-    if (rx_vm == NULL)
+    if (context->rx_vm == NULL)
       local_abort("Couldn't allocate RandomX VM");
   }
-  randomx_calculate_hash(rx_vm, data, length, hash);
-}
-
-void rx_slow_hash_allocate_state(void) {
-}
-
-void rx_slow_hash_free_state(void) {
-  if (rx_vm != NULL) {
-    randomx_destroy_vm(rx_vm);
-    rx_vm = NULL;
-  }
+  randomx_calculate_hash(context->rx_vm, data, length, hash);
 }
 
 void rx_stop_mining(void) {
