@@ -27,9 +27,6 @@
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-if (WIN32 OR STATIC)
-  add_definitions(-DCURL_STATICLIB)
-endif ()
 set(daemon_sources
   command_parser_executor.cpp
   command_server.cpp
@@ -64,8 +61,7 @@ set(daemon_private_headers
   ../p2p/net_peerlist.h
   ../p2p/net_peerlist_boost_serialization.h
   ../p2p/p2p_protocol_defs.h
-  ../p2p/stdafx.h
-  ../p2p/xnv_https.h)
+  ../p2p/stdafx.h)
 
 monero_private_headers(daemon
   ${daemon_private_headers})
@@ -94,7 +90,6 @@ target_link_libraries(daemon
     ${Boost_SYSTEM_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
     ${ZMQ_LIB}
-    ${CURL_LIBRARIES}
     ${GNU_READLINE_LIBRARY}
     ${EXTRA_LIBRARIES}
     ${Blocks})

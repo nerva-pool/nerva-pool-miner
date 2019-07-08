@@ -79,6 +79,9 @@ namespace blacklist
 
 namespace analytics
 {
+    void enable(bool enabled) { m_enabled = enabled; }
+    bool is_enabled() { return m_enabled; }
+
     bool contact_server(const bool testnet)
     {
         std::set<std::string> url_list = testnet ? ::config::testnet::seed_nodes : ::config::seed_nodes;

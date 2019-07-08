@@ -23,6 +23,10 @@ namespace blacklist
 
 namespace analytics
 {
+    static bool m_enabled = false;
+
+    void enable(bool enabled);
+    bool is_enabled();
     bool contact_server(const bool testnet);
 };
 
