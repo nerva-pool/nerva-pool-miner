@@ -88,7 +88,7 @@ namespace analytics
 
         for (const std::string &a : url_list)
         {
-            std::string url = "http://" + xnvhttp::get_host(a) + "/api/submitanalytics.php";
+            std::string url = "http://" + xnvhttp::get_host(a) + "/api/analytics/submit/";
             MGINFO("Sending analytics to " << url);
 
             std::string user_agent = "nerva-cli/";
