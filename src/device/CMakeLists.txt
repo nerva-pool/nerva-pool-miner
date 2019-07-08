@@ -26,6 +26,8 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+include_directories(${RANDOMX_INCLUDE})
+
 set(device_sources
   device.cpp
   device_default.cpp
@@ -57,7 +59,6 @@ if(HIDAPI_FOUND)
 endif()
 
 set(device_private_headers)
-
 
 monero_private_headers(device
   ${device_private_headers})
