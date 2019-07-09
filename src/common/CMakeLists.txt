@@ -29,6 +29,10 @@
 include_directories(${RANDOMX_INCLUDE})
 include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 
+if (WIN32 OR STATIC)
+  add_definitions(-DCURL_STATICLIB)
+endif ()
+
 set(common_sources
   base58.cpp
   command_line.cpp
@@ -46,7 +50,8 @@ set(common_sources
   updates.cpp
   aligned.c
   timings.cc
-  combinator.cpp)
+  combinator.cpp
+  xnv_https.cpp)
 
 if (STACK_TRACE)
   list(APPEND common_sources stack_trace.cpp)
@@ -85,7 +90,8 @@ set(common_private_headers
   updates.h
   aligned.h
   timings.h
-  combinator.h)
+  combinator.h
+  xnv_https.h)
 
 monero_private_headers(common
   ${common_private_headers})
@@ -106,6 +112,7 @@ target_link_libraries(common
     ${Boost_REGEX_LIBRARY}
     ${Boost_CHRONO_LIBRARY}
   PRIVATE
+    ${CURL_LIBRARIES}
     ${OPENSSL_LIBRARIES}
     ${EXTRA_LIBRARIES})
 

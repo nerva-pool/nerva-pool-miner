@@ -57,6 +57,7 @@ using namespace epee;
 #include "ringct/rctSigs.h"
 #include "common/notify.h"
 #include "version.h"
+#include "common/xnv_https.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -1625,6 +1626,7 @@ namespace cryptonote
     m_check_updates_interval.do_call(boost::bind(&core::check_updates, this));
     m_check_disk_space_interval.do_call(boost::bind(&core::check_disk_space, this));
     m_block_rate_interval.do_call(boost::bind(&core::check_block_rate, this));
+    m_contact_server_interval.do_call(boost::bind(&core::contact_server, this));
     m_miner.on_idle();
     m_mempool.on_idle();
     return true;
@@ -1763,6 +1765,15 @@ namespace cryptonote
 
     return true;
   }
+  //-----------------------------------------------------------------------------------------------
+  bool core::contact_server()
+  {
+    if (analytics::is_enabled() && (m_nettype == MAINNET || m_nettype == TESTNET))
+      analytics::contact_server(m_nettype == TESTNET);
+
+    return true;
+  }
+  //-----------------------------------------------------------------------------------------------
   void core::set_target_blockchain_height(uint64_t target_blockchain_height)
   {
     m_target_blockchain_height = target_blockchain_height;

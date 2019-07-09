@@ -46,7 +46,7 @@
 #include "rpc/rpc_args.h"
 #include "daemon/command_line_args.h"
 #include "version.h"
-#include "p2p/xnv_https.h"
+#include "common/xnv_https.h"
 
 #ifdef STACK_TRACE
 #include "common/stack_trace.h"
@@ -367,14 +367,11 @@ int main(int argc, char const * argv[])
       return 1;
 
     if (noanalytics)
-      MGINFO("Analytics disabled. Please consider helping us build the node map");
+      MGINFO("Analytics disabled.");
     else
-    {
-      if (analytics::contact_server(testnet))
-        MGINFO("Node map server pinged. Thanks for helping build the node map");
-      else
-        MGINFO("Node map server error. Information not submitted");  
-    }        
+      MGINFO("Analytics enabled.");
+
+    analytics::enable(!noanalytics);
 
     blacklist::read_blacklist_from_url(testnet);
     if (blacklist::get_ip_list().size() > 0)

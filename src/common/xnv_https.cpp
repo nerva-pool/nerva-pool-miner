@@ -79,13 +79,16 @@ namespace blacklist
 
 namespace analytics
 {
+    void enable(bool enabled) { m_enabled = enabled; }
+    bool is_enabled() { return m_enabled; }
+
     bool contact_server(const bool testnet)
     {
         std::set<std::string> url_list = testnet ? ::config::testnet::seed_nodes : ::config::seed_nodes;
 
         for (const std::string &a : url_list)
         {
-            std::string url = "http://" + xnvhttp::get_host(a) + "/api/submitanalytics.php";
+            std::string url = "http://" + xnvhttp::get_host(a) + "/api/analytics/submit/";
             MGINFO("Sending analytics to " << url);
 
             std::string user_agent = "nerva-cli/";
