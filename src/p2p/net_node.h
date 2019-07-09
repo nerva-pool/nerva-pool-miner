@@ -253,11 +253,12 @@ namespace nodetool
     virtual bool block_host(const epee::net_utils::network_address &adress, time_t seconds = 0);
     virtual bool unblock_host(const epee::net_utils::network_address &address);
     virtual std::map<std::string, time_t> get_blocked_hosts() { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return m_blocked_hosts; }
+    virtual bool add_peer(const std::string &adress);
   private:
     const std::vector<std::string> m_seed_nodes_list =
     {
-		"seeds.getnerva.org"
-	};
+      "seeds.getnerva.org"
+    };
 
     bool islimitup=false;
     bool islimitdown=false;
@@ -474,6 +475,8 @@ namespace nodetool
     boost::uuids::uuid m_network_id;
     cryptonote::network_type m_nettype;
     epee::net_utils::ssl_support_t m_ssl_support;
+
+    epee::critical_section m_add_peer_lock;
   };
 
     const int64_t default_limit_up = P2P_DEFAULT_LIMIT_RATE_UP;      // kB/s

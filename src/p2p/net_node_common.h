@@ -58,6 +58,7 @@ namespace nodetool
     virtual bool unblock_host(const epee::net_utils::network_address &address)=0;
     virtual std::map<std::string, time_t> get_blocked_hosts()=0;
     virtual bool add_host_fail(const epee::net_utils::network_address &address)=0;
+    virtual bool add_peer(const std::string &address)=0;
   };
 
   template<class t_connection_context>
@@ -114,6 +115,10 @@ namespace nodetool
       return std::map<std::string, time_t>();
     }
     virtual bool add_host_fail(const epee::net_utils::network_address &address)
+    {
+      return true;
+    }
+    virtual bool add_peer(const std::string &address)
     {
       return true;
     }

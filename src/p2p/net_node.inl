@@ -248,6 +248,31 @@ namespace nodetool
   }
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
+  bool node_server<t_payload_net_handler>::add_peer(const std::string &address)
+  {
+    CRITICAL_REGION_LOCAL(m_add_peer_lock);
+
+    nodetool::peerlist_entry pe = AUTO_VAL_INIT(pe);
+    pe.id = crypto::rand<uint64_t>();
+    const uint16_t default_port = cryptonote::get_config(m_nettype).P2P_DEFAULT_PORT;
+    expect<epee::net_utils::network_address> adr = net::get_network_address(address, default_port);
+
+    if (adr == net::error::unsupported_address)
+      return false;
+
+    if (adr)
+    {
+      add_zone(adr->get_zone());
+      pe.adr = std::move(*adr);
+    }
+
+    m_network_zones.at(pe.adr.get_zone()).m_peerlist.append_with_peer_white(pe);
+    MCLOG_CYAN(el::Level::Info, "global", "Peer " << address << " added.");
+
+    return true;
+  }
+  //-----------------------------------------------------------------------------------
+  template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::handle_command_line(
       const boost::program_options::variables_map& vm
     )
