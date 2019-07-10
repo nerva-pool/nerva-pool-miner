@@ -50,8 +50,7 @@ namespace crypto
 
 namespace cryptonote
 {
-  class Blockchain;
-
+  
   struct i_miner_handler
   {
     virtual bool handle_block_found(block& b, block_verification_context &bvc) = 0;
@@ -60,6 +59,8 @@ namespace cryptonote
   protected:
     ~i_miner_handler(){};
   };
+
+  class Blockchain;
 
   /************************************************************************/
   /*                                                                      */
@@ -149,6 +150,7 @@ namespace cryptonote
     std::list<boost::thread> m_threads;
     epee::critical_section m_threads_lock;
     i_miner_handler* m_phandler;
+    Blockchain* m_pbc;
     account_public_address m_mine_address;
     account_public_address m_donate_mine_address;
     epee::math_helper::once_a_time_seconds<5> m_update_block_template_interval;
@@ -167,8 +169,6 @@ namespace cryptonote
     bool m_do_mining;
     std::vector<std::pair<uint64_t, uint64_t>> m_threads_autodetect;
     boost::thread::attributes m_attrs;
-
-    cryptonote::Blockchain* m_blockchain;
 
     // background mining stuffs ..
 

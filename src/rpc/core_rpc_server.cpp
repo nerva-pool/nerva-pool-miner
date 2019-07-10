@@ -1408,6 +1408,18 @@ namespace cryptonote
       LOG_ERROR("Failed to create block template");
       return false;
     }
+    if (b.major_version >= RX_BLOCK_VERSION)
+    {
+      uint64_t seed_height, next_height;
+      crypto::hash seed_hash;
+      crypto::rx_seedheights(res.height, &seed_height, &next_height);
+      seed_hash = m_core.get_block_id_by_height(seed_height);
+      res.seed_hash = string_tools::pod_to_hex(seed_hash);
+      if (next_height != seed_height) {
+        seed_hash = m_core.get_block_id_by_height(next_height);
+        res.next_seed_hash = string_tools::pod_to_hex(seed_hash);
+      }
+    }
     blobdata block_blob = t_serializable_object_to_blob(b);
     crypto::public_key tx_pub_key = cryptonote::get_tx_pub_key_from_extra(b.miner_tx);
     if(tx_pub_key == crypto::null_pkey)

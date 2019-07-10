@@ -74,6 +74,8 @@ void hash_process(union hash_state *state, const uint8_t *buf, size_t count);
 
 #endif
 
+#include "randomx.h"
+
 enum {
   HASH_SIZE = 32,
   HASH_DATA_AREA = 136
@@ -121,6 +123,8 @@ typedef struct cn_hash_context
   int salt_is_mapped;
   cn_random_values_t random_values;
   uint64_t cached_height;
+  randomx_vm *rx_vm;
+  int rx_s_toggle;
 } cn_hash_context_t;
 
 cn_hash_context_t *cn_hash_context_create(void);
@@ -131,3 +135,11 @@ void cn_slow_hash_v11(cn_hash_context_t *context, const void *data, size_t lengt
 void cn_slow_hash_v10(cn_hash_context_t *context, const void *data, size_t length, char *hash, size_t iters, uint8_t init_size_blk, uint16_t xx, uint16_t yy, uint16_t zz, uint16_t ww);
 void cn_slow_hash_v9(cn_hash_context_t *context, const void *data, size_t length, char *hash, size_t iters);
 void cn_slow_hash_v7_8(cn_hash_context_t *context, const void *data, size_t length, char *hash, size_t iters);
+
+uint64_t rx_seedheight(const uint64_t height);
+void rx_seedheights(const uint64_t height, uint64_t *seed_height, uint64_t *next_height);
+bool rx_needhash(cn_hash_context_t *context, const uint64_t height, uint64_t *seedheight);
+void rx_seedhash(cn_hash_context_t *context, const uint64_t seedheight, const char *hash, const int miners);
+void rx_slow_hash(cn_hash_context_t *context, const void *data, size_t length, char *hash, const int miners);
+void rx_alt_slowhash(cn_hash_context_t *context, const uint64_t mainheight, const uint64_t seedheight, const char *seedhash, const void *data, size_t length, char *hash);
+void rx_reorg(const uint64_t split_height);

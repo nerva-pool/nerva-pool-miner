@@ -104,6 +104,7 @@ cn_hash_context_t *cn_hash_context_create(void)
         cn_hash_context_free(ctx);
         return NULL;
     }
+
     return ctx;
 }
 
@@ -123,6 +124,12 @@ void cn_hash_context_free(cn_hash_context_t *context)
         free_hugepage(context->salt, CN_SALT_MEMORY, context->salt_is_mapped);
         context->salt = NULL;
     }
+
+    if (context->rx_vm != NULL) {
+        randomx_destroy_vm(context->rx_vm);
+        context->rx_vm = NULL;
+    }
+
     free(context);
 }
 

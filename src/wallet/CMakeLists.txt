@@ -28,6 +28,8 @@
 
 # include (${PROJECT_SOURCE_DIR}/cmake/libutils.cmake)
 
+include_directories(${RANDOMX_INCLUDE})
+
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 set(wallet_sources

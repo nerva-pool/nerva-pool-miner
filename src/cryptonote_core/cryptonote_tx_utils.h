@@ -1,3 +1,4 @@
+// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
@@ -43,7 +44,6 @@ namespace crypto
 
 namespace cryptonote
 {
-  class Blockchain;
 
   //---------------------------------------------------------------
   bool construct_miner_tx(size_t height, size_t median_size, uint64_t already_generated_coins, size_t current_block_size, uint64_t fee, const account_public_address &miner_address, 
@@ -115,7 +115,15 @@ namespace cryptonote
                                       crypto::public_key &out_eph_public_key) ;
 
   bool generate_genesis_block(block& bl);
-  bool get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t height);
+  class Blockchain;
+
+  bool get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t height, const int miners);
+  crypto::hash get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, const uint64_t height, const int miners);
+  void get_altblock_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t main_height, const uint64_t height,
+    const uint64_t seed_height, const crypto::hash& seed_hash);
+  void get_block_longhash_reorg(const uint64_t split_height);
+  
+  bool get_block_longhash_v12(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t height, const int miners);
   bool get_block_longhash_v11(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height);
   bool get_block_longhash_v10(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height);
   bool get_block_longhash_v9(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height);

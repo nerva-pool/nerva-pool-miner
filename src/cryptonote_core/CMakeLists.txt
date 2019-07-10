@@ -26,6 +26,8 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+include_directories(${RANDOMX_INCLUDE})
+
 set(cryptonote_core_sources
   blockchain.cpp
   cryptonote_core.cpp
