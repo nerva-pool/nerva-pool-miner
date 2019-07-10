@@ -475,8 +475,6 @@ namespace nodetool
     boost::uuids::uuid m_network_id;
     cryptonote::network_type m_nettype;
     epee::net_utils::ssl_support_t m_ssl_support;
-
-    epee::critical_section m_add_peer_lock;
   };
 
     const int64_t default_limit_up = P2P_DEFAULT_LIMIT_RATE_UP;      // kB/s

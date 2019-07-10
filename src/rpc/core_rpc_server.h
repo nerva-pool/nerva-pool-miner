@@ -170,7 +170,7 @@ namespace cryptonote
         MAP_JON_RPC_WE("get_min_version",       on_get_min_version,             COMMAND_RPC_MIN_VERSION)
         MAP_JON_RPC_WE("get_tx_pubkey",         on_get_tx_pubkey,               COMMAND_RPC_GET_TX_PUBKEY)
         MAP_JON_RPC_WE("decode_outputs",        on_decode_outputs,              COMMAND_RPC_DECODE_OUTPUTS)
-        MAP_JON_RPC_WE("add_peer",              on_add_peer,                    COMMAND_RPC_ADD_PEER)
+        MAP_JON_RPC_WE_IF("add_peer",           on_add_peer,                 COMMAND_RPC_ADD_PEER, !m_restricted)
       END_JSON_RPC_MAP()
     END_URI_MAP2()
 

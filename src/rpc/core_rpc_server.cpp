@@ -54,7 +54,6 @@ using namespace epee;
 #include "rpc/rpc_args.h"
 #include "rpc/rpc_handler.h"
 #include "core_rpc_server_error_codes.h"
-//#include "p2p/net_node.h"
 #include "version.h"
 #include "cryptonote_config.h"
 
