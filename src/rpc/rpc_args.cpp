@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
@@ -34,6 +35,7 @@
 #include "common/command_line.h"
 #include "common/i18n.h"
 #include "hex.h"
+#include "net/local_ip.h"
 
 namespace cryptonote
 {
@@ -90,6 +92,7 @@ namespace cryptonote
 
   rpc_args::descriptors::descriptors()
      : rpc_bind_ip({"rpc-bind-ip", rpc_args::tr("Specify IP to bind RPC server"), "127.0.0.1"})
+     , rpc_auth_basic({"rpc-auth-basic", rpc_args::tr("Use HTTP Basic authentication")})
      , rpc_login({"rpc-login", rpc_args::tr("Specify username[:password] required for RPC server"), "", true})
      , confirm_external_bind({"confirm-external-bind", rpc_args::tr("Confirm rpc-bind-ip value is NOT a loopback (local) IP")})
      , rpc_access_control_origins({"rpc-access-control-origins", rpc_args::tr("Specify a comma separated list of origins to allow cross origin resource sharing"), ""})
@@ -104,10 +107,12 @@ namespace cryptonote
 
   const char* rpc_args::tr(const char* str) { return i18n_translate(str, "cryptonote::rpc_args"); }
 
-  void rpc_args::init_options(boost::program_options::options_description& desc, const bool any_cert_option)
+  void rpc_args::init_options(boost::program_options::options_description& desc, const bool any_cert_option, const bool basic_auth_option)
   {
     const descriptors arg{};
     command_line::add_arg(desc, arg.rpc_bind_ip);
+    if (basic_auth_option)
+      command_line::add_arg(desc, arg.rpc_auth_basic);
     command_line::add_arg(desc, arg.rpc_login);
     command_line::add_arg(desc, arg.confirm_external_bind);
     command_line::add_arg(desc, arg.rpc_access_control_origins);
@@ -121,34 +126,11 @@ namespace cryptonote
       command_line::add_arg(desc, arg.rpc_ssl_allow_any_cert);
   }
 
-  boost::optional<rpc_args> rpc_args::process(const boost::program_options::variables_map& vm, const bool any_cert_option)
+  boost::optional<rpc_args> rpc_args::process(const boost::program_options::variables_map& vm, const bool any_cert_option, const bool basic_auth_option)
   {
     const descriptors arg{};
     rpc_args config{};
     
-    config.bind_ip = command_line::get_arg(vm, arg.rpc_bind_ip);
-    if (!config.bind_ip.empty())
-    {
-      // always parse IP here for error consistency
-      boost::system::error_code ec{};
-      const auto parsed_ip = boost::asio::ip::address::from_string(config.bind_ip, ec);
-      if (ec)
-      {
-        LOG_ERROR(tr("Invalid IP address given for --") << arg.rpc_bind_ip.name);
-        return boost::none;
-      }
-
-      if (!parsed_ip.is_loopback() && !command_line::get_arg(vm, arg.confirm_external_bind))
-      {
-        LOG_ERROR(
-          "--" << arg.rpc_bind_ip.name <<
-          tr(" permits inbound unencrypted external connections. Consider SSH tunnel or SSL proxy instead. Override with --") <<
-          arg.confirm_external_bind.name
-        );
-        return boost::none;
-      }
-    }
-
     const char *env_rpc_login = nullptr;
     const bool has_rpc_arg = command_line::has_arg(vm, arg.rpc_login);
     const bool use_rpc_env = !has_rpc_arg && (env_rpc_login = getenv("RPC_LOGIN")) != nullptr && strlen(env_rpc_login) > 0;
@@ -169,6 +151,47 @@ namespace cryptonote
         return boost::none;
       }
     }
+    config.auth_type = (basic_auth_option && command_line::get_arg(vm, arg.rpc_auth_basic) ? epee::net_utils::http::http_auth_basic : epee::net_utils::http::http_auth_digest);
+
+    auto ssl_options = do_process_ssl(vm, arg, any_cert_option);
+    if (!ssl_options)
+      return boost::none;
+    config.ssl_options = std::move(*ssl_options);
+
+    config.bind_ip = command_line::get_arg(vm, arg.rpc_bind_ip);
+    if (!config.bind_ip.empty())
+    {
+      // always parse IP here for error consistency
+      boost::system::error_code ec{};
+      const auto parsed_ip = boost::asio::ip::address::from_string(config.bind_ip, ec);
+      if (ec)
+      {
+        LOG_ERROR(tr("Invalid IP address given for --") << arg.rpc_bind_ip.name);
+        return boost::none;
+      }
+
+      if (!(parsed_ip.is_loopback() || config.ssl_options))
+      {
+        if (!command_line::get_arg(vm, arg.confirm_external_bind))
+        {
+          LOG_ERROR(
+            "--" << arg.rpc_bind_ip.name <<
+            tr(" permits inbound unencrypted external connections. Consider SSH tunnel or SSL proxy instead. Override with --") <<
+            arg.confirm_external_bind.name
+          );
+          return boost::none;
+        }
+
+        if (!(config.auth_type == epee::net_utils::http::http_auth_digest
+              || (parsed_ip.is_v4() && epee::net_utils::is_ip_local(static_cast<uint32_t>(parsed_ip.to_v4().to_ulong())))))
+        {
+          LOG_ERROR(
+            tr("The provided configuration permits unencrypted non-local connections with cleartext authentication. Either enable SSL, disable connections from non-local networks, or use digest authentication.")
+          );
+          return boost::none;
+        }
+      }
+    }
 
     auto access_control_origins_input = command_line::get_arg(vm, arg.rpc_access_control_origins);
     if (!access_control_origins_input.empty())
@@ -184,11 +207,6 @@ namespace cryptonote
       std::for_each(access_control_origins.begin(), access_control_origins.end(), boost::bind(&boost::trim<std::string>, _1, std::locale::classic()));
       config.access_control_origins = std::move(access_control_origins);
     }
-
-    auto ssl_options = do_process_ssl(vm, arg, any_cert_option);
-    if (!ssl_options)
-      return boost::none;
-    config.ssl_options = std::move(*ssl_options);
 
     return {std::move(config)};
   }

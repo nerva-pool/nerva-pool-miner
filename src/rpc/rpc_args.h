@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
@@ -35,6 +36,7 @@
 
 #include "common/command_line.h"
 #include "common/password.h"
+#include "net/http_auth.h"
 #include "net/net_ssl.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
@@ -55,6 +57,7 @@ namespace cryptonote
       descriptors& operator=(descriptors&&) = delete;
 
       const command_line::arg_descriptor<std::string> rpc_bind_ip;
+      const command_line::arg_descriptor<bool> rpc_auth_basic;
       const command_line::arg_descriptor<std::string> rpc_login;
       const command_line::arg_descriptor<bool> confirm_external_bind;
       const command_line::arg_descriptor<std::string> rpc_access_control_origins;
@@ -70,16 +73,17 @@ namespace cryptonote
     // `allow_any_cert` bool toggles `--rpc-ssl-allow-any-cert` configuration
 
     static const char* tr(const char* str);
-    static void init_options(boost::program_options::options_description& desc, const bool any_cert_option = false);
+    static void init_options(boost::program_options::options_description& desc, const bool any_cert_option = false, const bool basic_auth_option = false);
 
     //! \return Arguments specified by user, or `boost::none` if error
-    static boost::optional<rpc_args> process(const boost::program_options::variables_map& vm, const bool any_cert_option = false);
+    static boost::optional<rpc_args> process(const boost::program_options::variables_map& vm, const bool any_cert_option = false, const bool basic_auth_option = false);
 
     //! \return SSL arguments specified by user, or `boost::none` if error
     static boost::optional<epee::net_utils::ssl_options_t> process_ssl(const boost::program_options::variables_map& vm, const bool any_cert_option = false);
 
     std::string bind_ip;
     std::vector<std::string> access_control_origins;
+    epee::net_utils::http::authentication_type auth_type;
     boost::optional<tools::login> login; // currently `boost::none` if unspecified by user
     epee::net_utils::ssl_options_t ssl_options = epee::net_utils::ssl_support_t::e_ssl_support_enabled;
   };
