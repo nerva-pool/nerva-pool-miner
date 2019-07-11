@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
@@ -92,9 +93,11 @@ namespace
   }
 
   constexpr const auto client_auth_field = ceref(u8"Authorization");
-  constexpr const auto server_auth_field = ceref(u8"WWW-authenticate");
+  constexpr const auto server_auth_field = ceref(u8"WWW-Authenticate");
   constexpr const auto auth_realm = ceref(u8"nerva-rpc");
+  constexpr const char space = 32;
   constexpr const char comma = 44;
+  constexpr const char colon = 58;
   constexpr const char equal_sign = 61;
   constexpr const char quote = 34;
   constexpr const char zero = 48;
@@ -191,6 +194,26 @@ namespace
   std::string to_string(boost::iterator_range<const char*> source)
   {
     return {source.begin(), source.size()};
+  }
+
+  void lstrip_space(boost::string_ref& s)
+  {
+    while (s.starts_with(space))
+    {
+      s.remove_prefix(1);
+    }
+  }
+
+  bool read_token(boost::string_ref& s, boost::string_ref& token)
+  {
+    lstrip_space(s);
+    size_t token_len = 0;
+    for (const size_t len = s.length(); token_len < len && s.at(token_len) != space; token_len++);
+    if (token_len == 0)
+      return false;
+    token = s.substr(0, token_len);
+    s.remove_prefix(token_len);
+    return true;
   }
 
   template<typename T>
@@ -323,7 +346,7 @@ namespace
 
     //! \return Status of the `response` field from the client
     static status verify(const boost::string_ref method, const boost::string_ref request,
-      const http::http_server_auth::session& user)
+      const http::http_server_auth_digest::session& user)
     {
       const auto parsed = parse(request);
       if (parsed &&
@@ -560,7 +583,7 @@ namespace
       }
 
       const auth_message& request;
-      const http::http_server_auth::session& user;
+      const http::http_server_auth_digest::session& user;
       const boost::string_ref method;
     };
 
@@ -702,6 +725,53 @@ namespace
     
     return rc;
   }
+
+  http::http_response_info create_basic_response()
+  {
+    epee::net_utils::http::http_response_info rc{};
+    rc.m_response_code = 401;
+    rc.m_response_comment = u8"Unauthorized";
+    rc.m_mime_tipe = u8"text/html";
+    rc.m_body = 
+      u8"<html><head><title>Unauthorized Access</title></head><body><h1>401 Unauthorized</h1></body></html>";
+
+    static constexpr const auto fvalue = ceref(u8"Basic ");
+    std::string out(fvalue);
+    add_first_field(out, u8"realm", quoted(auth_realm));
+    rc.m_additional_fields.push_back(std::make_pair(std::string(server_auth_field), std::move(out)));
+
+    return rc;
+  }
+
+  bool parse_basic_header(const std::string& header, http::login& credentials)
+  {
+    boost::string_ref unparsed = boost::string_ref(header);
+    boost::string_ref token;
+    if (!read_token(unparsed, token))
+      return false;
+    static constexpr const auto scheme = ceref(u8"Basic");
+    if (!boost::equals(token, scheme, ascii_iequal))
+      return false;
+    if (!read_token(unparsed, token))
+      return false;
+    const std::string encoded_credentials = token.to_string();
+    std::string credential_str = epee::string_encoding::base64_decode(encoded_credentials);
+    size_t sep_pos = credential_str.find(':');
+    if (sep_pos != std::string::npos)
+    {
+      credentials.username = credential_str.substr(0, sep_pos);
+      credentials.password = credential_str.substr(sep_pos+1);
+    }
+    else
+    {
+      credentials.username = credential_str;
+      credentials.password = "";
+    }
+    // Check for unexpected trailing token
+    if (read_token(unparsed, token))
+      return false;
+    return true;
+  }
 }
 
 namespace epee
@@ -710,11 +780,11 @@ namespace epee
   {
     namespace http
     {
-      http_server_auth::http_server_auth(login credentials, std::function<void(size_t, uint8_t*)> r)
+      http_server_auth_digest::http_server_auth_digest(login credentials, std::function<void(size_t, uint8_t*)> r)
         : user(session{std::move(credentials)}), rng(std::move(r)) {
       }
 
-      boost::optional<http_response_info> http_server_auth::do_get_response(const http_request_info& request)
+      boost::optional<http_response_info> http_server_auth_digest::do_get_response(const http_request_info& request)
       {
         assert(user);
         using field = std::pair<std::string, std::string>;
@@ -750,6 +820,34 @@ namespace epee
         }
         return create_digest_response(user->nonce, is_stale);
       }
+
+
+      http_server_auth_basic::http_server_auth_basic(login credentials)
+        : credentials(std::move(credentials)) {
+      }
+
+      boost::optional<http_response_info> http_server_auth_basic::get_response(const http_request_info& request)
+      {
+        using field = std::pair<std::string, std::string>;
+
+        const std::list<field>& fields = request.m_header_info.m_etc_fields;
+        const auto auth = boost::find_if(fields, [] (const field& value) {
+          return boost::equals(client_auth_field, value.first, ascii_iequal);
+        });
+
+        if (auth != fields.end())
+        {
+          login req_credentials;
+          if (parse_basic_header(auth->second, req_credentials)
+              && boost::equals(credentials.username, req_credentials.username)
+              && credentials.password == req_credentials.password)
+          {
+            return boost::none;
+          }
+        }
+        return create_basic_response();
+      }
+
 
       http_client_auth::http_client_auth(login credentials)
         : user(session{std::move(credentials)}) {

@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2006-2013, Andrey N. Sabelnikov, www.sabelnikov.net
 // All rights reserved.
 // 
@@ -58,6 +59,7 @@ namespace epee
 
     bool init(std::function<void(size_t, uint8_t*)> rng, const std::string& bind_port = "0", const std::string& bind_ip = "0.0.0.0",
       std::vector<std::string> access_control_origins = std::vector<std::string>(),
+      net_utils::http::authentication_type auth_type = net_utils::http::http_auth_digest,
       boost::optional<net_utils::http::login> user = boost::none,
       net_utils::ssl_options_t ssl_options = net_utils::ssl_support_t::e_ssl_support_autodetect)
     {
@@ -73,6 +75,7 @@ namespace epee
       std::sort(access_control_origins.begin(), access_control_origins.end());
       m_net_server.get_config_object().m_access_control_origins = std::move(access_control_origins);
 
+      m_net_server.get_config_object().m_auth_type = auth_type;
       m_net_server.get_config_object().m_user = std::move(user);
 
       MGINFO("Binding on " << bind_ip << ":" << bind_port);

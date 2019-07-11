@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2018, The Monero Project
 // 
@@ -157,12 +158,13 @@ namespace tools
   //------------------------------------------------------------------------------------------------------------------------------
   bool wallet_rpc_server::init(const boost::program_options::variables_map *vm)
   {
-    auto rpc_config = cryptonote::rpc_args::process(*vm);
+    auto rpc_config = cryptonote::rpc_args::process(*vm, false, true);
     if (!rpc_config)
       return false;
 
     m_vm = vm;
 
+    epee::net_utils::http::authentication_type http_auth_type = rpc_config->auth_type;
     boost::optional<epee::net_utils::http::login> http_login{};
     std::string bind_port = command_line::get_arg(*m_vm, arg_rpc_bind_port);
     const bool disable_auth = command_line::get_arg(*m_vm, arg_disable_rpc_login);
@@ -199,6 +201,7 @@ namespace tools
         LOG_ERROR(tr("Cannot specify --") << arg_disable_rpc_login.name << tr(" and --") << arg.rpc_login.name);
         return false;
       }
+      http_auth_type = epee::net_utils::http::http_auth_none;
     }
     else // auth enabled
     {
@@ -245,8 +248,8 @@ namespace tools
     m_net_server.set_threads_prefix("RPC");
     auto rng = [](size_t len, uint8_t *ptr) { return crypto::rand(len, ptr); };
     return epee::http_server_impl_base<wallet_rpc_server, connection_context>::init(
-      rng, std::move(bind_port), std::move(rpc_config->bind_ip), std::move(rpc_config->access_control_origins), std::move(http_login),
-      std::move(rpc_config->ssl_options)
+      rng, std::move(bind_port), std::move(rpc_config->bind_ip), std::move(rpc_config->access_control_origins),
+      http_auth_type, std::move(http_login), std::move(rpc_config->ssl_options)
     );
   }
   //------------------------------------------------------------------------------------------------------------------------------
@@ -4467,7 +4470,7 @@ int main(int argc, char** argv) {
   command_line::add_arg(desc_params, arg_rpc_bind_port);
   command_line::add_arg(desc_params, arg_disable_rpc_login);
   command_line::add_arg(desc_params, arg_restricted);
-  cryptonote::rpc_args::init_options(desc_params);
+  cryptonote::rpc_args::init_options(desc_params, false, true);
   command_line::add_arg(desc_params, arg_wallet_file);
   command_line::add_arg(desc_params, arg_from_json);
   command_line::add_arg(desc_params, arg_wallet_dir);
