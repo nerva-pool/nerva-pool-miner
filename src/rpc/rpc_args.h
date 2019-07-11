@@ -37,6 +37,9 @@
 #include "common/password.h"
 #include "net/net_ssl.h"
 
+#undef MONERO_DEFAULT_LOG_CATEGORY
+#define MONERO_DEFAULT_LOG_CATEGORY "default"
+
 namespace cryptonote
 {
   //! Processes command line arguments related to server-side RPC
