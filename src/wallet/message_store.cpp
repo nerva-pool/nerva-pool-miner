@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2018, The Monero Project
 //
 // All rights reserved.
@@ -732,7 +733,7 @@ void message_store::read_from_file(const multisig_wallet_state &state, const std
   {
     // Simply do nothing if the file is not there; allows e.g. easy recovery
     // from problems with the MMS by deleting the file
-    MERROR("No message store file found: " << filename);
+    MWARNING("No message store file found: " << filename);
     return;
   }
 
