@@ -115,7 +115,7 @@ namespace net_utils
       boost::optional<http_response_info> get_response(const http_request_info& request);
 
     private:
-        login credentials;
+        epee::wipeable_string encoded_credentials;
     };
 
     //! Implements RFC 2617 digest auth. Digests from RFC 7616 can be added.
