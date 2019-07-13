@@ -61,6 +61,7 @@
 #include <boost/spirit/include/qi_string.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
 #include <boost/spirit/include/qi_uint.hpp>
+#include <openssl/crypto.h>
 #include <cassert>
 #include <iterator>
 #include <limits>
@@ -743,7 +744,7 @@ namespace
     return rc;
   }
 
-  bool parse_basic_header(const std::string& header, http::login& credentials)
+  bool parse_basic_header(const std::string& header, epee::wipeable_string& credentials)
   {
     boost::string_ref unparsed = boost::string_ref(header);
     boost::string_ref token;
@@ -754,19 +755,7 @@ namespace
       return false;
     if (!read_token(unparsed, token))
       return false;
-    const std::string encoded_credentials = token.to_string();
-    std::string credential_str = epee::string_encoding::base64_decode(encoded_credentials);
-    size_t sep_pos = credential_str.find(':');
-    if (sep_pos != std::string::npos)
-    {
-      credentials.username = credential_str.substr(0, sep_pos);
-      credentials.password = credential_str.substr(sep_pos+1);
-    }
-    else
-    {
-      credentials.username = credential_str;
-      credentials.password = "";
-    }
+    credentials = epee::wipeable_string(std::move(token.to_string()));
     // Check for unexpected trailing token
     if (read_token(unparsed, token))
       return false;
@@ -823,7 +812,23 @@ namespace epee
 
 
       http_server_auth_basic::http_server_auth_basic(login credentials)
-        : credentials(std::move(credentials)) {
+      {
+        epee::wipeable_string credentials_str;
+        credentials_str.reserve(credentials.username.length() + credentials.password.length() + 1);
+        credentials_str += credentials.username;
+        credentials_str.push_back(colon);
+        credentials_str += credentials.password;
+        encoded_credentials = epee::wipeable_string(std::move(epee::string_encoding::base64_encode(
+          (const unsigned char*)credentials_str.data(), credentials_str.length())));
+        // Pad the encoded string to make it difficult to determine the
+        // length of the actual credentials via a timing attack (if the
+        // encoded credentials are longer than 512 bytes, it's highly
+        // improbable an attacker will ever brute-force them, even
+        // assuming their length is known).
+        for (size_t len = encoded_credentials.size(); len < 512; len++)
+        {
+          encoded_credentials.push_back('\0');
+        }
       }
 
       boost::optional<http_response_info> http_server_auth_basic::get_response(const http_request_info& request)
@@ -837,12 +842,21 @@ namespace epee
 
         if (auth != fields.end())
         {
-          login req_credentials;
-          if (parse_basic_header(auth->second, req_credentials)
-              && boost::equals(credentials.username, req_credentials.username)
-              && credentials.password == req_credentials.password)
+          epee::wipeable_string req_credentials;
+          if (parse_basic_header(auth->second, req_credentials))
           {
-            return boost::none;
+            // Pad the input credentials to match the length of the padded
+            // expected credentials. This approach should not leak length
+            // information to timing attacks, unless the unpadded expected
+            // credentials string is extremely long, at which point an
+            // attack on known-length credentials should be infeasible.
+            const size_t cmp_len = encoded_credentials.size();
+            for (size_t l = req_credentials.size(); l < cmp_len; l++)
+            {
+              req_credentials.push_back('\0');
+            }
+            if (CRYPTO_memcmp(encoded_credentials.data(), req_credentials.data(), cmp_len) == 0)
+              return boost::none;
           }
         }
         return create_basic_response();
