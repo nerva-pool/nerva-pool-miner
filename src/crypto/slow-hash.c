@@ -105,6 +105,9 @@ cn_hash_context_t *cn_hash_context_create(void)
         return NULL;
     }
 
+    ctx->rx_s_toggle = 0;
+    ctx->rx_vm = NULL;
+
     return ctx;
 }
 
