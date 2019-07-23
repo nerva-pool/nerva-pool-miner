@@ -1,3 +1,4 @@
+// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2006-2013, Andrey N. Sabelnikov, www.sabelnikov.net
 // All rights reserved.
 // 
@@ -31,6 +32,34 @@ namespace epee
 {
   namespace net_utils
   {
+    inline bool is_native_ip_local(uint32_t ip)
+    {
+      /*
+      local ip area:
+      10.0.0.0 - 10.255.255.255
+      172.16.0.0 - 172.31.255.255
+      192.168.0.0 - 192.168.255.255
+      */
+      if((ip | 0x00ffffff) == 0x0affffff)
+        return true;
+
+      if((ip | 0x0000ffff) == 0xc0a8ffff)
+        return true;
+
+      if((ip | 0x00ffffff) == 0xacffffff)
+      {
+        uint32_t second_num = (ip >> 16) & 0xff;
+        return (second_num >= 16 && second_num <= 31);
+      }
+      return false;
+    }
+
+    inline bool is_native_ip_loopback(uint32_t ip)
+    {
+      /* 127.0.0.0 - 127.255.255.255 */
+      return ((ip | 0x00ffffff) == 0x7fffffff);
+    }
+
     inline
     bool is_ip_local(uint32_t ip)
     {

@@ -184,7 +184,7 @@ namespace cryptonote
         }
 
         if (!(config.auth_type == epee::net_utils::http::http_auth_digest
-              || (parsed_ip.is_v4() && epee::net_utils::is_ip_local(SWAP32BE(static_cast<uint32_t>(parsed_ip.to_v4().to_ulong()))))))
+              || (parsed_ip.is_v4() && epee::net_utils::is_native_ip_local(static_cast<uint32_t>(parsed_ip.to_v4().to_ulong())))))
         {
           LOG_ERROR(
             tr("The provided configuration permits unencrypted non-local connections with cleartext authentication. Either enable SSL, disable connections from non-local networks, or use digest authentication.")
