@@ -96,6 +96,7 @@ namespace cryptonote
      , rpc_auth_basic({"rpc-auth-basic", rpc_args::tr("Use HTTP Basic authentication")})
      , rpc_login({"rpc-login", rpc_args::tr("Specify username[:password] required for RPC server"), "", true})
      , confirm_external_bind({"confirm-external-bind", rpc_args::tr("Confirm rpc-bind-ip value is NOT a loopback (local) IP")})
+     , confirm_cleartext_auth({"confirm-cleartext-auth", rpc_args::tr("Confirm use of basic authentication with external IP binding")})
      , rpc_access_control_origins({"rpc-access-control-origins", rpc_args::tr("Specify a comma separated list of origins to allow cross origin resource sharing"), ""})
      , rpc_ssl({"rpc-ssl", rpc_args::tr("Enable SSL on RPC connections: enabled|disabled|autodetect"), "disabled"})
      , rpc_ssl_private_key({"rpc-ssl-private-key", rpc_args::tr("Path to a PEM format private key"), ""})
@@ -116,6 +117,7 @@ namespace cryptonote
       command_line::add_arg(desc, arg.rpc_auth_basic);
     command_line::add_arg(desc, arg.rpc_login);
     command_line::add_arg(desc, arg.confirm_external_bind);
+    command_line::add_arg(desc, arg.confirm_cleartext_auth);
     command_line::add_arg(desc, arg.rpc_access_control_origins);
     command_line::add_arg(desc, arg.rpc_ssl);
     command_line::add_arg(desc, arg.rpc_ssl_private_key);
@@ -186,10 +188,13 @@ namespace cryptonote
         if (!(config.auth_type == epee::net_utils::http::http_auth_digest
               || (parsed_ip.is_v4() && epee::net_utils::is_native_ip_local(static_cast<uint32_t>(parsed_ip.to_v4().to_ulong())))))
         {
-          LOG_ERROR(
-            tr("The provided configuration permits unencrypted non-local connections with cleartext authentication. Either enable SSL, disable connections from non-local networks, or use digest authentication.")
-          );
-          return boost::none;
+          if (!command_line::get_arg(vm, arg.confirm_cleartext_auth))
+          {
+            LOG_ERROR(
+              tr("The provided configuration permits unencrypted non-local connections with cleartext authentication. Either enable SSL, disable connections from non-local networks, or use digest authentication.")
+            );
+            return boost::none;
+          }
         }
       }
     }

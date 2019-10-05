@@ -60,6 +60,7 @@ namespace cryptonote
       const command_line::arg_descriptor<bool> rpc_auth_basic;
       const command_line::arg_descriptor<std::string> rpc_login;
       const command_line::arg_descriptor<bool> confirm_external_bind;
+      const command_line::arg_descriptor<bool> confirm_cleartext_auth;
       const command_line::arg_descriptor<std::string> rpc_access_control_origins;
       const command_line::arg_descriptor<std::string> rpc_ssl;
       const command_line::arg_descriptor<std::string> rpc_ssl_private_key;
