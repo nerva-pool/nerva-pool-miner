@@ -22,15 +22,8 @@ if [ $(uname) == "Linux" ]; then
 			libudev-dev libhidapi-dev libzmq3-dev libunbound-dev libboost-all-dev libusb-1.0-0-dev libusb-dev \
 			libssl-dev libsodium-dev libcurl4-openssl-dev libminiupnpc-dev libunwind8-dev liblzma-dev \
 			libreadline6-dev libldns-dev libexpat1-dev libgtest-dev doxygen graphviz libhidapi-libusb0
-		elif [ $NERVA_BUILD_DISTRO == "fedora" ]; then
-			sudo dnf install -y \
-			make automake cmake gcc-c++ boost-devel miniupnpc-devel graphviz \
-			doxygen unbound-devel libunwind-devel pkgconfig cppzmq-devel openssl-devel --setopt=install_weak_deps=
-			#todo: what is the fedora package for libcurl4-openssl-dev
-			#todo: fedora package list not complete
 		else
-			echo "This distro is not officially supported"	
-			exit 1
+			echo "Packag list for this distro is not provided"	
 		fi
 	}
 
