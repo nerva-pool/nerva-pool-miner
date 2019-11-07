@@ -241,7 +241,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
-                "--log-level", "1", "--rpc-auth-basic"
+                "--log-level", "1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
