@@ -93,7 +93,7 @@ namespace cryptonote
 
   rpc_args::descriptors::descriptors()
      : rpc_bind_ip({"rpc-bind-ip", rpc_args::tr("Specify IP to bind RPC server"), "127.0.0.1"})
-     , rpc_auth_basic({"rpc-auth-basic", rpc_args::tr("Use HTTP Basic authentication"), false})
+     , rpc_auth_basic({"rpc-auth-basic", rpc_args::tr("Use HTTP Basic authentication")})
      , rpc_login({"rpc-login", rpc_args::tr("Specify username[:password] required for RPC server"), "", true})
      , confirm_external_bind({"confirm-external-bind", rpc_args::tr("Confirm rpc-bind-ip value is NOT a loopback (local) IP")})
      , confirm_cleartext_auth({"confirm-cleartext-auth", rpc_args::tr("Confirm use of basic authentication with external IP binding")})
@@ -109,11 +109,12 @@ namespace cryptonote
 
   const char* rpc_args::tr(const char* str) { return i18n_translate(str, "cryptonote::rpc_args"); }
 
-  void rpc_args::init_options(boost::program_options::options_description& desc, const bool any_cert_option)
+  void rpc_args::init_options(boost::program_options::options_description& desc, const bool any_cert_option, const bool basic_auth_option)
   {
     const descriptors arg{};
     command_line::add_arg(desc, arg.rpc_bind_ip);
-    command_line::add_arg(desc, arg.rpc_auth_basic);
+    if (basic_auth_option)
+      command_line::add_arg(desc, arg.rpc_auth_basic);
     command_line::add_arg(desc, arg.rpc_login);
     command_line::add_arg(desc, arg.confirm_external_bind);
     command_line::add_arg(desc, arg.confirm_cleartext_auth);
@@ -128,7 +129,7 @@ namespace cryptonote
       command_line::add_arg(desc, arg.rpc_ssl_allow_any_cert);
   }
 
-  boost::optional<rpc_args> rpc_args::process(const boost::program_options::variables_map& vm, const bool any_cert_option)
+  boost::optional<rpc_args> rpc_args::process(const boost::program_options::variables_map& vm, const bool any_cert_option, const bool basic_auth_option)
   {
     const descriptors arg{};
     rpc_args config{};
@@ -153,7 +154,7 @@ namespace cryptonote
         return boost::none;
       }
     }
-    config.auth_type = (command_line::get_arg(vm, arg.rpc_auth_basic) ? epee::net_utils::http::http_auth_basic : epee::net_utils::http::http_auth_digest);
+    config.auth_type = (basic_auth_option && command_line::get_arg(vm, arg.rpc_auth_basic) ? epee::net_utils::http::http_auth_basic : epee::net_utils::http::http_auth_digest);
 
     auto ssl_options = do_process_ssl(vm, arg, any_cert_option);
     if (!ssl_options)
