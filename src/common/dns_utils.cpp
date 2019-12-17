@@ -572,7 +572,7 @@ bool load_txt_records_from_dns(std::vector<std::string> &good_records, const std
 
   if (good_records_index < 0)
   {
-    LOG_PRINT_L1("Unable to find two matching DNS records");
+    LOG_PRINT_L0("WARNING: no two DNS TXT records matched");
     return false;
   }
 

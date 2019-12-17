@@ -1,5 +1,4 @@
 // Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
@@ -81,7 +80,7 @@ namespace cryptonote
     LOG_PRINT_L2("destinations include " << num_stdaddresses << " standard addresses and " << num_subaddresses << " subaddresses");
   }
   //---------------------------------------------------------------
-  bool construct_miner_tx(size_t height, size_t median_size, uint64_t already_generated_coins, size_t current_block_size, uint64_t fee, const account_public_address &miner_address, transaction& tx, const blobdata& extra_nonce, size_t max_outs, uint8_t hard_fork_version) {
+  bool construct_miner_tx(size_t height, size_t median_weight, uint64_t already_generated_coins, size_t current_block_weight, uint64_t fee, const account_public_address &miner_address, transaction& tx, const blobdata& extra_nonce, size_t max_outs, uint8_t hard_fork_version) {
     tx.vin.clear();
     tx.vout.clear();
     tx.extra.clear();
@@ -97,19 +96,18 @@ namespace cryptonote
     txin_gen in;
     in.height = height;
 
-    uint64_t base_reward;
-    if(!get_block_reward(median_size, current_block_size, already_generated_coins, base_reward, hard_fork_version))
+    uint64_t block_reward;
+    if(!get_block_reward(median_weight, current_block_weight, already_generated_coins, block_reward, hard_fork_version))
     {
       LOG_PRINT_L0("Block is too big");
       return false;
     }
 
 #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
-    LOG_PRINT_L1("Creating block template: reward " << base_reward <<
+    LOG_PRINT_L1("Creating block template: reward " << block_reward <<
       ", fee " << fee);
 #endif
-
-    uint64_t block_reward = base_reward + fee;
+    block_reward += fee;
 
     crypto::key_derivation derivation = AUTO_VAL_INIT(derivation);
     crypto::public_key out_eph_public_key = AUTO_VAL_INIT(out_eph_public_key);
@@ -360,7 +358,7 @@ namespace cryptonote
 
     if (shuffle_outs)
     {
-      std::shuffle(destinations.begin(), destinations.end(), std::default_random_engine(crypto::rand<unsigned int>()));
+      std::shuffle(destinations.begin(), destinations.end(), crypto::random_device{});
     }
 
     // sort ins by their key image
@@ -581,23 +579,27 @@ namespace cryptonote
   {
     hw::device &hwdev = sender_account_keys.get_device();
     hwdev.open_tx(tx_key);
+    try {
+      // figure out if we need to make additional tx pubkeys
+      size_t num_stdaddresses = 0;
+      size_t num_subaddresses = 0;
+      account_public_address single_dest_subaddress;
+      classify_addresses(destinations, change_addr, num_stdaddresses, num_subaddresses, single_dest_subaddress);
+      bool need_additional_txkeys = num_subaddresses > 0 && (num_stdaddresses > 0 || num_subaddresses > 1);
+      if (need_additional_txkeys)
+      {
+        additional_tx_keys.clear();
+        for (const auto &d: destinations)
+          additional_tx_keys.push_back(keypair::generate(sender_account_keys.get_device()).sec);
+      }
 
-    // figure out if we need to make additional tx pubkeys
-    size_t num_stdaddresses = 0;
-    size_t num_subaddresses = 0;
-    account_public_address single_dest_subaddress;
-    classify_addresses(destinations, change_addr, num_stdaddresses, num_subaddresses, single_dest_subaddress);
-    bool need_additional_txkeys = num_subaddresses > 0 && (num_stdaddresses > 0 || num_subaddresses > 1);
-    if (need_additional_txkeys)
-    {
-      additional_tx_keys.clear();
-      for (const auto &d: destinations)
-        additional_tx_keys.push_back(keypair::generate(sender_account_keys.get_device()).sec);
+      bool r = construct_tx_with_tx_key(sender_account_keys, subaddresses, sources, destinations, change_addr, extra, tx, unlock_time, tx_key, additional_tx_keys, rct, rct_config, msout);
+      hwdev.close_tx();
+      return r;
+    } catch(...) {
+      hwdev.close_tx();
+      throw;
     }
-
-    bool r = construct_tx_with_tx_key(sender_account_keys, subaddresses, sources, destinations, change_addr, extra, tx, unlock_time, tx_key, additional_tx_keys, rct, rct_config, msout);
-    hwdev.close_tx();
-    return r;
   }
   //---------------------------------------------------------------
   bool construct_tx(const account_keys& sender_account_keys, std::vector<tx_source_entry>& sources, const std::vector<tx_destination_entry>& destinations, const boost::optional<cryptonote::account_public_address>& change_addr, const std::vector<uint8_t> &extra, transaction& tx, uint64_t unlock_time)
@@ -613,15 +615,15 @@ namespace cryptonote
   bool generate_genesis_block(block& bl)
   {
     //genesis block
-    bl = boost::value_initialized<block>();
+    bl = {};
 
     blobdata tx_bl;
     bool r = string_tools::parse_hexstr_to_binbuff(config::GENESIS_TX, tx_bl);
     CHECK_AND_ASSERT_MES(r, false, "failed to parse coinbase tx from hard coded blob");
     r = parse_and_validate_tx_from_blob(tx_bl, bl.miner_tx);
     CHECK_AND_ASSERT_MES(r, false, "failed to parse coinbase tx from hard coded blob");
-    bl.major_version = CURRENT_BLOCK_MAJOR_VERSION;
-    bl.minor_version = CURRENT_BLOCK_MINOR_VERSION;
+    bl.major_version = 1;
+    bl.minor_version = 1;
     bl.timestamp = 0;
     bl.nonce = config::GENESIS_NONCE;
     crypto::cn_hash_context_t *hash_context = crypto::cn_hash_context_create();
@@ -631,105 +633,57 @@ namespace cryptonote
     return true;
   }
   //---------------------------------------------------------------
-  void get_altblock_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t main_height, const uint64_t height, const uint64_t seed_height, const crypto::hash& seed_hash)
+  bool get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block &b, crypto::hash &res, const uint64_t height)
   {
-    blobdata bd = get_block_hashing_blob(b);
-
-    assert(height > 257);
-    uint64_t stable_height = height - 256;
+    blobdata blob = get_block_hashing_blob(b);
     BlockchainDB& db = bc->get_db();
-
-    crypto::hash h;
-    get_blob_hash(bd, h);
-
-    HC128_State rng_state;
-    HC128_Init(&rng_state, (unsigned char*)h.data, (unsigned char*)h.data+16);
-
-    db.get_cna_v5_data(context->salt, &rng_state, stable_height);
-
-    rx_alt_slowhash(context, main_height, seed_height, seed_hash.data, context->salt, CN_SALT_MEMORY, res.data);
+    return get_block_longhash(context, bc->get_db(), b.major_version, blob, res, height);
   }
-
-  bool get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t height, const int miners)
+  //---------------------------------------------------------------
+  bool get_block_longhash(crypto::cn_hash_context_t *context, BlockchainDB &db, const block &b, crypto::hash &res, const uint64_t height)
   {
-    if (b.major_version < 7) {
-      blobdata bd = get_block_hashing_blob(b);
-      const int variant = b.major_version >= 5 ? 1 : 0;
-      const size_t base_iters = b.major_version >= 6 ? 0x40000 : 0x80000;
-      crypto::cn_slow_hash(context, bd.data(), bd.size(), res, variant, base_iters + ((height + 1) % 1024));
+    blobdata blob = get_block_hashing_blob(b);
+    return get_block_longhash(context, db, b.major_version, blob, res, height);
+  }
+  //---------------------------------------------------------------
+  bool get_block_longhash(crypto::cn_hash_context_t *context, BlockchainDB &db, const uint8_t major_version, const blobdata &blob, crypto::hash &res, const uint64_t height)
+  {
+    if (major_version < 7)
+    {
+      const int variant = major_version >= 5 ? 1 : 0;
+      const size_t base_iters = major_version >= 6 ? 0x40000 : 0x80000;
+      crypto::cn_slow_hash(context, blob.data(), blob.size(), res, variant, base_iters + ((height + 1) % 1024));
       return true;
     }
-    switch (b.major_version) {
-    case 7:
-      return get_block_longhash_v7_8(context, bc, b, res, height, 1);
-    case 8:
-      return get_block_longhash_v7_8(context, bc, b, res, height, 256);
-    case 9:
-      return get_block_longhash_v9(context, bc, b, res, height);
-    case 10:
-      return get_block_longhash_v10(context, bc, b, res, height);
-    case 11:
-      return get_block_longhash_v11(context, bc, b, res, height);
-    case 12:
-    default:
-      return get_block_longhash_v12(context, bc, b, res, height, miners);
+
+    switch (major_version)
+    {
+      case 7:
+        return get_block_longhash_v7_8(context, db, blob, res, height, 1);
+      case 8:
+        return get_block_longhash_v7_8(context, db, blob, res, height, 256);
+      case 9:
+        return get_block_longhash_v9(context, db, blob, res, height);
+      case 10:
+        return get_block_longhash_v10(context, db, blob, res, height);
+      default:
+        return get_block_longhash_v11(context, db, blob, res, height);
     }
   }
   //---------------------------------------------------------------
-  crypto::hash get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, const uint64_t height, const int miners)
+  crypto::hash get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, const uint64_t height)
   {
     crypto::hash p = crypto::null_hash;
-    get_block_longhash(context, bc, b, p, height, miners);
+    get_block_longhash(context, bc, b, p, height);
     return p;
   }
-
-  void get_block_longhash_reorg(const uint64_t split_height)
-  {
-    rx_reorg(split_height);
-  }
-
   //---------------------------------------------------------------
-
-  bool get_block_longhash_v12(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height, const int miners)
-  {
-    blobdata bd = get_block_hashing_blob(b);
-    uint64_t seed_height;
-
-    if (rx_needhash(context, height, &seed_height)) 
-    {
-      crypto::hash hash;
-      if (bc != NULL)
-        hash = bc->get_pending_block_id_by_height(seed_height);
-      else
-        memset(&hash, 0, sizeof(hash));  // only happens when generating genesis block
-      
-      rx_seedhash(context, seed_height, hash.data, miners);
-    }
-
-    //Calculate salt in the same manner as v11
-    assert(height > 257);
-    uint64_t stable_height = height - 256;
-    BlockchainDB& db = bc->get_db();
-
-    crypto::hash h;
-    get_blob_hash(bd, h);
-
-    HC128_State rng_state;
-    HC128_Init(&rng_state, (unsigned char*)h.data, (unsigned char*)h.data+16);
-
-    db.get_cna_v5_data(context->salt, &rng_state, stable_height);
-
-    rx_slow_hash(context, context->salt, CN_SALT_MEMORY, res.data, miners);
-    return true;
-  }
-
-  bool get_block_longhash_v11(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height)
+  bool get_block_longhash_v11(crypto::cn_hash_context_t *context, BlockchainDB &db, const blobdata &blob, crypto::hash &res, uint64_t height)
   {
     // Guard against chain splits by only taking data from blocks with at least
     // 256 ancestors.
     assert(height > 257);
     uint64_t stable_height = height - 256;
-    BlockchainDB& db = bc->get_db();
 
     if (context->cached_height != height)
     {
@@ -739,9 +693,8 @@ namespace cryptonote
 
     // Make the hashing context unique per nonce by seeding it with a hash
     // of the hashing blob for a given nonce.
-    blobdata bd = get_block_hashing_blob(b);
     crypto::hash h;
-    get_blob_hash(bd, h);
+    get_blob_hash(blob, h);
 
     HC128_State rng_state;
     HC128_Init(&rng_state, (unsigned char*)h.data, (unsigned char*)h.data+16);
@@ -760,15 +713,14 @@ namespace cryptonote
     const uint32_t iters_divisor = (uint32_t)1U + HC128_U32(&rng_state, &rng_key_idx, 64U);
     const uint32_t iters = ((height + 1) % iters_divisor);
 
-    crypto::cn_slow_hash_v11(context, bd.data(), bd.size(), res, iters, init_size_blk, xx, yy);
+    crypto::cn_slow_hash_v11(context, blob.data(), blob.size(), res, iters, init_size_blk, xx, yy);
 
     return true;
   }
 
-  bool get_block_longhash_v10(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height)
+  bool get_block_longhash_v10(crypto::cn_hash_context_t *context, BlockchainDB &db, const blobdata &blob, crypto::hash& res, uint64_t height)
   {
     const uint64_t ht = height - 256;
-    BlockchainDB& db = bc->get_db();
 
     if (context->cached_height != height)
     {
@@ -776,11 +728,15 @@ namespace cryptonote
       context->cached_height = height;
     }
 
-    blobdata bd = get_block_hashing_blob(b);
+    block b;
+    std::stringstream ss;
+    ss << blob;
+    binary_archive<false> ba(ss);
+    bool r = ::serialization::serialize(ba, b);
 
     uint32_t seed = b.nonce ^ height;
     crypto::hash h;
-    get_blob_hash(bd, h);
+    get_blob_hash(blob, h);
     for (int i = 0; i < 32; i += 4)
       seed ^= *(uint32_t*)&h.data[i];
 
@@ -798,15 +754,14 @@ namespace cryptonote
     uint16_t zz = (uint16_t)((seed % mt.next(2, 4)) + mt.next(2, 4));
     uint16_t ww = (uint16_t)(seed % mt.next(1, 10000));
 
-    crypto::cn_slow_hash_v10(context, bd.data(), bd.size(), res, ((height + 1) % 64), init_blk_size, xx, yy, zz, ww);
+    crypto::cn_slow_hash_v10(context, blob.data(), blob.size(), res, ((height + 1) % 64), init_blk_size, xx, yy, zz, ww);
 
     return true;
   }
 
-  bool get_block_longhash_v9(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height)
+  bool get_block_longhash_v9(crypto::cn_hash_context_t *context, BlockchainDB &db, const blobdata &blob, crypto::hash& res, uint64_t height)
   {
     const uint64_t ht = height - 256;
-    BlockchainDB& db = bc->get_db();
 
     if (context->cached_height != height)
     {
@@ -814,26 +769,28 @@ namespace cryptonote
       context->cached_height = height;
     }
 
+    block b;
+    std::stringstream ss;
+    ss << blob;
+    binary_archive<false> ba(ss);
+    bool r = ::serialization::serialize(ba, b);
+
     db.get_cna_v3_data(context->salt, ht, b.nonce ^ (uint32_t)ht);
 
-    blobdata bd = get_block_hashing_blob(b);
-    crypto::cn_slow_hash_v9(context, bd.data(), bd.size(), res, 0x40000 + ((height + 1) % 64));
+    crypto::cn_slow_hash_v9(context, blob.data(), blob.size(), res, 0x40000 + ((height + 1) % 64));
 
     return true;
   }
 
-  bool get_block_longhash_v7_8(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height, uint64_t data_offset)
+  bool get_block_longhash_v7_8(crypto::cn_hash_context_t *context, BlockchainDB &db, const blobdata &blob, crypto::hash& res, uint64_t height, uint64_t data_offset)
   {
-    BlockchainDB& db = bc->get_db();
-
     if (context->cached_height != height)
     {
       db.get_cna_v2_data(&context->random_values, height - data_offset, CN_SCRATCHPAD_MEMORY - 1);
       context->cached_height = height;
     }
 
-    blobdata bd = get_block_hashing_blob(b);
-    crypto::cn_slow_hash_v7_8(context, bd.data(), bd.size(), res, 0x40000 + ((height + 1) % 64));
+    crypto::cn_slow_hash_v7_8(context, blob.data(), blob.size(), res, 0x40000 + ((height + 1) % 64));
 
     return true;
   }

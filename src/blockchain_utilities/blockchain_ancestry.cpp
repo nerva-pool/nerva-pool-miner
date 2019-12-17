@@ -1,4 +1,5 @@
 // Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2019, The NERVA Project
 //
 // All rights reserved.
 //
@@ -257,7 +258,7 @@ static bool get_transaction(ancestry_state_t &state, BlockchainDB *db, const cry
   }
 
   cryptonote::blobdata bd;
-  if (!db->get_tx_blob(txid, bd))
+  if (!db->get_pruned_tx_blob(txid, bd))
   {
     LOG_PRINT_L0("Failed to get txid " << txid << " from db");
     return false;
@@ -452,6 +453,12 @@ int main(int argc, char* argv[])
   tx_memory_pool m_mempool(*core_storage);
   core_storage.reset(new Blockchain(m_mempool));
   BlockchainDB *db = new_db();
+  if (db == NULL)
+  {
+    LOG_ERROR("Failed to initialize a database");
+    throw std::runtime_error("Failed to initialize a database");
+  }
+  LOG_PRINT_L0("database: LMDB");
 
   const std::string filename = (boost::filesystem::path(opt_data_dir) / db->get_db_name()).string();
   LOG_PRINT_L0("Loading blockchain from folder " << filename << " ...");
@@ -530,9 +537,30 @@ int main(int argc, char* argv[])
         printf("%lu/%lu               \r", (unsigned long)h, (unsigned long)db_height);
         fflush(stdout);
         ::tx_data_t tx_data;
-        if (!get_transaction(state, db, txid, tx_data))
+        std::unordered_map<crypto::hash, ::tx_data_t>::const_iterator i = state.tx_cache.find(txid);
+        ++total_txes;
+        if (i != state.tx_cache.end())
         {
-          return 1;
+          ++cached_txes;
+          tx_data = i->second;
+        }
+        else
+        {
+          cryptonote::blobdata bd;
+          if (!db->get_pruned_tx_blob(txid, bd))
+          {
+            LOG_PRINT_L0("Failed to get txid " << txid << " from db");
+            return 1;
+          }
+          cryptonote::transaction tx;
+          if (!cryptonote::parse_and_validate_tx_base_from_blob(bd, tx))
+          {
+            LOG_PRINT_L0("Bad tx: " << txid);
+            return 1;
+          }
+          tx_data = ::tx_data_t(tx);
+          if (opt_cache_txes)
+            state.tx_cache.insert(std::make_pair(txid, tx_data));
         }
         if (tx_data.coinbase)
         {

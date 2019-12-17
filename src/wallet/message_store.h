@@ -383,10 +383,6 @@ namespace boost
       a & x.monero_address;
       a & x.me;
       a & x.index;
-      if (ver < 1)
-      {
-        return;
-      }
       a & x.auto_config_token;
       a & x.auto_config_public_key;
       a & x.auto_config_secret_key;

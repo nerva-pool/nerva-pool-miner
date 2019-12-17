@@ -75,7 +75,7 @@ namespace tools
       codename = fields[2];
       notice = fields[3];
 
-      LOG_PRINT_L1("Found new version " << version << ":" << codename);
+      MGUSER_MAGENTA("Found new version " << version << ":" << codename);
       found = true;
     }
     return found;

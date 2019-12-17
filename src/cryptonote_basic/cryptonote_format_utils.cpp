@@ -1,5 +1,4 @@
 // Copyright (c) 2018-2019, The NERVA Project
-// Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
@@ -104,6 +103,25 @@ namespace cryptonote
       ge_add(&tmp3, &A2, &tmp2);
       ge_p1p1_to_p3(&A2, &tmp3);
       ge_p3_tobytes(&AB, &A2);
+  }
+
+  uint64_t get_transaction_weight_clawback(const transaction &tx, size_t n_padded_outputs)
+  {
+    const rct::rctSig &rv = tx.rct_signatures;
+    const uint64_t bp_base = 368;
+    const size_t n_outputs = tx.vout.size();
+    if (n_padded_outputs <= 2)
+      return 0;
+    size_t nlr = 0;
+    while ((1u << nlr) < n_padded_outputs)
+      ++nlr;
+    nlr += 6;
+    const size_t bp_size = 32 * (9 + 2 * nlr);
+    CHECK_AND_ASSERT_THROW_MES_L1(n_outputs <= BULLETPROOF_MAX_OUTPUTS, "maximum number of outputs is " + std::to_string(BULLETPROOF_MAX_OUTPUTS) + " per transaction");
+    CHECK_AND_ASSERT_THROW_MES_L1(bp_base * n_padded_outputs >= bp_size, "Invalid bulletproof clawback: bp_base " + std::to_string(bp_base) + ", n_padded_outputs "
+        + std::to_string(n_padded_outputs) + ", bp_size " + std::to_string(bp_size));
+    const uint64_t bp_clawback = (bp_base * n_padded_outputs - bp_size) * 4 / 5;
+    return bp_clawback;
   }
 }
 
@@ -256,6 +274,22 @@ namespace cryptonote
     return true;
   }
   //---------------------------------------------------------------
+  bool is_v1_tx(const blobdata_ref& tx_blob)
+  {
+    uint64_t version;
+    const char* begin = static_cast<const char*>(tx_blob.data());
+    const char* end = begin + tx_blob.size();
+    int read = tools::read_varint(begin, end, version);
+    if (read <= 0)
+      throw std::runtime_error("Internal error getting transaction version");
+    return version <= 1;
+  }
+  //---------------------------------------------------------------
+  bool is_v1_tx(const blobdata& tx_blob)
+  {
+    return is_v1_tx(blobdata_ref{tx_blob.data(), tx_blob.size()});
+  }
+  //---------------------------------------------------------------
   bool generate_key_image_helper(const account_keys& ack, const std::unordered_map<crypto::public_key, subaddress_index>& subaddresses, const crypto::public_key& out_key, const crypto::public_key& tx_public_key, const std::vector<crypto::public_key>& additional_tx_public_keys, size_t real_output_index, keypair& in_ephemeral, crypto::key_image& ki, hw::device &hwdev)
   {
     crypto::key_derivation recv_derivation = AUTO_VAL_INIT(recv_derivation);
@@ -390,6 +424,80 @@ namespace cryptonote
     }
 
     return string_tools::get_xtype_from_string(amount, str_amount);
+  }
+  //---------------------------------------------------------------
+  uint64_t get_transaction_weight(const transaction &tx, size_t blob_size)
+  {
+    CHECK_AND_ASSERT_MES(!tx.pruned, std::numeric_limits<uint64_t>::max(), "get_transaction_weight does not support pruned txes");
+    if (tx.version < 2)
+      return blob_size;
+    const rct::rctSig &rv = tx.rct_signatures;
+    if (!rct::is_rct_bulletproof(rv.type))
+      return blob_size;
+    const size_t n_padded_outputs = rct::n_bulletproof_max_amounts(rv.p.bulletproofs);
+    uint64_t bp_clawback = get_transaction_weight_clawback(tx, n_padded_outputs);
+    CHECK_AND_ASSERT_THROW_MES_L1(bp_clawback <= std::numeric_limits<uint64_t>::max() - blob_size, "Weight overflow");
+    return blob_size + bp_clawback;
+  }
+  //---------------------------------------------------------------
+  uint64_t get_pruned_transaction_weight(const transaction &tx)
+  {
+    CHECK_AND_ASSERT_MES(tx.pruned, std::numeric_limits<uint64_t>::max(), "get_pruned_transaction_weight does not support non pruned txes");
+    CHECK_AND_ASSERT_MES(tx.version >= 2, std::numeric_limits<uint64_t>::max(), "get_pruned_transaction_weight does not support v1 txes");
+    CHECK_AND_ASSERT_MES(tx.rct_signatures.type >= rct::RCTTypeBulletproof2,
+        std::numeric_limits<uint64_t>::max(), "get_pruned_transaction_weight does not support older range proof types");
+    CHECK_AND_ASSERT_MES(!tx.vin.empty(), std::numeric_limits<uint64_t>::max(), "empty vin");
+    CHECK_AND_ASSERT_MES(tx.vin[0].type() == typeid(cryptonote::txin_to_key), std::numeric_limits<uint64_t>::max(), "empty vin");
+
+    // get pruned data size
+    std::ostringstream s;
+    binary_archive<true> a(s);
+    ::serialization::serialize(a, const_cast<transaction&>(tx));
+    uint64_t weight = s.str().size(), extra;
+
+    // nbps (technically varint)
+    weight += 1;
+
+    // calculate deterministic bulletproofs size (assumes canonical BP format)
+    size_t nrl = 0, n_padded_outputs;
+    while ((n_padded_outputs = (1u << nrl)) < tx.vout.size())
+      ++nrl;
+    nrl += 6;
+    extra = 32 * (9 + 2 * nrl) + 2;
+    weight += extra;
+
+    // calculate deterministic MLSAG data size
+    const size_t ring_size = boost::get<cryptonote::txin_to_key>(tx.vin[0]).key_offsets.size();
+    extra = tx.vin.size() * (ring_size * (1 + 1) * 32 + 32 /* cc */);
+    weight += extra;
+
+    // calculate deterministic pseudoOuts size
+    extra =  32 * (tx.vin.size());
+    weight += extra;
+
+    // clawback
+    uint64_t bp_clawback = get_transaction_weight_clawback(tx, n_padded_outputs);
+    CHECK_AND_ASSERT_THROW_MES_L1(bp_clawback <= std::numeric_limits<uint64_t>::max() - weight, "Weight overflow");
+    weight += bp_clawback;
+
+    return weight;
+  }
+  //---------------------------------------------------------------
+  uint64_t get_transaction_weight(const transaction &tx)
+  {
+    size_t blob_size;
+    if (tx.is_blob_size_valid())
+    {
+      blob_size = tx.blob_size;
+    }
+    else
+    {
+      std::ostringstream s;
+      binary_archive<true> a(s);
+      ::serialization::serialize(a, const_cast<transaction&>(tx));
+      blob_size = s.str().size();
+    }
+    return get_transaction_weight(tx, blob_size);
   }
   //---------------------------------------------------------------
   bool get_tx_fee(const transaction& tx, uint64_t & fee)
@@ -714,6 +822,11 @@ namespace cryptonote
         << out.target.type().name() << ", expected " << typeid(txout_to_key).name()
         << ", in transaction id=" << get_transaction_hash(tx));
 
+      if (tx.version == 1)
+      {
+        CHECK_AND_NO_ASSERT_MES(0 < out.amount, false, "zero amount output in transaction id=" << get_transaction_hash(tx));
+      }
+
       if(!check_key(boost::get<txout_to_key>(out.target).key))
         return false;
     }
@@ -930,8 +1043,55 @@ namespace cryptonote
     return get_transaction_hash(t, res, NULL);
   }
   //---------------------------------------------------------------
-  bool calculate_transaction_hash(const transaction& t, crypto::hash& res, size_t* blob_size)
+  bool calculate_transaction_prunable_hash(const transaction& t, const cryptonote::blobdata *blob, crypto::hash& res)
   {
+    if (t.version == 1)
+      return false;
+    const unsigned int unprunable_size = t.unprunable_size;
+    if (blob && unprunable_size)
+    {
+      CHECK_AND_ASSERT_MES(unprunable_size <= blob->size(), false, "Inconsistent transaction unprunable and blob sizes");
+      cryptonote::get_blob_hash(epee::span<const char>(blob->data() + unprunable_size, blob->size() - unprunable_size), res);
+    }
+    else
+    {
+      transaction &tt = const_cast<transaction&>(t);
+      std::stringstream ss;
+      binary_archive<true> ba(ss);
+      const size_t inputs = t.vin.size();
+      const size_t outputs = t.vout.size();
+      const size_t mixin = t.vin.empty() ? 0 : t.vin[0].type() == typeid(txin_to_key) ? boost::get<txin_to_key>(t.vin[0]).key_offsets.size() - 1 : 0;
+      bool r = tt.rct_signatures.p.serialize_rctsig_prunable(ba, t.rct_signatures.type, inputs, outputs, mixin);
+      CHECK_AND_ASSERT_MES(r, false, "Failed to serialize rct signatures prunable");
+      cryptonote::get_blob_hash(ss.str(), res);
+    }
+    return true;
+  }
+  //---------------------------------------------------------------
+  crypto::hash get_transaction_prunable_hash(const transaction& t, const cryptonote::blobdata *blobdata)
+  {
+    crypto::hash res;
+    if (t.is_prunable_hash_valid())
+    {
+#ifdef ENABLE_HASH_CASH_INTEGRITY_CHECK
+      CHECK_AND_ASSERT_THROW_MES(!calculate_transaction_prunable_hash(t, blobdata, res) || t.hash == res, "tx hash cash integrity failure");
+#endif
+      res = t.prunable_hash;
+      ++tx_hashes_cached_count;
+      return res;
+    }
+
+    ++tx_hashes_calculated_count;
+    CHECK_AND_ASSERT_THROW_MES(calculate_transaction_prunable_hash(t, blobdata, res), "Failed to calculate tx prunable hash");
+    t.set_prunable_hash(res);
+    return res;
+  }
+  //---------------------------------------------------------------
+  crypto::hash get_pruned_transaction_hash(const transaction& t, const crypto::hash &pruned_data_hash)
+  {
+    // v1 transactions hash the entire blob
+    CHECK_AND_ASSERT_THROW_MES(t.version > 1, "Hash for pruned v1 tx cannot be calculated");
+
     // v2 transactions hash different parts together, than hash the set of those hashes
     crypto::hash hashes[3];
 
@@ -953,19 +1113,42 @@ namespace cryptonote
 
     // prunable rct
     if (t.rct_signatures.type == rct::RCTTypeNull)
+      hashes[2] = crypto::null_hash;
+    else
+      hashes[2] = pruned_data_hash;
+
+    // the tx hash is the hash of the 3 hashes
+    crypto::hash res = cn_fast_hash(hashes, sizeof(hashes));
+    t.set_hash(res);
+    return res;
+  }
+  //---------------------------------------------------------------
+  bool calculate_transaction_hash(const transaction& t, crypto::hash& res, size_t* blob_size)
+  {
+    CHECK_AND_ASSERT_MES(!t.pruned, false, "Cannot calculate the hash of a pruned transaction");
+
+    // v2 transactions hash different parts together, than hash the set of those hashes
+    crypto::hash hashes[3];
+
+    // prefix
+    get_transaction_prefix_hash(t, hashes[0]);
+
+    const blobdata blob = tx_to_blob(t);
+    const unsigned int unprunable_size = t.unprunable_size;
+    const unsigned int prefix_size = t.prefix_size;
+
+    // base rct
+    CHECK_AND_ASSERT_MES(prefix_size <= unprunable_size && unprunable_size <= blob.size(), false, "Inconsistent transaction prefix, unprunable and blob sizes");
+    cryptonote::get_blob_hash(epee::span<const char>(blob.data() + prefix_size, unprunable_size - prefix_size), hashes[1]);
+
+    // prunable rct
+    if (t.rct_signatures.type == rct::RCTTypeNull)
     {
       hashes[2] = crypto::null_hash;
     }
     else
     {
-      std::stringstream ss;
-      binary_archive<true> ba(ss);
-      const size_t inputs = t.vin.size();
-      const size_t outputs = t.vout.size();
-      const size_t mixin = t.vin.empty() ? 0 : t.vin[0].type() == typeid(txin_to_key) ? boost::get<txin_to_key>(t.vin[0]).key_offsets.size() - 1 : 0;
-      bool r = tt.rct_signatures.p.serialize_rctsig_prunable(ba, t.rct_signatures.type, inputs, outputs, mixin);
-      CHECK_AND_ASSERT_MES(r, false, "Failed to serialize rct signatures prunable");
-      cryptonote::get_blob_hash(ss.str(), hashes[2]);
+      CHECK_AND_ASSERT_MES(calculate_transaction_prunable_hash(t, &blob, hashes[2]), false, "Failed to get tx prunable hash");
     }
 
     // the tx hash is the hash of the 3 hashes
@@ -973,7 +1156,13 @@ namespace cryptonote
 
     // we still need the size
     if (blob_size)
-      *blob_size = get_object_blobsize(t);
+    {
+      if (!t.is_blob_size_valid())
+      {
+        t.set_blob_size(blob.size());
+      }
+      *blob_size = t.blob_size;
+    }
 
     return true;
   }
@@ -990,8 +1179,7 @@ namespace cryptonote
       {
         if (!t.is_blob_size_valid())
         {
-          t.blob_size = get_object_blobsize(t);
-          t.set_blob_size_valid(true);
+          t.set_blob_size(get_object_blobsize(t));
         }
         *blob_size = t.blob_size;
       }
@@ -1002,12 +1190,10 @@ namespace cryptonote
     bool ret = calculate_transaction_hash(t, res, blob_size);
     if (!ret)
       return false;
-    t.hash = res;
-    t.set_hash_valid(true);
+    t.set_hash(res);
     if (blob_size)
     {
-      t.blob_size = *blob_size;
-      t.set_blob_size_valid(true);
+      t.set_blob_size(*blob_size);
     }
     return true;
   }
@@ -1026,7 +1212,7 @@ namespace cryptonote
     return blob;
   }
   //---------------------------------------------------------------
-  bool calculate_block_hash(const block& b, crypto::hash& res)
+  bool calculate_block_hash(const block& b, crypto::hash& res, const blobdata *blob)
   {
     bool hash_result = get_object_hash(get_block_hashing_blob(b), res);
     return hash_result;
@@ -1047,8 +1233,7 @@ namespace cryptonote
     bool ret = calculate_block_hash(b, res);
     if (!ret)
       return false;
-    b.hash = res;
-    b.set_hash_valid(true);
+    b.set_hash(res);
     return true;
   }
   //---------------------------------------------------------------
@@ -1090,10 +1275,9 @@ namespace cryptonote
     b.miner_tx.invalidate_hashes();
     if (block_hash)
     {
-      calculate_block_hash(b, *block_hash);
+      calculate_block_hash(b, *block_hash, &b_blob);
       ++block_hashes_calculated_count;
-      b.hash = *block_hash;
-      b.set_hash_valid(true);
+      b.set_hash(*block_hash);
     }
     return true;
   }

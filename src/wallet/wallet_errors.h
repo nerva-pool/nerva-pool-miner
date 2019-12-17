@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -53,6 +53,7 @@ namespace tools
     //         wallet_not_initialized
     //       multisig_export_needed
     //       multisig_import_needed
+    //       password_needed
     //   std::logic_error
     //     wallet_logic_error *
     //       file_exists
@@ -70,8 +71,10 @@ namespace tools
     //         get_out_indexes_error
     //         tx_parse_error
     //         get_tx_pool_error
+    //         out_of_hashchain_bounds_error
+    //       signature_check_failed
     //       transfer_error *
-    //         get_random_outs_general_error
+    //         get_outs_general_error
     //         not_enough_unlocked_money
     //         not_enough_money
     //         tx_not_possible
@@ -215,6 +218,7 @@ namespace tools
       {
       }
     };
+    //----------------------------------------------------------------------------------------------------
     struct password_entry_failed : public wallet_runtime_error
     {
       explicit password_entry_failed(std::string&& loc, const std::string &msg = "Password entry failed")
@@ -222,6 +226,7 @@ namespace tools
       {
       }
     };
+    //----------------------------------------------------------------------------------------------------
     const char* const file_error_messages[] = {
       "file already exists",
       "file not found",
@@ -429,6 +434,7 @@ namespace tools
       {
       }
     };
+    //----------------------------------------------------------------------------------------------------
     struct transfer_error : public wallet_logic_error
     {
     protected:
@@ -690,30 +696,47 @@ namespace tools
     //----------------------------------------------------------------------------------------------------
     struct tx_too_big : public transfer_error
     {
-      explicit tx_too_big(std::string&& loc, const cryptonote::transaction& tx, uint64_t tx_size_limit)
+      explicit tx_too_big(std::string&& loc, const cryptonote::transaction& tx, uint64_t tx_weight_limit)
         : transfer_error(std::move(loc), "transaction is too big")
         , m_tx(tx)
-        , m_tx_size_limit(tx_size_limit)
+        , m_tx_valid(true)
+        , m_tx_weight(cryptonote::get_transaction_weight(tx))
+        , m_tx_weight_limit(tx_weight_limit)
       {
       }
 
+      explicit tx_too_big(std::string&& loc, uint64_t tx_weight, uint64_t tx_weight_limit)
+        : transfer_error(std::move(loc), "transaction would be too big")
+        , m_tx_valid(false)
+        , m_tx_weight(tx_weight)
+        , m_tx_weight_limit(tx_weight_limit)
+      {
+      }
+
+      bool tx_valid() const { return m_tx_valid; }
       const cryptonote::transaction& tx() const { return m_tx; }
-      uint64_t tx_size_limit() const { return m_tx_size_limit; }
+      uint64_t tx_weight() const { return m_tx_weight; }
+      uint64_t tx_weight_limit() const { return m_tx_weight_limit; }
 
       std::string to_string() const
       {
         std::ostringstream ss;
-        cryptonote::transaction tx = m_tx;
         ss << transfer_error::to_string() <<
-          ", tx_size_limit = " << m_tx_size_limit <<
-          ", tx size = " << get_object_blobsize(m_tx) <<
-          ", tx:\n" << cryptonote::obj_to_json_str(tx);
+          ", tx_weight_limit = " << m_tx_weight_limit <<
+          ", tx weight = " << m_tx_weight;
+        if (m_tx_valid)
+        {
+          cryptonote::transaction tx = m_tx;
+          ss << ", tx:\n" << cryptonote::obj_to_json_str(tx);
+        }
         return ss.str();
       }
 
     private:
       cryptonote::transaction m_tx;
-      uint64_t m_tx_size_limit;
+      bool m_tx_valid;
+      uint64_t m_tx_weight;
+      uint64_t m_tx_weight_limit;
     };
     //----------------------------------------------------------------------------------------------------
     struct zero_destination : public transfer_error
@@ -755,6 +778,20 @@ namespace tools
       }
       const std::string& status() const { return m_status; }
     private:
+      const std::string m_status;
+    };
+    //----------------------------------------------------------------------------------------------------
+    struct wallet_coded_rpc_error : public wallet_rpc_error
+    {
+      explicit wallet_coded_rpc_error(std::string&& loc, const std::string& request, int code, const std::string& status)
+        : wallet_rpc_error(std::move(loc), std::string("error ") + std::to_string(code) + (" in ") + request + " RPC: " + status, request),
+        m_code(code), m_status(status)
+      {
+      }
+      int code() const { return m_code; }
+      const std::string& status() const { return m_status; }
+    private:
+      int m_code;
       const std::string m_status;
     };
     //----------------------------------------------------------------------------------------------------

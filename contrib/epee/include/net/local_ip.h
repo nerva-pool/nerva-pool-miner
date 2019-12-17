@@ -1,4 +1,3 @@
-// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2006-2013, Andrey N. Sabelnikov, www.sabelnikov.net
 // All rights reserved.
 // 
@@ -28,46 +27,52 @@
 
 #pragma once
 
+#include <string>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/asio/ip/address_v6.hpp>
+#include "int-util.h"
+
+// IP addresses are kept in network byte order
+// Masks below are little endian
+// -> convert from network byte order to host byte order before comparing
+
 namespace epee
 {
   namespace net_utils
   {
-    inline bool is_native_ip_local(uint32_t ip)
+
+    inline
+    bool is_ipv6_local(const std::string& ip)
     {
-      /*
-      local ip area:
-      10.0.0.0 - 10.255.255.255
-      172.16.0.0 - 172.31.255.255
-      192.168.0.0 - 192.168.255.255
-      */
-      if((ip | 0x00ffffff) == 0x0affffff)
-        return true;
+      auto addr = boost::asio::ip::address_v6::from_string(ip);
 
-      if((ip | 0x0000ffff) == 0xc0a8ffff)
-        return true;
+      // ipv6 link-local unicast addresses are fe80::/10
+      bool is_link_local = addr.is_link_local();
 
-      if((ip | 0x00ffffff) == 0xacffffff)
-      {
-        uint32_t second_num = (ip >> 16) & 0xff;
-        return (second_num >= 16 && second_num <= 31);
-      }
-      return false;
+      auto addr_bytes = addr.to_bytes();
+
+      // ipv6 unique local unicast addresses start with fc00::/7 -- (fcXX or fdXX)
+      bool is_unique_local_unicast = (addr_bytes[0] == 0xfc || addr_bytes[0] == 0xfd);
+
+      return is_link_local || is_unique_local_unicast;
     }
 
-    inline bool is_native_ip_loopback(uint32_t ip)
+    inline
+    bool is_ipv6_loopback(const std::string& ip)
     {
-      /* 127.0.0.0 - 127.255.255.255 */
-      return ((ip | 0x00ffffff) == 0x7fffffff);
+      // ipv6 loopback is ::1
+      return boost::asio::ip::address_v6::from_string(ip).is_loopback();
     }
 
     inline
     bool is_ip_local(uint32_t ip)
     {
+      ip = SWAP32LE(ip);
       /*
       local ip area
-      10.0.0.0 — 10.255.255.255 
-      172.16.0.0 — 172.31.255.255 
-      192.168.0.0 — 192.168.255.255 
+      10.0.0.0 ï¿½ 10.255.255.255 
+      172.16.0.0 ï¿½ 172.31.255.255 
+      192.168.0.0 ï¿½ 192.168.255.255 
       */
       if( (ip | 0xffffff00) == 0xffffff0a)
         return true;
@@ -83,15 +88,17 @@ namespace epee
       }
       return false;
     }
+    
     inline
     bool is_ip_loopback(uint32_t ip)
     {
+      ip = SWAP32LE(ip);
       if( (ip | 0xffffff00) == 0xffffff7f)
         return true;
       //MAKE_IP
       /*
       loopback ip
-      127.0.0.0 — 127.255.255.255 
+      127.0.0.0 ï¿½ 127.255.255.255 
       */
       return false;
     }

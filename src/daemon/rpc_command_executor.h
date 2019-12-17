@@ -1,11 +1,3 @@
-/**
-@file
-@details
-
-@image html images/other/runtime-commands.png
-
-*/
-
 // Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
@@ -70,7 +62,7 @@ public:
 
   ~t_rpc_command_executor();
 
-  bool print_peer_list(bool white = true, bool gray = true, size_t limit = 0);
+  bool print_peer_list(bool white = true, bool gray = true, size_t limit = 0, bool pruned_only = false, bool publicrpc_only = false);
 
   bool print_peer_list_stats();
 
@@ -128,21 +120,19 @@ public:
 
   bool set_limit(int64_t limit_down, int64_t limit_up);
 
-  bool out_peers(uint64_t limit);
+  bool out_peers(bool set, uint32_t limit);
 
-  bool in_peers(uint64_t limit);
+  bool in_peers(bool set, uint32_t limit);
 
-  bool start_save_graph();
-  
-  bool stop_save_graph();
-  
   bool hard_fork_info(uint8_t version);
 
   bool print_bans();
 
-  bool ban(const std::string &ip, time_t seconds);
+  bool ban(const std::string &address, time_t seconds);
 
-  bool unban(const std::string &ip);
+  bool unban(const std::string &address);
+
+  bool banned(const std::string &address);
 
   bool flush_txpool(const std::string &txid);
 
@@ -156,7 +146,7 @@ public:
 
   bool print_tx_pubkey(std::string extra);
 
-  bool alt_chain_info(const std::string &tip);
+  bool alt_chain_info(const std::string &tip, size_t above, uint64_t last_blocks);
 
   bool print_blockchain_dynamic_stats(uint64_t nblocks);
 
@@ -168,7 +158,18 @@ public:
 
   bool pop_blocks(uint64_t num_blocks);
 
+  bool prune_blockchain();
+
+  bool check_blockchain_pruning();
+
   bool print_net_stats();
+
+  bool set_bootstrap_daemon(
+    const std::string &address,
+    const std::string &username,
+    const std::string &password);
+
+  bool flush_cache(bool bad_txs);
 };
 
 } // namespace daemonize

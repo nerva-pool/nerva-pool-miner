@@ -55,15 +55,17 @@ namespace cryptonote
 {
    struct test_options {
      const std::pair<uint8_t, uint64_t> *hard_forks;
+     const size_t long_term_block_weight_window;
    };
 
   extern const command_line::arg_descriptor<std::string, false, true, 2> arg_data_dir;
   extern const command_line::arg_descriptor<bool, false> arg_testnet_on;
   extern const command_line::arg_descriptor<bool, false> arg_stagenet_on;
   extern const command_line::arg_descriptor<bool, false> arg_regtest_on;
-  extern const command_line::arg_descriptor<difficulty_type> arg_fixed_difficulty;
+  extern const command_line::arg_descriptor<uint64_t> arg_fixed_difficulty;
   extern const command_line::arg_descriptor<bool> arg_offline;
   extern const command_line::arg_descriptor<size_t> arg_block_download_max_size;
+  extern const command_line::arg_descriptor<bool> arg_sync_pruned_blocks;
 
   /************************************************************************/
   /*                                                                      */
@@ -120,6 +122,7 @@ namespace cryptonote
       *
       * @return true if the transaction was accepted, false otherwise
       */
+     bool handle_incoming_tx(const tx_blob_entry& tx_blob, tx_verification_context& tvc, bool keeped_by_block, bool relayed, bool do_not_relay);
      bool handle_incoming_tx(const blobdata& tx_blob, tx_verification_context& tvc, bool keeped_by_block, bool relayed, bool do_not_relay);
 
      /**
@@ -136,7 +139,7 @@ namespace cryptonote
       *
       * @return true if the transactions were accepted, false otherwise
       */
-     bool handle_incoming_txs(const std::vector<blobdata>& tx_blobs, std::vector<tx_verification_context>& tvc, bool keeped_by_block, bool relayed, bool do_not_relay);
+     bool handle_incoming_txs(const std::vector<tx_blob_entry>& tx_blobs, std::vector<tx_verification_context>& tvc, bool keeped_by_block, bool relayed, bool do_not_relay);
 
      /**
       * @brief handles an incoming block
@@ -206,8 +209,8 @@ namespace cryptonote
       *
       * @note see Blockchain::create_block_template
       */
-     virtual bool get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce);
-     virtual bool get_block_template(block& b, const crypto::hash *prev_block, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce);
+     virtual bool get_block_template(block& b, const account_public_address& adr, uint64_t& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce);
+     virtual bool get_block_template(block& b, const crypto::hash *prev_block, const account_public_address& adr, uint64_t& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce);
 
      /**
       * @brief called when a transaction is relayed
@@ -358,6 +361,13 @@ namespace cryptonote
       * @note see Blockchain::get_transactions
       */
      bool get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<cryptonote::blobdata>& txs, std::vector<crypto::hash>& missed_txs) const;
+     
+    /**
+      * @copydoc Blockchain::get_transactions
+      *
+      * @note see Blockchain::get_transactions
+      */
+     bool get_split_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<std::tuple<crypto::hash, cryptonote::blobdata, crypto::hash, cryptonote::blobdata>>& txs, std::vector<crypto::hash>& missed_txs) const;
 
      /**
       * @copydoc Blockchain::get_transactions
@@ -517,14 +527,14 @@ namespace cryptonote
       *
       * @note see Blockchain::find_blockchain_supplement(const std::list<crypto::hash>&, NOTIFY_RESPONSE_CHAIN_ENTRY::request&) const
       */
-     bool find_blockchain_supplement(const std::list<crypto::hash>& qblock_ids, NOTIFY_RESPONSE_CHAIN_ENTRY::request& resp) const;
+     bool find_blockchain_supplement(const std::list<crypto::hash>& qblock_ids, bool clip_pruned, NOTIFY_RESPONSE_CHAIN_ENTRY::request& resp) const;
 
      /**
       * @copydoc Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::vector<std::pair<cryptonote::blobdata, std::vector<cryptonote::blobdata> > >&, uint64_t&, uint64_t&, size_t) const
       *
       * @note see Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::vector<std::pair<cryptonote::blobdata, std::vector<transaction> > >&, uint64_t&, uint64_t&, size_t) const
       */
-     bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > >& blocks, uint64_t& total_height, uint64_t& start_height, bool get_miner_tx_hash, size_t max_count) const;
+     bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > >& blocks, uint64_t& total_height, uint64_t& start_height, bool pruned, bool get_miner_tx_hash, size_t max_count) const;
 
      /**
       * @brief gets some stats about the daemon
@@ -555,7 +565,7 @@ namespace cryptonote
       *
       * @note see Blockchain::get_block_cumulative_difficulty
       */
-     difficulty_type get_block_cumulative_difficulty(uint64_t height) const;
+     difficulty_type_128 get_block_cumulative_difficulty(uint64_t height) const;
 
      /**
       * @copydoc Blockchain::get_outs
@@ -768,6 +778,13 @@ namespace cryptonote
      bool is_update_available() const { return m_update_available; }
 
      /**
+      * @brief get whether fluffy blocks are enabled
+      *
+      * @return whether fluffy blocks are enabled
+      */
+     bool fluffy_blocks_enabled() const { return m_fluffy_blocks_enabled; }
+
+     /**
       * @brief get whether transaction relay should be padded
       *
       * @return whether transaction relay should be padded
@@ -779,7 +796,7 @@ namespace cryptonote
       *
       * @return number of usable blocks
       */
-     uint64_t prevalidate_block_hashes(uint64_t height, const std::vector<crypto::hash> &hashes);
+     uint64_t prevalidate_block_hashes(uint64_t height, const std::vector<crypto::hash> &hashes, const std::vector<uint64_t> &weights);
 
      /**
       * @brief get free disk space on the blockchain partition
@@ -795,6 +812,53 @@ namespace cryptonote
       */
      bool offline() const { return m_offline; }
 
+     /**
+      * @brief get the blockchain pruning seed
+      *
+      * @return the blockchain pruning seed
+      */
+     uint32_t get_blockchain_pruning_seed() const;
+
+     /**
+      * @brief prune the blockchain
+      *
+      * @param pruning_seed the seed to use to prune the chain (0 for default, highly recommended)
+      *
+      * @return true iff success
+      */
+     bool prune_blockchain(uint32_t pruning_seed = 0);
+
+     /**
+      * @brief incrementally prunes blockchain
+      *
+      * @return true on success, false otherwise
+      */
+     bool update_blockchain_pruning();
+
+     /**
+      * @brief checks the blockchain pruning if enabled
+      *
+      * @return true on success, false otherwise
+      */
+     bool check_blockchain_pruning();
+
+     /**
+      * @brief checks whether a given block height is included in the precompiled block hash area
+      *
+      * @param height the height to check for
+      */
+     bool is_within_compiled_block_hash_area(uint64_t height) const;
+
+     /**
+      * @brief checks whether block weights are known for the given range
+      */
+     bool has_block_weights(uint64_t height, uint64_t nblocks) const;
+
+     /**
+      * @brief flushes the bad txs cache
+      */
+     void flush_bad_txs_cache();
+
    private:
 
      /**
@@ -802,12 +866,12 @@ namespace cryptonote
       *
       * @param tx_hash the transaction's hash
       * @param blob the transaction as a blob
-      * @param blob_size the size of the transaction
+      * @param tx_weight the weight of the transaction
       * @param relayed whether or not the transaction was relayed to us
       * @param do_not_relay whether to prevent the transaction from being relayed
       *
       */
-     bool add_new_tx(transaction& tx, const crypto::hash& tx_hash, const cryptonote::blobdata& blob, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block, bool relayed, bool do_not_relay);
+     bool add_new_tx(transaction& tx, const crypto::hash& tx_hash, const cryptonote::blobdata &blob, size_t tx_weight, tx_verification_context& tvc, bool keeped_by_block, bool relayed, bool do_not_relay);
 
      /**
       * @brief add a new transaction to the transaction pool
@@ -843,9 +907,9 @@ namespace cryptonote
      bool load_state_data();
 
      /**
-      * @copydoc parse_and_validate_tx_from_blob(const blobdata&, transaction&, crypto::hash&) const
+      * @copydoc parse_tx_from_blob(transaction&, crypto::hash&, crypto::hash&, const blobdata&) const
       *
-      * @note see parse_and_validate_tx_from_blob(const blobdata&, transaction&, crypto::hash&) const
+      * @note see parse_tx_from_blob(transaction&, crypto::hash&, crypto::hash&, const blobdata&) const
       */
      bool parse_tx_from_blob(transaction& tx, crypto::hash& tx_hash, const blobdata& blob) const;
 
@@ -880,8 +944,8 @@ namespace cryptonote
      bool check_tx_semantic(const transaction& tx, bool keeped_by_block) const;
      void set_semantics_failed(const crypto::hash &tx_hash);
 
-     bool handle_incoming_tx_pre(const blobdata& tx_blob, tx_verification_context& tvc, cryptonote::transaction &tx, crypto::hash &tx_hash, bool keeped_by_block, bool relayed, bool do_not_relay);
-     bool handle_incoming_tx_post(const blobdata& tx_blob, tx_verification_context& tvc, cryptonote::transaction &tx, crypto::hash &tx_hash, bool keeped_by_block, bool relayed, bool do_not_relay);
+     bool handle_incoming_tx_pre(const tx_blob_entry& tx_blob, tx_verification_context& tvc, cryptonote::transaction &tx, crypto::hash &tx_hash, bool keeped_by_block, bool relayed, bool do_not_relay);
+     bool handle_incoming_tx_post(const tx_blob_entry &tx_blob, tx_verification_context& tvc, cryptonote::transaction &tx, crypto::hash &tx_hash, bool keeped_by_block, bool relayed, bool do_not_relay);
      struct tx_verification_batch_info { const cryptonote::transaction *tx; crypto::hash tx_hash; tx_verification_context &tvc; bool &result; };
      bool handle_incoming_tx_accumulated_batch(std::vector<tx_verification_batch_info> &tx_info, bool keeped_by_block);
 
@@ -983,6 +1047,7 @@ namespace cryptonote
      epee::math_helper::once_a_time_seconds<60*10, true> m_check_disk_space_interval; //!< interval for checking for disk space
      epee::math_helper::once_a_time_seconds<90, false> m_block_rate_interval; //!< interval for checking block rate
      epee::math_helper::once_a_time_seconds<60*60*4, true> m_contact_server_interval;
+     epee::math_helper::once_a_time_seconds<60*60*5, true> m_blockchain_pruning_interval; //!< interval for incremental blockchain pruning
 
      std::atomic<bool> m_starter_message_showed; //!< has the "daemon will sync now" message been shown?
 
@@ -1001,6 +1066,8 @@ namespace cryptonote
 
      size_t block_sync_size;
 
+     time_t start_time;
+
      std::unordered_set<crypto::hash> bad_semantics_txes[2];
      boost::mutex bad_semantics_txes_lock;
 
@@ -1009,6 +1076,7 @@ namespace cryptonote
        UPDATES_NOTIFY,
      } check_updates_level;
 
+     bool m_fluffy_blocks_enabled;
      bool m_offline;
      bool m_pad_transactions;
 

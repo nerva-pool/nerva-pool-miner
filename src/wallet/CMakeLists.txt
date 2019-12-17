@@ -28,8 +28,6 @@
 
 # include (${PROJECT_SOURCE_DIR}/cmake/libutils.cmake)
 
-include_directories(${RANDOMX_INCLUDE})
-
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 set(wallet_sources
@@ -60,11 +58,12 @@ monero_add_library(wallet
   ${wallet_private_headers})
 target_link_libraries(wallet
   PUBLIC
+    rpc_base
     multisig
     common
     cryptonote_core
     mnemonics
-	  net
+    net
     ${LMDB_LIBRARY}
     ${Boost_CHRONO_LIBRARY}
     ${Boost_SERIALIZATION_LIBRARY}
@@ -115,19 +114,23 @@ install(TARGETS wallet_rpc_server DESTINATION bin)
 # build and install libwallet_merged only if we building for GUI
 if (BUILD_GUI_DEPS)
     set(libs_to_merge
+            wallet_api
             wallet
+            rpc_base
             multisig
+            blockchain_db
             cryptonote_core
             cryptonote_basic
             mnemonics
             common
             cncrypto
             device
+            hardforks
             ringct
             ringct_basic
             checkpoints
             version
-			net)
+            net)
 
     foreach(lib ${libs_to_merge})
         list(APPEND objlibs $<TARGET_OBJECTS:obj_${lib}>) # matches naming convention in src/CMakeLists.txt
@@ -140,5 +143,5 @@ if (BUILD_GUI_DEPS)
     endif()
     install(TARGETS wallet_merged
         ARCHIVE DESTINATION ${lib_folder})
-endif()
 
+endif()

@@ -566,6 +566,7 @@ void toJsonValue(rapidjson::Document& doc, const cryptonote::connection_info& in
   INSERT_INTO_JSON_OBJECT(val, doc, incoming, info.incoming);
   INSERT_INTO_JSON_OBJECT(val, doc, localhost, info.localhost);
   INSERT_INTO_JSON_OBJECT(val, doc, local_ip, info.local_ip);
+  INSERT_INTO_JSON_OBJECT(val, doc, address_type, info.address_type);
 
   INSERT_INTO_JSON_OBJECT(val, doc, ip, info.ip);
   INSERT_INTO_JSON_OBJECT(val, doc, port, info.port);
@@ -601,6 +602,7 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::connection_info& inf
   GET_FROM_JSON_OBJECT(val, info.incoming, incoming);
   GET_FROM_JSON_OBJECT(val, info.localhost, localhost);
   GET_FROM_JSON_OBJECT(val, info.local_ip, local_ip);
+  GET_FROM_JSON_OBJECT(val, info.address_type, address_type);
 
   GET_FROM_JSON_OBJECT(val, info.ip, ip);
   GET_FROM_JSON_OBJECT(val, info.port, port);
@@ -623,6 +625,25 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::connection_info& inf
 
   GET_FROM_JSON_OBJECT(val, info.avg_upload, avg_upload);
   GET_FROM_JSON_OBJECT(val, info.current_upload, current_upload);
+}
+
+void toJsonValue(rapidjson::Document& doc, const cryptonote::tx_blob_entry& tx, rapidjson::Value& val)
+{
+  val.SetObject();
+
+  INSERT_INTO_JSON_OBJECT(val, doc, blob, tx.blob);
+  INSERT_INTO_JSON_OBJECT(val, doc, prunable_hash, tx.prunable_hash);
+}
+
+void fromJsonValue(const rapidjson::Value& val, cryptonote::tx_blob_entry& tx)
+{
+  if (!val.IsObject())
+  {
+    throw WRONG_TYPE("json object");
+  }
+
+  GET_FROM_JSON_OBJECT(val, tx.blob, blob);
+  GET_FROM_JSON_OBJECT(val, tx.prunable_hash, prunable_hash);
 }
 
 void toJsonValue(rapidjson::Document& doc, const cryptonote::block_complete_entry& blk, rapidjson::Value& val)
@@ -736,6 +757,7 @@ void toJsonValue(rapidjson::Document& doc, const cryptonote::rpc::peer& peer, ra
   INSERT_INTO_JSON_OBJECT(val, doc, port, peer.port);
   INSERT_INTO_JSON_OBJECT(val, doc, rpc_port, peer.rpc_port);
   INSERT_INTO_JSON_OBJECT(val, doc, last_seen, peer.last_seen);
+  INSERT_INTO_JSON_OBJECT(val, doc, pruning_seed, peer.pruning_seed);
 }
 
 
@@ -751,6 +773,7 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::peer& peer)
   GET_FROM_JSON_OBJECT(val, peer.port, port);
   GET_FROM_JSON_OBJECT(val, peer.rpc_port, rpc_port);
   GET_FROM_JSON_OBJECT(val, peer.last_seen, last_seen);
+  GET_FROM_JSON_OBJECT(val, peer.pruning_seed, pruning_seed);
 }
 
 void toJsonValue(rapidjson::Document& doc, const cryptonote::rpc::tx_in_pool& tx, rapidjson::Value& val)
@@ -760,6 +783,7 @@ void toJsonValue(rapidjson::Document& doc, const cryptonote::rpc::tx_in_pool& tx
   INSERT_INTO_JSON_OBJECT(val, doc, tx, tx.tx);
   INSERT_INTO_JSON_OBJECT(val, doc, tx_hash, tx.tx_hash);
   INSERT_INTO_JSON_OBJECT(val, doc, blob_size, tx.blob_size);
+  INSERT_INTO_JSON_OBJECT(val, doc, weight, tx.weight);
   INSERT_INTO_JSON_OBJECT(val, doc, fee, tx.fee);
   INSERT_INTO_JSON_OBJECT(val, doc, max_used_block_hash, tx.max_used_block_hash);
   INSERT_INTO_JSON_OBJECT(val, doc, max_used_block_height, tx.max_used_block_height);
@@ -783,6 +807,7 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::tx_in_pool& tx)
 
   GET_FROM_JSON_OBJECT(val, tx.tx, tx);
   GET_FROM_JSON_OBJECT(val, tx.blob_size, blob_size);
+  GET_FROM_JSON_OBJECT(val, tx.weight, weight);
   GET_FROM_JSON_OBJECT(val, tx.fee, fee);
   GET_FROM_JSON_OBJECT(val, tx.max_used_block_hash, max_used_block_hash);
   GET_FROM_JSON_OBJECT(val, tx.max_used_block_height, max_used_block_height);
@@ -806,7 +831,6 @@ void toJsonValue(rapidjson::Document& doc, const cryptonote::rpc::hard_fork_info
   INSERT_INTO_JSON_OBJECT(val, doc, votes, info.votes);
   INSERT_INTO_JSON_OBJECT(val, doc, threshold, info.threshold);
   INSERT_INTO_JSON_OBJECT(val, doc, voting, info.voting);
-  INSERT_INTO_JSON_OBJECT(val, doc, state, info.state);
   INSERT_INTO_JSON_OBJECT(val, doc, earliest_height, info.earliest_height);
 }
 
@@ -824,7 +848,6 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::hard_fork_info&
   GET_FROM_JSON_OBJECT(val, info.votes, votes);
   GET_FROM_JSON_OBJECT(val, info.threshold, threshold);
   GET_FROM_JSON_OBJECT(val, info.voting, voting);
-  GET_FROM_JSON_OBJECT(val, info.state, state);
   GET_FROM_JSON_OBJECT(val, info.earliest_height, earliest_height);
 }
 
@@ -1200,6 +1223,10 @@ void toJsonValue(rapidjson::Document& doc, const cryptonote::rpc::DaemonInfo& in
   INSERT_INTO_JSON_OBJECT(val, doc, top_block_hash, info.top_block_hash);
   INSERT_INTO_JSON_OBJECT(val, doc, cumulative_difficulty, info.cumulative_difficulty);
   INSERT_INTO_JSON_OBJECT(val, doc, block_size_limit, info.block_size_limit);
+  INSERT_INTO_JSON_OBJECT(val, doc, block_weight_limit, info.block_weight_limit);
+  INSERT_INTO_JSON_OBJECT(val, doc, block_size_median, info.block_size_median);
+  INSERT_INTO_JSON_OBJECT(val, doc, block_weight_median, info.block_weight_median);
+  INSERT_INTO_JSON_OBJECT(val, doc, start_time, info.start_time);
 }
 
 void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::DaemonInfo& info)
@@ -1227,6 +1254,10 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::DaemonInfo& inf
   GET_FROM_JSON_OBJECT(val, info.top_block_hash, top_block_hash);
   GET_FROM_JSON_OBJECT(val, info.cumulative_difficulty, cumulative_difficulty);
   GET_FROM_JSON_OBJECT(val, info.block_size_limit, block_size_limit);
+  GET_FROM_JSON_OBJECT(val, info.block_weight_limit, block_weight_limit);
+  GET_FROM_JSON_OBJECT(val, info.block_size_median, block_size_median);
+  GET_FROM_JSON_OBJECT(val, info.block_weight_median, block_weight_median);
+  GET_FROM_JSON_OBJECT(val, info.start_time, start_time);
 }
 
 void toJsonValue(rapidjson::Document& doc, const cryptonote::rpc::output_distribution& dist, rapidjson::Value& val)

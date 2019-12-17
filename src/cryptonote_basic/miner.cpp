@@ -87,15 +87,13 @@ using namespace epee;
 
 namespace cryptonote
 {
-  extern "C" void rx_stop_mining(void);
-  
   namespace
   {
     const command_line::arg_descriptor<std::string> arg_extra_messages =  {"extra-messages-file", "Specify file for extra messages to include into coinbase transactions", "", true};
     const command_line::arg_descriptor<std::string> arg_start_mining =    {"start-mining", "Specify wallet address to mining for", "", true};
     const command_line::arg_descriptor<uint16_t>    arg_donate_mining =    {"donate-level", "Specify a percentage of blocks to mine to the development wallet", miner::MINING_DEFAULT_DONATION_LEVEL, true};
     const command_line::arg_descriptor<uint32_t>      arg_mining_threads =  {"mining-threads", "Specify mining threads count", 0, true};
-    const command_line::arg_descriptor<bool>        arg_bg_mining_enable =  {"bg-mining-enable", "enable/disable background mining", true, true};
+    const command_line::arg_descriptor<bool>        arg_bg_mining_enable =  {"bg-mining-enable", "enable background mining", true, true};
     const command_line::arg_descriptor<bool>        arg_bg_mining_ignore_battery =  {"bg-mining-ignore-battery", "if true, assumes plugged in when unable to query system power status", false, true};    
     const command_line::arg_descriptor<uint64_t>    arg_bg_mining_min_idle_interval_seconds =  {"bg-mining-min-idle-interval", "Specify min lookback interval in seconds for determining idle state", miner::BACKGROUND_MINING_DEFAULT_MIN_IDLE_INTERVAL_IN_SECONDS, true};
     const command_line::arg_descriptor<uint16_t>     arg_bg_mining_idle_threshold_percentage =  {"bg-mining-idle-threshold", "Specify minimum avg idle percentage over lookback interval", miner::BACKGROUND_MINING_DEFAULT_IDLE_THRESHOLD_PERCENTAGE, true};
@@ -104,7 +102,7 @@ namespace cryptonote
 
 
   miner::miner(i_miner_handler* phandler, Blockchain* pbc):m_stop(1),
-    m_template(boost::value_initialized<block>()),
+    m_template{},
     m_template_no(0),
     m_diffic(0),
     m_thread_index(0),
@@ -140,7 +138,7 @@ namespace cryptonote
     catch (...) { /* ignore */ }
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::set_block_template(const block& bl, const difficulty_type& di, uint64_t height, uint64_t block_reward)
+  bool miner::set_block_template(const block& bl, const uint64_t& di, uint64_t height, uint64_t block_reward)
   {
     CRITICAL_REGION_LOCAL(m_template_lock);
     m_template = bl;
@@ -163,7 +161,8 @@ namespace cryptonote
   bool miner::request_block_template()
   {
     block bl;
-    difficulty_type di = AUTO_VAL_INIT(di);
+    uint64_t di = AUTO_VAL_INIT(di);
+    uint64_t height = AUTO_VAL_INIT(height);
     uint64_t expected_reward; //only used for RPC calls - could possibly be useful here too?
 
     cryptonote::blobdata extra_nonce;
@@ -177,7 +176,6 @@ namespace cryptonote
     // ignores out-of-band updates to the chain which did not cause the miner
     // to target a new block height, as the miner could not possibly have found
     // blocks at these unused heights.
-    uint64_t height;
     bool donate_block_changed;
     bool donate;
     bool show_donation_msg;
@@ -382,17 +380,16 @@ namespace cryptonote
       MINFO("Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index);
     }
 
-    address_parse_info addr_info;
+    address_parse_info info;
 
     if(command_line::has_arg(vm, arg_start_mining))
     {
-      if(!cryptonote::get_account_address_from_str(addr_info, nettype, command_line::get_arg(vm, arg_start_mining)) || addr_info.is_subaddress)
+      if(!cryptonote::get_account_address_from_str(info, nettype, command_line::get_arg(vm, arg_start_mining)) || info.is_subaddress)
       {
         LOG_ERROR("Target account address " << command_line::get_arg(vm, arg_start_mining) << " has wrong format, starting daemon canceled");
         return false;
       }
-      m_mine_address = addr_info.address;
-
+      m_mine_address = info.address;
       m_threads_total = 0;
       m_do_mining = true;
       if(command_line::has_arg(vm, arg_mining_threads))
@@ -409,12 +406,12 @@ namespace cryptonote
         return false;
       }
     }
-    if(!cryptonote::get_account_address_from_str(addr_info, nettype, DONATION_ADDR))
+    if(!cryptonote::get_account_address_from_str(info, nettype, DONATION_ADDR))
     {
       LOG_ERROR("Invalid donation address, starting daemon canceled");
       return false;
     }
-    m_donate_mine_address = addr_info.address;
+    m_donate_mine_address = info.address;
 
     // Background mining parameters
     // Let init set all parameters even if background mining is not enabled, they can start later with params set
@@ -553,16 +550,15 @@ namespace cryptonote
     MINFO("Mining has been stopped, " << m_threads.size() << " finished" );
     m_threads.clear();
     m_threads_autodetect.clear();
-    rx_stop_mining();
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::find_nonce_for_given_block(crypto::cn_hash_context_t *context, Blockchain *pbc, block& bl, const difficulty_type& diffic, uint64_t height)
+  bool miner::find_nonce_for_given_block(crypto::cn_hash_context_t *context, Blockchain *pbc, block& bl, const uint64_t& diffic, uint64_t height)
   {
     for(; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++)
     {
       crypto::hash h;
-      get_block_longhash(context, pbc, bl, h, height, tools::get_max_concurrency());
+      get_block_longhash(context, pbc, bl, h, height);
 
       if(check_hash(h, diffic))
       {
@@ -612,7 +608,7 @@ namespace cryptonote
     MGINFO("Miner thread was started ["<< th_local_index << "]");
     uint32_t nonce = m_starter_nonce + th_local_index;
     uint64_t height = 0;
-    difficulty_type local_diff = 0;
+    uint64_t local_diff = 0;
     uint32_t local_template_ver = 0;
     crypto::cn_hash_context_t *hash_context = crypto::cn_hash_context_create();
     if (hash_context == NULL)
@@ -663,7 +659,7 @@ namespace cryptonote
 
       b.nonce = nonce;
       crypto::hash h;
-      get_block_longhash(hash_context, m_pbc, b, h, height, tools::get_max_concurrency());
+      get_block_longhash(hash_context, m_pbc, b, h, height);
 
       if(check_hash(h, local_diff))
       {
@@ -1186,6 +1182,7 @@ namespace cryptonote
           return boost::logic::tribool(boost::logic::indeterminate);
         }
 
+#if defined(__amd64__) || defined(__i386__) || defined(__x86_64__)
         apm_info info;
         if( ioctl(fd, APMIO_GETINFO, &info) == -1 ) {
           close(fd);
@@ -1226,6 +1223,7 @@ namespace cryptonote
         LOG_ERROR("sysctlbyname(\"hw.acpi.acline\") output is unexpectedly "
           << n << " bytes instead of the expected " << sizeof(ac) << " bytes.");
         return boost::logic::tribool(boost::logic::indeterminate);
+#endif
       }
       return boost::logic::tribool(ac == 0);
     #endif

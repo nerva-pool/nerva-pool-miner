@@ -53,7 +53,7 @@ namespace rpc
   {
     std::vector<std::pair<std::pair<blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, blobdata> > > > blocks;
 
-    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.start_height, true, COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT))
+    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.start_height, req.prune, true, COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT))
     {
       res.status = Message::STATUS_FAILED;
       res.error_details = "core::find_blockchain_supplement() returned false";
@@ -141,7 +141,7 @@ namespace rpc
 
     auto& chain = m_core.get_blockchain_storage();
 
-    if (!chain.find_blockchain_supplement(req.known_hashes, res.hashes, res.start_height, res.current_height))
+    if (!chain.find_blockchain_supplement(req.known_hashes, res.hashes, NULL, res.start_height, res.current_height, false))
     {
       res.status = Message::STATUS_FAILED;
       res.error_details = "Blockchain::find_blockchain_supplement() returned false";
@@ -261,43 +261,6 @@ namespace rpc
 
   }
 
-  void DaemonHandler::handle(const GetRandomOutputsForAmounts::Request& req, GetRandomOutputsForAmounts::Response& res)
-  {
-    auto& chain = m_core.get_blockchain_storage();
-
-    try
-    {
-      for (const uint64_t& amount : req.amounts)
-      {
-        std::vector<uint64_t> indices = chain.get_random_outputs(amount, req.count);
-
-        outputs_for_amount ofa;
-
-        ofa.resize(indices.size());
-
-        for (size_t i = 0; i < indices.size(); i++)
-        {
-          crypto::public_key key = chain.get_output_key(amount, indices[i]);
-          ofa[i].amount_index = indices[i];
-          ofa[i].key = key;
-        }
-
-        amount_with_random_outputs amt;
-        amt.amount = amount;
-        amt.outputs = ofa;
-
-        res.amounts_with_outputs.push_back(amt);
-      }
-
-      res.status = Message::STATUS_OK;
-    }
-    catch (const std::exception& e)
-    {
-      res.status = Message::STATUS_FAILED;
-      res.error_details = e.what();
-    }
-  }
-
   void DaemonHandler::handle(const SendRawTx::Request& req, SendRawTx::Response& res)
   {
     handleTxBlob(cryptonote::tx_to_blob(req.tx), req.relay, res);
@@ -328,7 +291,7 @@ namespace rpc
     cryptonote_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
 
-    if(!m_core.handle_incoming_tx(tx_blob, tvc, false, false, !relay) || tvc.m_verifivation_failed)
+    if(!m_core.handle_incoming_tx({tx_blob, crypto::null_hash}, tvc, false, false, !relay) || tvc.m_verifivation_failed)
     {
       if (tvc.m_verifivation_failed)
       {
@@ -379,6 +342,11 @@ namespace rpc
       {
         if (!res.error_details.empty()) res.error_details += " and ";
         res.error_details = "tx is not ringct";
+      }
+      if (tvc.m_too_few_outputs)
+      {
+        if (!res.error_details.empty()) res.error_details += " and ";
+        res.error_details = "too few outputs";
       }
       if (res.error_details.empty())
       {
@@ -470,7 +438,8 @@ namespace rpc
 
     auto& chain = m_core.get_blockchain_storage();
 
-    res.info.difficulty = chain.get_difficulty_for_next_block();
+    res.info.wide_difficulty = chain.get_difficulty_for_next_block();
+    res.info.difficulty = (res.info.wide_difficulty & 0xffffffffffffffff).convert_to<uint64_t>();
 
     res.info.target = chain.get_difficulty_target();
 
@@ -491,8 +460,11 @@ namespace rpc
     res.info.mainnet = m_core.get_nettype() == MAINNET;
     res.info.testnet = m_core.get_nettype() == TESTNET;
     res.info.stagenet = m_core.get_nettype() == STAGENET;
-    res.info.cumulative_difficulty = m_core.get_blockchain_storage().get_db().get_block_cumulative_difficulty(res.info.height - 1);
-    res.info.block_size_limit = m_core.get_blockchain_storage().get_current_cumulative_blocksize_limit();
+    res.info.wide_cumulative_difficulty = m_core.get_blockchain_storage().get_db().get_block_cumulative_difficulty(res.info.height - 1);
+    res.info.cumulative_difficulty = (res.info.wide_cumulative_difficulty & 0xffffffffffffffff).convert_to<uint64_t>();
+    res.info.block_size_limit = res.info.block_weight_limit = m_core.get_blockchain_storage().get_current_cumulative_block_weight_limit();
+    res.info.block_size_median = res.info.block_weight_median = m_core.get_blockchain_storage().get_current_cumulative_block_weight_median();
+    res.info.start_time = (uint64_t)m_core.get_start_time();
     res.info.version = MONERO_VERSION;
 
     res.status = Message::STATUS_OK;
@@ -795,7 +767,7 @@ namespace rpc
       const uint64_t req_to_height = req.to_height ? req.to_height : (m_core.get_current_blockchain_height() - 1);
       for (std::uint64_t amount : req.amounts)
       {
-        auto data = rpc::RpcHandler::get_output_distribution([this](uint64_t amount, uint64_t from, uint64_t to, uint64_t &start_height, std::vector<uint64_t> &distribution, uint64_t &base) { return m_core.get_output_distribution(amount, from, to, start_height, distribution, base); }, amount, req.from_height, req_to_height, req.cumulative);
+        auto data = rpc::RpcHandler::get_output_distribution([this](uint64_t amount, uint64_t from, uint64_t to, uint64_t &start_height, std::vector<uint64_t> &distribution, uint64_t &base) { return m_core.get_output_distribution(amount, from, to, start_height, distribution, base); }, amount, req.from_height, req_to_height, [this](uint64_t height) { return m_core.get_blockchain_storage().get_db().get_block_hash_from_height(height); }, req.cumulative, m_core.get_current_blockchain_height());
         if (!data)
         {
           res.distributions.clear();
@@ -845,7 +817,8 @@ namespace rpc
       header.reward += out.amount;
     }
 
-    header.difficulty = m_core.get_blockchain_storage().block_difficulty(header.height);
+    header.wide_difficulty = m_core.get_blockchain_storage().block_difficulty(header.height);
+    header.difficulty = (header.wide_difficulty & 0xffffffffffffffff).convert_to<uint64_t>();
 
     return true;
   }
@@ -871,7 +844,6 @@ namespace rpc
       REQ_RESP_TYPES_MACRO(request_type, GetTransactions, req_json, resp_message, handle);
       REQ_RESP_TYPES_MACRO(request_type, KeyImagesSpent, req_json, resp_message, handle);
       REQ_RESP_TYPES_MACRO(request_type, GetTxGlobalOutputIndices, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetRandomOutputsForAmounts, req_json, resp_message, handle);
       REQ_RESP_TYPES_MACRO(request_type, SendRawTx, req_json, resp_message, handle);
       REQ_RESP_TYPES_MACRO(request_type, SendRawTxHex, req_json, resp_message, handle);
       REQ_RESP_TYPES_MACRO(request_type, GetInfo, req_json, resp_message, handle);

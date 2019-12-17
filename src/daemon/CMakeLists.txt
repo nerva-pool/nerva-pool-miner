@@ -1,5 +1,4 @@
 # Copyright (c) 2014-2019, The Monero Project
-# Copyright (c) 2018-2019, The NERVA Project
 #
 # All rights reserved.
 #
@@ -26,8 +25,6 @@
 # INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-include_directories(${RANDOMX_INCLUDE})
 
 set(daemon_sources
   command_parser_executor.cpp

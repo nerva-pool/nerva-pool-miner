@@ -48,6 +48,7 @@ namespace cryptonote
     bool m_overspend;
     bool m_fee_too_low;
     bool m_not_rct;
+    bool m_too_few_outputs;
   };
 
   struct block_verification_context
@@ -57,5 +58,6 @@ namespace cryptonote
     bool m_marked_as_orphaned;
     bool m_already_exists;
     bool m_partial_block_reward;
+    bool m_bad_pow; // if bad pow, bad peer outright for DoS protection
   };
 }

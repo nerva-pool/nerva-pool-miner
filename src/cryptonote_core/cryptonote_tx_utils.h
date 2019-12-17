@@ -1,5 +1,4 @@
 // Copyright (c) 2018-2019, The NERVA Project
-// Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
@@ -35,6 +34,7 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/utility.hpp>
 #include "ringct/rctOps.h"
+#include "blockchain_db/blockchain_db.h"
 
 namespace crypto
 {
@@ -46,8 +46,7 @@ namespace cryptonote
 {
 
   //---------------------------------------------------------------
-  bool construct_miner_tx(size_t height, size_t median_size, uint64_t already_generated_coins, size_t current_block_size, uint64_t fee, const account_public_address &miner_address, 
-    transaction& tx, const blobdata& extra_nonce = blobdata(), size_t max_outs = 999, uint8_t hard_fork_version = 1);
+  bool construct_miner_tx(size_t height, size_t median_weight, uint64_t already_generated_coins, size_t current_block_weight, uint64_t fee, const account_public_address &miner_address, transaction& tx, const blobdata& extra_nonce = blobdata(), size_t max_outs = 999, uint8_t hard_fork_version = 1);
 
   bool construct_genesis_tx(transaction& tx, uint64_t amount);
 
@@ -93,6 +92,21 @@ namespace cryptonote
     tx_destination_entry(uint64_t a, const account_public_address &ad, bool is_subaddress) : amount(a), addr(ad), is_subaddress(is_subaddress), is_integrated(false) { }
     tx_destination_entry(const std::string &o, uint64_t a, const account_public_address &ad, bool is_subaddress) : original(o), amount(a), addr(ad), is_subaddress(is_subaddress), is_integrated(false) { }
 
+    std::string address(network_type nettype, const crypto::hash &payment_id) const
+    {
+      if (!original.empty())
+      {
+        return original;
+      }
+
+      if (is_integrated)
+      {
+        return get_account_integrated_address_as_str(nettype, addr, reinterpret_cast<const crypto::hash8 &>(payment_id));
+      }
+
+      return get_account_address_as_str(nettype, is_subaddress, addr);
+    }
+
     BEGIN_SERIALIZE_OBJECT()
       FIELD(original)
       VARINT_FIELD(amount)
@@ -114,20 +128,27 @@ namespace cryptonote
                                       std::vector<rct::key> &amount_keys,
                                       crypto::public_key &out_eph_public_key) ;
 
+  bool generate_output_ephemeral_keys(const size_t tx_version, const cryptonote::account_keys &sender_account_keys, const crypto::public_key &txkey_pub,  const crypto::secret_key &tx_key,
+                                      const cryptonote::tx_destination_entry &dst_entr, const boost::optional<cryptonote::account_public_address> &change_addr, const size_t output_index,
+                                      const bool &need_additional_txkeys, const std::vector<crypto::secret_key> &additional_tx_keys,
+                                      std::vector<crypto::public_key> &additional_tx_public_keys,
+                                      std::vector<rct::key> &amount_keys,
+                                      crypto::public_key &out_eph_public_key) ;
+
   bool generate_genesis_block(block& bl);
   class Blockchain;
 
-  bool get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t height, const int miners);
-  crypto::hash get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, const uint64_t height, const int miners);
-  void get_altblock_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t main_height, const uint64_t height,
-    const uint64_t seed_height, const crypto::hash& seed_hash);
-  void get_block_longhash_reorg(const uint64_t split_height);
+
+  //todo: could probably get rid of some of these overloads
+  bool get_block_longhash(crypto::cn_hash_context_t *context, cryptonote::Blockchain *bc, const block &b, crypto::hash &res, const uint64_t height);
+  bool get_block_longhash(crypto::cn_hash_context_t *context, cryptonote::BlockchainDB &db, const block &b, crypto::hash &res, const uint64_t height);
+  bool get_block_longhash(crypto::cn_hash_context_t *context, cryptonote::BlockchainDB &db, const uint8_t major_version, const blobdata &blob, crypto::hash &res, const uint64_t height);
+  crypto::hash get_block_longhash(crypto::cn_hash_context_t *context, Blockchain *bc, const block &b, const uint64_t height);
   
-  bool get_block_longhash_v12(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, const uint64_t height, const int miners);
-  bool get_block_longhash_v11(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height);
-  bool get_block_longhash_v10(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height);
-  bool get_block_longhash_v9(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height);
-  bool get_block_longhash_v7_8(crypto::cn_hash_context_t *context, Blockchain *bc, const block& b, crypto::hash& res, uint64_t height, uint64_t data_offset);
+  bool get_block_longhash_v11(crypto::cn_hash_context_t *context, cryptonote::BlockchainDB &db, const blobdata &blob, crypto::hash &res, uint64_t height);
+  bool get_block_longhash_v10(crypto::cn_hash_context_t *context, cryptonote::BlockchainDB &db, const blobdata &blob, crypto::hash &res, uint64_t height);
+  bool get_block_longhash_v9(crypto::cn_hash_context_t *context, cryptonote::BlockchainDB &db, const blobdata &blob, crypto::hash &res, uint64_t height);
+  bool get_block_longhash_v7_8(crypto::cn_hash_context_t *context, cryptonote::BlockchainDB &db, const blobdata &blob, crypto::hash &res, uint64_t height, uint64_t data_offset);
 }
 
 namespace boost
