@@ -2000,76 +2000,6 @@ uint64_t Blockchain::get_num_mature_outputs(uint64_t amount) const
 
   return num_outs;
 }
-
-std::vector<uint64_t> Blockchain::get_random_outputs(uint64_t amount, uint64_t count) const
-{
-  LOG_PRINT_L3("Blockchain::" << __func__);
-
-  uint64_t num_outs = get_num_mature_outputs(amount);
-
-  std::vector<uint64_t> indices;
-
-  std::unordered_set<uint64_t> seen_indices;
-
-  // if there aren't enough outputs to mix with (or just enough),
-  // use all of them.  Eventually this should become impossible.
-  if (num_outs <= count)
-  {
-    for (uint64_t i = 0; i < num_outs; i++)
-    {
-      // get tx_hash, tx_out_index from DB
-      tx_out_index toi = m_db->get_output_tx_and_index(amount, i);
-
-      // if tx is unlocked, add output to indices
-      if (is_tx_spendtime_unlocked(m_db->get_tx_unlock_time(toi.first)))
-      {
-        indices.push_back(i);
-      }
-    }
-  }
-  else
-  {
-    // while we still need more mixins
-    while (indices.size() < count)
-    {
-      // if we've gone through every possible output, we've gotten all we can
-      if (seen_indices.size() == num_outs)
-      {
-        break;
-      }
-
-      // get a random output index from the DB.  If we've already seen it,
-      // return to the top of the loop and try again, otherwise add it to the
-      // list of output indices we've seen.
-
-      // triangular distribution over [a,b) with a=0, mode c=b=up_index_limit
-      uint64_t r = crypto::rand<uint64_t>() % ((uint64_t)1 << 53);
-      double frac = std::sqrt((double)r / ((uint64_t)1 << 53));
-      uint64_t i = (uint64_t)(frac*num_outs);
-      // just in case rounding up to 1 occurs after sqrt
-      if (i == num_outs)
-        --i;
-
-      if (seen_indices.count(i))
-      {
-        continue;
-      }
-      seen_indices.emplace(i);
-
-      // get tx_hash, tx_out_index from DB
-      tx_out_index toi = m_db->get_output_tx_and_index(amount, i);
-
-      // if the output's transaction is unlocked, add the output's index to
-      // our list.
-      if (is_tx_spendtime_unlocked(m_db->get_tx_unlock_time(toi.first)))
-      {
-        indices.push_back(i);
-      }
-    }
-  }
-
-  return indices;
-}
 //------------------------------------------------------------------
 crypto::public_key Blockchain::get_output_key(uint64_t amount, uint64_t global_index) const
 {
@@ -2137,7 +2067,20 @@ void Blockchain::get_output_key_mask_unlocked(const uint64_t& amount, const uint
 //------------------------------------------------------------------
 bool Blockchain::get_output_distribution(uint64_t amount, uint64_t from_height, uint64_t to_height, uint64_t &start_height, std::vector<uint64_t> &distribution, uint64_t &base) const
 {
-  start_height = 0;
+  // rct outputs don't exist before v4
+  if (amount == 0)
+  {
+    switch (m_nettype)
+    {
+      case STAGENET: start_height = config::stagenet::hard_forks[3].height; break;
+      case TESTNET: start_height = config::testnet::hard_forks[3].height; break;
+      case MAINNET: start_height = config::hard_forks[3].height; break;
+      case FAKECHAIN: start_height = 0; break;
+      default: return false;
+    }
+  }
+  else
+    start_height = 0;
   base = 0;
 
   if (to_height > 0 && to_height < from_height)
@@ -2152,7 +2095,25 @@ bool Blockchain::get_output_distribution(uint64_t amount, uint64_t from_height, 
     return false;
   if (start_height >= db_height || to_height >= db_height)
     return false;
-  return m_db->get_output_distribution(amount, start_height, to_height, distribution, base);
+  if (amount == 0)
+  {
+    std::vector<uint64_t> heights;
+    heights.reserve(to_height + 1 - start_height);
+    const uint64_t real_start_height = start_height > 0 ? start_height-1 : start_height;
+    for (uint64_t h = real_start_height; h <= to_height; ++h)
+      heights.push_back(h);
+    distribution = m_db->get_block_cumulative_rct_outputs(heights);
+    if (start_height > 0)
+    {
+      base = distribution[0];
+      distribution.erase(distribution.begin());
+    }
+    return true;
+  }
+  else
+  {
+    return m_db->get_output_distribution(amount, start_height, to_height, distribution, base);
+  }
 }
 //------------------------------------------------------------------
 // This function takes a list of block hashes from another node
@@ -3232,15 +3193,16 @@ bool Blockchain::check_fee(size_t tx_weight, uint64_t fee) const
   uint64_t median = 0;
   uint64_t already_generated_coins = 0;
   uint64_t base_reward = 0;
-  if (true)
-  {
-    median = m_current_block_cumul_weight_limit / 2;
-    const uint64_t blockchain_height = m_db->height();
-    already_generated_coins = blockchain_height ? m_db->get_block_already_generated_coins(blockchain_height - 1) : 0;
-    if (!get_block_reward(median, 1, already_generated_coins, base_reward, version))
-      return false;
-    fee_per_kb = get_dynamic_per_kb_fee(base_reward, median, version);
-  }
+
+  median = m_current_block_cumul_weight_limit / 2;
+  const uint64_t blockchain_height = m_db->height();
+  already_generated_coins = blockchain_height ? m_db->get_block_already_generated_coins(blockchain_height - 1) : 0;
+  if (!get_block_reward(median, 1, already_generated_coins, base_reward, version))
+    return false;
+
+  const bool use_long_term_median_in_fee = version >= HF_VERSION_LONG_TERM_BLOCK_WEIGHT;
+  fee_per_kb = get_dynamic_per_kb_fee(base_reward, use_long_term_median_in_fee ? m_long_term_effective_median_block_weight : median, version);
+
   MDEBUG("Using " << print_money(fee_per_kb) << "/kB fee");
 
   uint64_t needed_fee = tx_weight / 1024;
@@ -3282,8 +3244,10 @@ uint64_t Blockchain::get_dynamic_per_kb_fee_estimate(uint64_t grace_blocks) cons
     MERROR("Failed to determine block reward, using placeholder " << print_money(BLOCK_REWARD_OVERESTIMATE) << " as a high bound");
     base_reward = BLOCK_REWARD_OVERESTIMATE;
   }
-
-  uint64_t fee = get_dynamic_per_kb_fee(base_reward, median, version);
+  
+  const bool use_long_term_median_in_fee = version >= HF_VERSION_LONG_TERM_BLOCK_WEIGHT;
+  const uint64_t use_median_value = use_long_term_median_in_fee ? std::min<uint64_t>(median, m_long_term_effective_median_block_weight) : median;
+  const uint64_t fee = get_dynamic_per_kb_fee(base_reward, use_median_value, version);
   MDEBUG("Estimating " << grace_blocks << "-block fee at " << print_money(fee) << "/kB");
   return fee;
 }
