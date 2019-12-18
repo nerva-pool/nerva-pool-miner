@@ -195,9 +195,13 @@ namespace config
     std::string const HF_MIN_VERSION = "0.1.7.0";
     std::string const MIN_VERSION    = "0.1.6.4";
 
-    std::set<std::string> const seed_nodes = {
-        "206.81.2.15:17565",
-        "206.81.2.16:17565"
+    std::vector<std::string> const dns_seed_nodes = {
+        "xnv1.getnerva.org",
+        "xnv2.getnerva.org",
+        "xnv3.getnerva.org",
+        "xnv4.getnerva.org",
+        "hooftly-seed.getnerva.org",
+        "jerme-seed.getnerva.org"
     };
 
     static const hard_fork hard_forks[] = {
@@ -224,9 +228,9 @@ namespace config
         std::string const HF_MIN_VERSION = "0.1.7.0";
         std::string const MIN_VERSION    = "0.1.6.4";
 
-        std::set<std::string> const seed_nodes = {
-            "206.189.68.68:18565",
-            "178.128.165.236:18565"
+        std::vector<std::string> const dns_seed_nodes = {
+            "xnv3.getnerva.org",
+            "xnv4.getnerva.org"
         };
 
         static const hard_fork hard_forks[] = {
@@ -240,7 +244,8 @@ namespace config
             { 8, 560},
             { 9, 570},
             {10, 580},
-            {11, 590}
+            {11, 590},
+            {12, 600}
         };
     }
 
@@ -251,7 +256,7 @@ namespace config
         uint16_t const ZMQ_RPC_DEFAULT_PORT = 19567;
         boost::uuids::uuid const NETWORK_ID = {{0x14, 0x31, 0xF1, 0x22, 0x54, 0x86, 0x36, 0xFF, 0xAB, 0x51, 0x00, 0x4F, 0x3C, 0x3D, 0xAA, 0x16}};
 
-        std::set<std::string> const seed_nodes = { };
+        std::vector<std::string> const dns_seed_nodes = { };
 
         static const hard_fork hard_forks[] = {
             { 1,   1},

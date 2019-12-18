@@ -72,8 +72,6 @@
 
 #define NET_MAKE_IP(b1,b2,b3,b4)  ((LPARAM)(((DWORD)(b1)<<24)+((DWORD)(b2)<<16)+((DWORD)(b3)<<8)+((DWORD)(b4))))
 
-#define MIN_WANTED_SEED_NODES 12
-
 namespace nodetool
 {
   template<class t_payload_net_handler>
@@ -641,21 +639,6 @@ namespace nodetool
     }
     return true;
   }
-
-  //-----------------------------------------------------------------------------------
-  template<class t_payload_net_handler>
-  std::set<std::string> node_server<t_payload_net_handler>::get_seed_nodes(cryptonote::network_type nettype) const
-  {
-    std::set<std::string> full_addrs;
-    if (nettype == cryptonote::TESTNET)
-      full_addrs = ::config::testnet::seed_nodes;
-    else if (nettype == cryptonote::STAGENET)
-      full_addrs = ::config::stagenet::seed_nodes;
-    else
-      full_addrs = ::config::seed_nodes;
-
-    return full_addrs;
-  }
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
   typename node_server<t_payload_net_handler>::network_zone& node_server<t_payload_net_handler>::add_zone(const epee::net_utils::zone zone)
@@ -676,22 +659,24 @@ namespace nodetool
     bool res = handle_command_line(vm);
     CHECK_AND_ASSERT_MES(res, false, "Failed to handle command line");
 
-    m_fallback_seed_nodes_added = false;
     if (m_nettype == cryptonote::TESTNET)
     {
       memcpy(&m_network_id, &::config::testnet::NETWORK_ID, 16);
-      full_addrs = get_seed_nodes(cryptonote::TESTNET);
+      m_seed_nodes_list = ::config::testnet::dns_seed_nodes;
     }
     else if (m_nettype == cryptonote::STAGENET)
     {
       memcpy(&m_network_id, &::config::stagenet::NETWORK_ID, 16);
-      full_addrs = get_seed_nodes(cryptonote::STAGENET);
+      m_seed_nodes_list = ::config::stagenet::dns_seed_nodes;
     }
     else
     {
       memcpy(&m_network_id, &::config::NETWORK_ID, 16);
-      if (m_exclusive_peers.empty() && !m_offline)
-      {
+      m_seed_nodes_list = ::config::dns_seed_nodes;
+    }
+    
+    if (m_exclusive_peers.empty() && !m_offline)
+    {
       // for each hostname in the seed nodes list, attempt to DNS resolve and
       // add the result addresses as seed nodes
       // TODO: at some point add IPv6 support, but that won't be relevant
@@ -762,20 +747,6 @@ namespace nodetool
         }
         ++i;
       }
-
-      // append the fallback nodes if we have too few seed nodes to start with
-      if (full_addrs.size() < MIN_WANTED_SEED_NODES)
-      {
-        if (full_addrs.empty())
-          MINFO("DNS seed node lookup either timed out or failed, falling back to defaults");
-        else
-          MINFO("Not enough DNS seed nodes found, using fallback defaults too");
-
-        for (const auto &peer: get_seed_nodes(cryptonote::MAINNET))
-          full_addrs.insert(peer);
-        m_fallback_seed_nodes_added = true;
-      }
-    }
     }
 
     for (const auto& full_addr : full_addrs)
@@ -1675,31 +1646,13 @@ namespace nodetool
 
         if(try_to_connect_and_handshake_with_new_peer(m_seed_nodes[current_index], true))
           break;
+
         if(++try_count > m_seed_nodes.size())
         {
-          if (!m_fallback_seed_nodes_added)
-          {
-            MWARNING("Failed to connect to any of seed peers, trying fallback seeds");
-            current_index = m_seed_nodes.size();
-            for (const auto &peer: get_seed_nodes(m_nettype))
-            {
-              MDEBUG("Fallback seed node: " << peer);
-              append_net_address(m_seed_nodes, peer, cryptonote::get_config(m_nettype).P2P_DEFAULT_PORT);
-            }
-            m_fallback_seed_nodes_added = true;
-            if (current_index == m_seed_nodes.size())
-            {
-              MWARNING("No fallback seeds, continuing without seeds");
-              break;
-            }
-            // continue for another few cycles
-          }
-          else
-          {
-            MWARNING("Failed to connect to any of seed peers, continuing without seeds");
-            break;
-          }
+          MWARNING("Failed to connect to any of seed peers, continuing without seeds");
+          break;
         }
+
         if(++current_index >= m_seed_nodes.size())
           current_index = 0;
       }

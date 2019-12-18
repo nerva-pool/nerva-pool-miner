@@ -2,12 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <list>
 #include <set>
 #include <string>
+#include <boost/thread/thread.hpp>
+
 #include "xnv_https.h"
 #include "cryptonote_config.h"
 #include "version.h"
 #include "misc_log_ex.h"
+#include "common/dns_utils.h"
 
 namespace xnvhttp
 {
@@ -16,6 +20,78 @@ namespace xnvhttp
         size_t found = ip.find_first_of(":");
         std::string host = ip.substr(0, found);
         return host;
+    }
+
+    std::vector<std::string> resolve_dns_addresses(std::vector<std::string> node_list)
+    {
+      std::vector<std::string> full_addrs = {};
+      std::vector<std::vector<std::string>> dns_results;
+      dns_results.resize(node_list.size());
+
+      boost::thread::attributes thread_attributes;
+      thread_attributes.set_stack_size(1024*1024);
+
+      std::list<boost::thread> dns_threads;
+      uint64_t result_index = 0;
+      for (const std::string& addr_str : node_list)
+      {
+        boost::thread th = boost::thread(thread_attributes, [=, &dns_results, &addr_str]
+        {
+          MDEBUG("dns_threads[" << result_index << "] created for: " << addr_str);
+          // TODO: care about dnssec avail/valid
+          bool avail, valid;
+          std::vector<std::string> addr_list;
+
+          try
+          {
+            addr_list = tools::DNSResolver::instance().get_ipv4(addr_str, avail, valid);
+            MDEBUG("dns_threads[" << result_index << "] DNS resolve done");
+            boost::this_thread::interruption_point();
+          }
+          catch(const boost::thread_interrupted&)
+          {
+            // thread interruption request
+            // even if we now have results, finish thread without setting
+            // result variables, which are now out of scope in main thread
+            MWARNING("dns_threads[" << result_index << "] interrupted");
+            return;
+          }
+
+          MINFO("dns_threads[" << result_index << "] addr_str: " << addr_str << "  number of results: " << addr_list.size());
+          dns_results[result_index] = addr_list;
+        });
+
+        dns_threads.push_back(std::move(th));
+        ++result_index;
+      }
+
+      MDEBUG("dns_threads created, now waiting for completion or timeout of " << CRYPTONOTE_DNS_TIMEOUT_MS << "ms");
+      boost::chrono::system_clock::time_point deadline = boost::chrono::system_clock::now() + boost::chrono::milliseconds(CRYPTONOTE_DNS_TIMEOUT_MS);
+      uint64_t i = 0;
+      for (boost::thread& th : dns_threads)
+      {
+        if (! th.try_join_until(deadline))
+        {
+          MWARNING("dns_threads[" << i << "] timed out, sending interrupt");
+          th.interrupt();
+        }
+        ++i;
+      }
+
+      i = 0;
+      for (const auto& result : dns_results)
+      {
+        MDEBUG("DNS lookup for " << node_list[i] << ": " << result.size() << " results");
+        // if no results for node, thread's lookup likely timed out
+        if (result.size())
+        {
+          for (const auto& addr_string : result)
+            full_addrs.push_back(addr_string);
+        }
+        ++i;
+      }
+
+      return full_addrs;
     }
 }
 
@@ -51,9 +127,9 @@ namespace blacklist
     {
         if (!testnet)
             return;
-            
-        std::set<std::string> url_list = ::config::testnet::seed_nodes;
-        
+
+        std::vector<std::string> url_list = xnvhttp::resolve_dns_addresses(::config::testnet::dns_seed_nodes);
+
         for (const std::string &a : url_list)
         {
             std::string url = "http://" + xnvhttp::get_host(a) + "/xnv_blacklist.txt";
@@ -84,7 +160,7 @@ namespace analytics
 
     bool contact_server(const bool testnet)
     {
-        std::set<std::string> url_list = testnet ? ::config::testnet::seed_nodes : ::config::seed_nodes;
+        std::vector<std::string> url_list = testnet ? ::config::testnet::dns_seed_nodes : ::config::dns_seed_nodes;
 
         for (const std::string &a : url_list)
         {

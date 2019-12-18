@@ -283,10 +283,7 @@ namespace nodetool
     virtual void remove_used_stripe_peer(const typename t_payload_net_handler::connection_context &context);
     virtual void clear_used_stripe_peers();
   private:
-    const std::vector<std::string> m_seed_nodes_list =
-    {
-      "seeds.getnerva.org"
-    };
+    std::vector<std::string> m_seed_nodes_list;
 
     bool islimitup=false;
     bool islimitdown=false;
@@ -332,7 +329,6 @@ namespace nodetool
     bool make_default_config();
     bool store_config();
     
-
     //----------------- levin_commands_handler -------------------------------------------------------------
     virtual void on_connection_new(p2p_connection_context& context);
     virtual void on_connection_close(p2p_connection_context& context);
@@ -357,7 +353,6 @@ namespace nodetool
     bool idle_worker();
     bool handle_remote_peerlist(const std::vector<peerlist_entry>& peerlist, time_t local_time, const epee::net_utils::connection_context_base& context);
     bool get_local_node_data(basic_node_data& node_data, const network_zone& zone);
-    //bool get_local_handshake_data(handshake_data& hshd);
 
     bool sanitize_peerlist(std::vector<peerlist_entry>& local_peerlist);
 
@@ -389,7 +384,6 @@ namespace nodetool
     void cache_connect_fail_info(const epee::net_utils::network_address& addr);
     bool is_addr_recently_failed(const epee::net_utils::network_address& addr);
     bool is_priority_node(const epee::net_utils::network_address& na);
-    std::set<std::string> get_seed_nodes(cryptonote::network_type nettype) const;
     bool connect_to_seed();
 
     template <class Container>
@@ -427,7 +421,6 @@ namespace nodetool
 
     //debug functions
     std::string print_connections_container();
-
 
   public:
 
@@ -471,15 +464,12 @@ namespace nodetool
     std::list<epee::net_utils::network_address>   m_priority_peers;
     std::vector<epee::net_utils::network_address> m_exclusive_peers;
     std::vector<epee::net_utils::network_address> m_seed_nodes;
-    bool m_fallback_seed_nodes_added;
     std::vector<nodetool::peerlist_entry> m_command_line_peers;
     uint64_t m_peer_livetime;
     //keep connections to initiate some interactions
 
-
     static boost::optional<p2p_connection_context> public_connect(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
     static boost::optional<p2p_connection_context> socks_connect(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
-
 
     /* A `std::map` provides constant iterators and key/value pointers even with
     inserts/erases to _other_ elements. This makes the configuration step easier
@@ -487,7 +477,6 @@ namespace nodetool
     after configuration and before destruction, lock safety would need to be
     added. `std::map::operator[]` WILL insert! */
     std::map<epee::net_utils::zone, network_zone> m_network_zones;
-
 
     std::map<std::string, time_t> m_conn_fails_cache;
     epee::critical_section m_conn_fails_cache_lock;
