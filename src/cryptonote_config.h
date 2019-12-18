@@ -45,7 +45,7 @@
 #define CRYPTONOTE_PUBLIC_ADDRESS_TEXTBLOB_VER                          0
 #define CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW                            10
 #define CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V6                         20
-#define CURRENT_TRANSACTION_VERSION                                     1
+#define CURRENT_TRANSACTION_VERSION                                     2
 #define CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT                              60 * 60 * 2
 #define CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE                             10
 
@@ -156,7 +156,7 @@
 
 #define DEFAULT_TXPOOL_MAX_WEIGHT                                       648000000ull
 
-#define HF_VERSION_LONG_TERM_BLOCK_WEIGHT                               8
+#define HF_VERSION_LONG_TERM_BLOCK_WEIGHT                               12
 #define CRYPTONOTE_SHORT_TERM_BLOCK_WEIGHT_SURGE_FACTOR                 50
 
 #define CRYPTONOTE_NOISE_MIN_EPOCH                                      5

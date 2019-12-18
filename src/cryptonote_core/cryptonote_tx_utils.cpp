@@ -171,7 +171,7 @@ namespace cryptonote
     out.target = tk;
     tx.vout.push_back(out);
 
-    tx.version = CURRENT_TRANSACTION_VERSION;
+    tx.version = 1;
 
     //lock
     tx.unlock_time = CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW;
