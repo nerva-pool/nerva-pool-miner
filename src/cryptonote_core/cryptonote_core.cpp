@@ -57,6 +57,7 @@ using namespace epee;
 #include "common/notify.h"
 #include "version.h"
 #include "common/xnv_https.h"
+#include "common/dns_utils.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -1664,7 +1665,7 @@ namespace cryptonote
       if (m_offline)
         main_message = "The daemon is running offline and will not attempt to sync to the NERVA network.";
       else
-        main_message = "The daemon will start synchronizing with the network. This may take a long time to complete.";
+        main_message = "The daemon will start synchronizing with the network when connections are available.";
 
       MGUSER_GREEN(ENDL << ENDL
         << R"(   |  |  |  |  |  |                                  )" << ENDL
@@ -1682,6 +1683,19 @@ namespace cryptonote
         << main_message << ENDL
         << "Use the \"help\" command to see the list of available commands." << ENDL
         << "Use \"help <command>\" to see a command's documentation." << ENDL);
+
+      bool dnssec_available, dnssec_isvalid;
+      auto records = tools::DNSResolver::instance().get_ipv4("getnerva.org", dnssec_available, dnssec_isvalid);
+      std::string dnssec_msg;
+
+       if (!dnssec_available)
+        dnssec_msg = "server";
+      else if (!dnssec_isvalid)
+        dnssec_msg = "client";
+      
+      if (!dnssec_available || !dnssec_isvalid)
+        MGUSER_MAGENTA("There appears to be a " << dnssec_msg << " side DNSSEC validation error." << ENDL << "This node cannot reliably download seed node lists or update notifications." << ENDL);
+
       m_starter_message_showed = true;
     }
 
