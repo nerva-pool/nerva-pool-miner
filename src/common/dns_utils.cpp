@@ -35,6 +35,7 @@
 #include "common/threadpool.h"
 #include "crypto/crypto.h"
 #include <boost/thread/mutex.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
 using namespace epee;
@@ -242,38 +243,27 @@ static void add_anchors(ub_ctx *ctx)
 
 DNSResolver::DNSResolver() : m_data(new DNSResolverData())
 {
-  int use_dns_public = 0;
   std::vector<std::string> dns_public_addr;
-  const char *DNS_PUBLIC = getenv("DNS_PUBLIC");
-  if (DNS_PUBLIC)
+  std::string dns_public = std::string(getenv("DNS_PUBLIC"));
+  if (dns_public.size())
   {
-    dns_public_addr = tools::dns_utils::parse_dns_public(DNS_PUBLIC);
-    if (!dns_public_addr.empty())
-    {
-      MGINFO("Using public DNS server(s): " << boost::join(dns_public_addr, ", ") << " (TCP)");
-      use_dns_public = 1;
-    }
-    else
-    {
+    dns_public_addr = tools::dns_utils::parse_dns_public(dns_public);
+    if (dns_public_addr.empty())
       MERROR("Failed to parse DNS_PUBLIC");
-    }
   }
+
+  for (size_t i = 0; i < sizeof(DEFAULT_DNS_PUBLIC_ADDR) / sizeof(DEFAULT_DNS_PUBLIC_ADDR[0]); ++i)
+    dns_public_addr.push_back(DEFAULT_DNS_PUBLIC_ADDR[i]);
+  LOG_PRINT_L0("Using public DNS server(s): " << boost::join(dns_public_addr, ", ") << " (TCP)");
 
   // init libunbound context
   m_data->m_ub_context = ub_ctx_create();
 
-  if (use_dns_public)
-  {
-    for (const auto &ip: dns_public_addr)
-      ub_ctx_set_fwd(m_data->m_ub_context, string_copy(ip.c_str()));
-    ub_ctx_set_option(m_data->m_ub_context, string_copy("do-udp:"), string_copy("no"));
-    ub_ctx_set_option(m_data->m_ub_context, string_copy("do-tcp:"), string_copy("yes"));
-  }
-  else {
-    // look for "/etc/resolv.conf" and "/etc/hosts" or platform equivalent
-    ub_ctx_resolvconf(m_data->m_ub_context, NULL);
-    ub_ctx_hosts(m_data->m_ub_context, NULL);
-  }
+  for (const auto &ip: dns_public_addr)
+    ub_ctx_set_fwd(m_data->m_ub_context, string_copy(ip.c_str()));
+
+  ub_ctx_set_option(m_data->m_ub_context, string_copy("do-udp:"), string_copy("no"));
+  ub_ctx_set_option(m_data->m_ub_context, string_copy("do-tcp:"), string_copy("yes"));
 
   add_anchors(m_data->m_ub_context);
 }
@@ -580,31 +570,26 @@ bool load_txt_records_from_dns(std::vector<std::string> &good_records, const std
   return true;
 }
 
-std::vector<std::string> parse_dns_public(const char *s)
+std::vector<std::string> parse_dns_public(std::string dns_public)
 {
-  unsigned ip0, ip1, ip2, ip3;
-  char c;
+  std::vector<std::string> split;
   std::vector<std::string> dns_public_addr;
-  if (!strcmp(s, "tcp"))
+  boost::split(split, dns_public, boost::is_any_of(","));
+
+  for (auto &s : split)
   {
-    for (size_t i = 0; i < sizeof(DEFAULT_DNS_PUBLIC_ADDR) / sizeof(DEFAULT_DNS_PUBLIC_ADDR[0]); ++i)
-      dns_public_addr.push_back(DEFAULT_DNS_PUBLIC_ADDR[i]);
-    LOG_PRINT_L0("Using default public DNS server(s): " << boost::join(dns_public_addr, ", ") << " (TCP)");
-  }
-  else if (sscanf(s, "tcp://%u.%u.%u.%u%c", &ip0, &ip1, &ip2, &ip3, &c) == 4)
-  {
-    if (ip0 > 255 || ip1 > 255 || ip2 > 255 || ip3 > 255)
+    unsigned ip0, ip1, ip2, ip3;
+    char c;
+    
+    if (sscanf(s.c_str(), "tcp://%u.%u.%u.%u%c", &ip0, &ip1, &ip2, &ip3, &c) == 4)
     {
-      MERROR("Invalid IP: " << s << ", using default");
+      if (ip0 > 255 || ip1 > 255 || ip2 > 255 || ip3 > 255)
+        continue;
+        
+      dns_public_addr.push_back(std::string(s.begin() + strlen("tcp://"), s.end()));
     }
     else
-    {
-      dns_public_addr.push_back(std::string(s + strlen("tcp://")));
-    }
-  }
-  else
-  {
-    MERROR("Invalid DNS_PUBLIC contents, ignored");
+      MERROR("Invalid DNS_PUBLIC entry: " << s);
   }
   return dns_public_addr;
 }
