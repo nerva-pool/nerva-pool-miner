@@ -930,39 +930,6 @@ namespace cryptonote
     };
     typedef epee::misc_utils::struct_init<response_t> response;
   };
-
-  struct COMMAND_RPC_GENERATEBLOCKS
-  {
-    struct request_t: public rpc_request_base
-    {
-      uint64_t amount_of_blocks;
-      std::string wallet_address;
-      std::string prev_block;
-      uint32_t starting_nonce;
-
-      BEGIN_KV_SERIALIZE_MAP()
-        KV_SERIALIZE_PARENT(rpc_request_base)
-        KV_SERIALIZE(amount_of_blocks)
-        KV_SERIALIZE(wallet_address)
-        KV_SERIALIZE(prev_block)
-        KV_SERIALIZE_OPT(starting_nonce, (uint32_t)0)
-      END_KV_SERIALIZE_MAP()
-    };
-    typedef epee::misc_utils::struct_init<request_t> request;
-    
-    struct response_t: public rpc_response_base
-    {
-      uint64_t height;
-      std::vector<std::string> blocks;
-      
-      BEGIN_KV_SERIALIZE_MAP()
-        KV_SERIALIZE_PARENT(rpc_response_base)
-        KV_SERIALIZE(height)
-        KV_SERIALIZE(blocks)
-      END_KV_SERIALIZE_MAP()
-    };
-    typedef epee::misc_utils::struct_init<response_t> response;
-  };
   
   struct block_header_response
   {
