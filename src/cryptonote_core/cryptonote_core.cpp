@@ -1744,6 +1744,15 @@ namespace cryptonote
       return false;
     }
 
+    uint32_t new_version = version_string_to_integer(version);
+    uint32_t this_version = version_string_to_integer(MONERO_VERSION);
+
+    if (this_version >= new_version)
+    {
+      MGUSER_MAGENTA("No new update available");
+      return false;
+    }
+
     std::string url = tools::get_update_url(software, buildtag, version);
     MGUSER_MAGENTA(ENDL
     << "Version " << version << ":" << codename << " is available" << ENDL
