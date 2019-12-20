@@ -10,7 +10,6 @@
 namespace xnvhttp
 {
     std::string get_host(std::string ip);
-    std::vector<std::string> resolve_dns_addresses(std::vector<std::string> node_list);
 };
 
 namespace blacklist

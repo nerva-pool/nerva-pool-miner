@@ -57,7 +57,7 @@ using namespace epee;
 #include "common/notify.h"
 #include "version.h"
 #include "common/xnv_https.h"
-#include "common/dns_utils.h"
+#include "common/dns_config.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -1684,17 +1684,8 @@ namespace cryptonote
         << "Use the \"help\" command to see the list of available commands." << ENDL
         << "Use \"help <command>\" to see a command's documentation." << ENDL);
 
-      bool dnssec_available, dnssec_isvalid;
-      auto records = tools::DNSResolver::instance().get_ipv4("getnerva.org", dnssec_available, dnssec_isvalid);
-      std::string dnssec_msg;
-
-       if (!dnssec_available)
-        dnssec_msg = "server";
-      else if (!dnssec_isvalid)
-        dnssec_msg = "client";
-      
-      if (!dnssec_available || !dnssec_isvalid)
-        MGUSER_MAGENTA("There appears to be a " << dnssec_msg << " side DNSSEC validation error." << ENDL << "This node cannot reliably download seed node lists or update notifications." << ENDL);
+      if (!dns_config::is_dnssec_ok())
+        MGUSER_MAGENTA("There appears to be a DNSSEC validation error." << ENDL << "This node cannot reliably download seed node lists or update notifications." << ENDL);
 
       m_starter_message_showed = true;
     }

@@ -62,6 +62,7 @@
 #include "net/parse.h"
 #include "cryptonote_config.h"
 #include "common/xnv_https.h"
+#include "common/dns_config.h"
 
 #include <miniupnp/miniupnpc/miniupnpc.h>
 #include <miniupnp/miniupnpc/upnpcommands.h>
@@ -659,29 +660,11 @@ namespace nodetool
     bool res = handle_command_line(vm);
     CHECK_AND_ASSERT_MES(res, false, "Failed to handle command line");
 
-    if (m_nettype == cryptonote::TESTNET)
-    {
-      memcpy(&m_network_id, &::config::testnet::NETWORK_ID, 16);
-      m_seed_nodes_list = ::config::testnet::dns_seed_nodes;
-    }
-    else if (m_nettype == cryptonote::STAGENET)
-    {
-      memcpy(&m_network_id, &::config::stagenet::NETWORK_ID, 16);
-      m_seed_nodes_list = ::config::stagenet::dns_seed_nodes;
-    }
-    else
-    {
-      memcpy(&m_network_id, &::config::NETWORK_ID, 16);
-      m_seed_nodes_list = ::config::dns_seed_nodes;
-    }
-    
+    memcpy(&m_network_id, &cryptonote::get_config(m_nettype).NETWORK_ID, 16);
+    m_seed_nodes_list = dns_config::get_config(m_nettype).SEED_NODES;
+
     if (m_exclusive_peers.empty() && !m_offline)
     {
-      // for each hostname in the seed nodes list, attempt to DNS resolve and
-      // add the result addresses as seed nodes
-      // TODO: at some point add IPv6 support, but that won't be relevant
-      // for some time yet.
-
       std::vector<std::vector<std::string>> dns_results;
       dns_results.resize(m_seed_nodes_list.size());
 

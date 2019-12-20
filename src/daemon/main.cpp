@@ -47,6 +47,7 @@
 #include "daemon/command_line_args.h"
 #include "version.h"
 #include "common/xnv_https.h"
+#include "common/dns_config.h"
 
 #ifdef STACK_TRACE
 #include "common/stack_trace.h"
@@ -362,6 +363,8 @@ int main(int argc, char const * argv[])
 
     if (!tools::check_aesni())
       return 1;
+
+    dns_config::init(testnet);
 
     if (noanalytics)
       MGINFO("Analytics disabled.");

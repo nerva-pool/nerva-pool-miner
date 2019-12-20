@@ -52,7 +52,8 @@ set(common_sources
   aligned.c
   timings.cc
   combinator.cpp
-  xnv_https.cpp)
+  xnv_https.cpp
+  dns_config.cpp)
 
 if (STACK_TRACE)
   list(APPEND common_sources stack_trace.cpp)
@@ -93,7 +94,8 @@ set(common_private_headers
   aligned.h
   timings.h
   combinator.h
-  xnv_https.h)
+  xnv_https.h
+  dns_config.h)
 
 monero_private_headers(common
   ${common_private_headers})

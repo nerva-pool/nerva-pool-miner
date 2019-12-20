@@ -32,6 +32,7 @@
 #include "util.h"
 #include "dns_utils.h"
 #include "updates.h"
+#include "dns_config.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "updates"
@@ -40,15 +41,12 @@ namespace tools
 {
   bool check_updates(const std::string &software, std::string &version, std::string &codename, std::string &notice)
   {
-    std::vector<std::string> records;
     bool found = false;
 
-    static const std::vector<std::string> dns_urls = {
-      "update.getnerva.org",
-    };
-
-    if (!tools::dns_utils::load_txt_records_from_dns(records, dns_urls))
+    if (!dns_config::has_update_records())
       return false;
+
+    std::vector<std::string> records = dns_config::get_update_records();
 
     for (const auto& record : records)
     {
@@ -75,7 +73,7 @@ namespace tools
       codename = fields[2];
       notice = fields[3];
 
-      MGUSER_MAGENTA("Found new version " << version << ":" << codename);
+      LOG_PRINT_L1("Found new version " << version << ":" << codename);
       found = true;
     }
     return found;
