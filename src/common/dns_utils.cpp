@@ -244,10 +244,10 @@ static void add_anchors(ub_ctx *ctx)
 DNSResolver::DNSResolver() : m_data(new DNSResolverData())
 {
   std::vector<std::string> dns_public_addr;
-  std::string dns_public = std::string(getenv("DNS_PUBLIC"));
-  if (dns_public.size())
+  char* DNS_PUBLIC = getenv("DNS_PUBLIC");
+  if (DNS_PUBLIC)
   {
-    dns_public_addr = tools::dns_utils::parse_dns_public(dns_public);
+    dns_public_addr = tools::dns_utils::parse_dns_public(std::string(DNS_PUBLIC));
     if (dns_public_addr.empty())
       MERROR("Failed to parse DNS_PUBLIC");
   }
