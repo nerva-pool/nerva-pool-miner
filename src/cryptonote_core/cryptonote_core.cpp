@@ -1748,13 +1748,13 @@ namespace cryptonote
     std::string version, codename, notice;
     MCDEBUG("updates", "Checking for a new " << software << " version for " << buildtag);
     if (!tools::check_updates(software, version, codename, notice))
+    {
+      MGUSER_MAGENTA("No new update available");
       return false;
-
-    if (tools::vercmp(version.c_str(), MONERO_VERSION) <= 0)
-      return true;
+    }
 
     std::string url = tools::get_update_url(software, buildtag, version);
-    MGUSER_CYAN(ENDL
+    MGUSER_MAGENTA(ENDL
     << "Version " << version << ":" << codename << " is available" << ENDL
     << url << ENDL
     << "Release note: " << notice);
