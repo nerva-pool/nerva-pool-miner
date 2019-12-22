@@ -731,7 +731,7 @@ void BlockchainLMDB::add_block(const block& blk, size_t block_weight, uint64_t l
   bi.bi_hash = blk_hash;
   bi.bi_cum_rct = num_rct_outs;
 
-  if (blk.major_version >= 1)
+  if (m_height >= 1)
   {
     uint64_t last_height = m_height-1;
     MDB_val_set(h, last_height);
