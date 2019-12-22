@@ -655,83 +655,16 @@ namespace nodetool
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::init(const boost::program_options::variables_map& vm)
   {
-    std::set<std::string> full_addrs;
+    std::vector<std::string> full_addrs = {};
 
     bool res = handle_command_line(vm);
     CHECK_AND_ASSERT_MES(res, false, "Failed to handle command line");
 
     memcpy(&m_network_id, &cryptonote::get_config(m_nettype).NETWORK_ID, 16);
-    m_seed_nodes_list = dns_config::get_config(m_nettype).SEED_NODES;
 
     if (m_exclusive_peers.empty() && !m_offline)
-    {
-      std::vector<std::vector<std::string>> dns_results;
-      dns_results.resize(m_seed_nodes_list.size());
-
-      boost::thread::attributes thread_attributes;
-      thread_attributes.set_stack_size(1024*1024);
-
-      std::list<boost::thread> dns_threads;
-      uint64_t result_index = 0;
-      for (const std::string& addr_str : m_seed_nodes_list)
-      {
-        boost::thread th = boost::thread(thread_attributes, [=, &dns_results, &addr_str]
-        {
-          MDEBUG("dns_threads[" << result_index << "] created for: " << addr_str);
-          // TODO: care about dnssec avail/valid
-          bool avail, valid;
-          std::vector<std::string> addr_list;
-
-          try
-          {
-            addr_list = tools::DNSResolver::instance().get_ipv4(addr_str, avail, valid);
-            MDEBUG("dns_threads[" << result_index << "] DNS resolve done");
-            boost::this_thread::interruption_point();
-          }
-          catch(const boost::thread_interrupted&)
-          {
-            // thread interruption request
-            // even if we now have results, finish thread without setting
-            // result variables, which are now out of scope in main thread
-            MWARNING("dns_threads[" << result_index << "] interrupted");
-            return;
-          }
-
-          MINFO("dns_threads[" << result_index << "] addr_str: " << addr_str << "  number of results: " << addr_list.size());
-          dns_results[result_index] = addr_list;
-        });
-
-        dns_threads.push_back(std::move(th));
-        ++result_index;
-      }
-
-      MDEBUG("dns_threads created, now waiting for completion or timeout of " << CRYPTONOTE_DNS_TIMEOUT_MS << "ms");
-      boost::chrono::system_clock::time_point deadline = boost::chrono::system_clock::now() + boost::chrono::milliseconds(CRYPTONOTE_DNS_TIMEOUT_MS);
-      uint64_t i = 0;
-      for (boost::thread& th : dns_threads)
-      {
-        if (! th.try_join_until(deadline))
-        {
-          MWARNING("dns_threads[" << i << "] timed out, sending interrupt");
-          th.interrupt();
-        }
-        ++i;
-      }
-
-      i = 0;
-      for (const auto& result : dns_results)
-      {
-        MDEBUG("DNS lookup for " << m_seed_nodes_list[i] << ": " << result.size() << " results");
-        // if no results for node, thread's lookup likely timed out
-        if (result.size())
-        {
-          for (const auto& addr_string : result)
-            full_addrs.insert(addr_string + ":" + std::to_string(cryptonote::get_config(m_nettype).P2P_DEFAULT_PORT));
-        }
-        ++i;
-      }
-    }
-
+      full_addrs = dns_config::get_seed_node_records();
+      
     for (const auto& full_addr : full_addrs)
     {
       MDEBUG("Seed node: " << full_addr);
@@ -3004,7 +2937,7 @@ namespace nodetool
 
     if (is_ipv4)
     {
-    const epee::net_utils::ipv4_network_address &ipv4 = na.as<const epee::net_utils::ipv4_network_address>();
+      const epee::net_utils::ipv4_network_address &ipv4 = na.as<const epee::net_utils::ipv4_network_address>();
       address = epee::string_tools::get_ip_string_from_int32(ipv4.ip());
       port = epee::string_tools::num_to_string_fast(ipv4.port());
     }
