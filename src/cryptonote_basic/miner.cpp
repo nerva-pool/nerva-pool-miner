@@ -553,23 +553,6 @@ namespace cryptonote
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::find_nonce_for_given_block(crypto::cn_hash_context_t *context, Blockchain *pbc, block& bl, const uint64_t& diffic, uint64_t height)
-  {
-    for(; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++)
-    {
-      crypto::hash h;
-      get_block_longhash(context, pbc, bl, h, height);
-
-      if(check_hash(h, diffic))
-      {
-        bl.invalidate_hashes();
-        return true;
-      }
-    }
-    bl.invalidate_hashes();
-    return false;
-  }
-  //-----------------------------------------------------------------------------------------------------
   void miner::on_synchronized()
   {
     if(m_do_mining)
