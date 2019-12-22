@@ -627,9 +627,17 @@ namespace cryptonote
     bl.timestamp = 0;
     bl.nonce = config::GENESIS_NONCE;
     crypto::cn_hash_context_t *hash_context = crypto::cn_hash_context_create();
-    miner::find_nonce_for_given_block(hash_context, NULL, bl, 1, 0);
-    crypto::cn_hash_context_free(hash_context);
+    for(; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++)
+    {
+      crypto::hash h;
+      blobdata blob = get_block_hashing_blob(bl);
+      crypto::cn_slow_hash(hash_context, blob.data(), blob.size(),  h, 0, 0x80001);
+
+      if(check_hash(h, 1))
+        break;
+    }
     bl.invalidate_hashes();
+    crypto::cn_hash_context_free(hash_context);
     return true;
   }
   //---------------------------------------------------------------

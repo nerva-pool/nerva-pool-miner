@@ -84,7 +84,6 @@ namespace cryptonote
     bool on_idle();
     void on_synchronized();
     //synchronous analog (for fast calls)
-    static bool find_nonce_for_given_block(crypto::cn_hash_context_t *context, Blockchain *bc, block& bl, const uint64_t& diffic, uint64_t height);
     void pause();
     void resume();
     void do_print_hashrate(bool do_hr);
