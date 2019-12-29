@@ -148,7 +148,9 @@
             "args": [
                 //"--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
                 "--block-sync-size", "20",
-                "--testnet"
+                "--testnet",
+                "--log-level", "3",
+                "--min-version", "0.1.6.9"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -241,7 +243,8 @@
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
-                "--log-level", "1"
+                "--log-level", "3",
+                "--min-version", "0.1.6.9"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
