@@ -9,13 +9,10 @@
 
 namespace dns_config
 {
-    static const std::vector<std::string> SEED_NODES = {
-        "xnv1.getnerva.org",
-        "xnv2.getnerva.org",
-        "xnv3.getnerva.org",
-        "xnv4.getnerva.org",
-        "xnv5.getnerva.org",
-        "xnv6.getnerva.org"
+    static const std::vector<std::string> SEED_NODES = { };
+
+    static const std::vector<std::string> TXT_SEED_NODES = {
+        "seed.getnerva.org"
     };
 
     static const std::vector<std::string> CHECKPOINTS = {
@@ -30,9 +27,10 @@ namespace dns_config
 
     namespace testnet
     {
-        static const std::vector<std::string> SEED_NODES = {
-            "xnv1-tn.getnerva.org",
-            "xnv2-tn.getnerva.org",
+        static const std::vector<std::string> SEED_NODES = { };
+
+        static const std::vector<std::string> TXT_SEED_NODES = {
+            "seed-tn.getnerva.org"
         };
 
         static const std::vector<std::string> CHECKPOINTS = {
@@ -51,6 +49,7 @@ namespace dns_config
     struct dns_config_t
     {
         std::vector<std::string> const SEED_NODES;
+        std::vector<std::string> const TXT_SEED_NODES;
         std::vector<std::string> const CHECKPOINTS;
     };
 
@@ -58,12 +57,14 @@ namespace dns_config
     {
         static const dns_config_t mainnet = {
             ::dns_config::SEED_NODES,
+            ::dns_config::TXT_SEED_NODES,
             ::dns_config::CHECKPOINTS
         };
 
         static const dns_config_t testnet = {
-            ::dns_config::SEED_NODES,
-            ::dns_config::CHECKPOINTS
+            ::dns_config::testnet::SEED_NODES,
+            ::dns_config::testnet::TXT_SEED_NODES,
+            ::dns_config::testnet::CHECKPOINTS
         };
 
         static const dns_config_t empty = { {}, {} };

@@ -7,6 +7,7 @@
 namespace dns_config
 {
     std::vector<std::string> m_seed_nodes;
+    std::vector<std::string> m_txt_seed_nodes;
     std::vector<std::string> m_update;
     bool m_dnssec_ok;
 
@@ -22,6 +23,7 @@ namespace dns_config
             return;
 
         std::vector<std::string> seed_nodes = testnet ? testnet::SEED_NODES : SEED_NODES;
+        std::vector<std::string> txt_seed_nodes = testnet ? testnet::TXT_SEED_NODES : TXT_SEED_NODES;
 
         for (auto &s : seed_nodes)
         {
@@ -40,6 +42,10 @@ namespace dns_config
         }
 
         tools::dns_utils::load_txt_records_from_dns(m_update, UPDATE);
+        tools::dns_utils::load_txt_records_from_dns(m_txt_seed_nodes, txt_seed_nodes);
+
+        for (auto &s : m_txt_seed_nodes)
+            m_seed_nodes.push_back(s);
 
         if (m_seed_nodes.size() > 0 && m_update.size() > 0)
             m_dnssec_ok = true;
