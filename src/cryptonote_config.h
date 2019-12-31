@@ -98,7 +98,7 @@
 #define CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS                       1
 
 #define BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT                          10000
-#define BLOCKS_SYNCHRONIZING_DEFAULT_COUNT                              100
+#define BLOCKS_SYNCHRONIZING_DEFAULT_COUNT                              20
 #define BLOCKS_SYNCHRONIZING_MAX_COUNT                                  2048
 
 #define CRYPTONOTE_MEMPOOL_TX_LIVETIME                                  (86400 * 3)
