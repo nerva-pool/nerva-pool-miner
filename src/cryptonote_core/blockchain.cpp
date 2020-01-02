@@ -2910,7 +2910,7 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
   }
 
   // tx version
-  const size_t max_tx_version = CURRENT_TRANSACTION_VERSION;
+  const size_t max_tx_version = TRANSACTION_VERSION_MAX;
   if (tx.version > max_tx_version)
   {
     MERROR_VER("transaction version " << (unsigned)tx.version << " is higher than max accepted version " << max_tx_version);

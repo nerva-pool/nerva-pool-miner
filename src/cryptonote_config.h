@@ -45,7 +45,10 @@
 #define CRYPTONOTE_PUBLIC_ADDRESS_TEXTBLOB_VER                          0
 #define CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW                            10
 #define CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V6                         20
-#define CURRENT_TRANSACTION_VERSION                                     2
+#define TRANSACTION_VERSION_V1                                          1
+#define TRANSACTION_VERSION_V2                                          2
+#define TRANSACTION_VERSION_MAX                                         TRANSACTION_VERSION_V2
+#define V2_TX_FORK_HEIGHT                                               12
 #define CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT                              60 * 60 * 2
 #define CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE                             10
 
@@ -231,7 +234,7 @@ namespace config
             { 9, 570},
             {10, 580},
             {11, 590},
-            {12, 600}
+            {12, 700}
         };
     }
 
@@ -254,7 +257,7 @@ namespace config
             { 9, 570},
             {10, 580},
             {11, 590},
-            {12, 600}
+            {12, 700}
         };
     }
 }

@@ -801,7 +801,7 @@ namespace cryptonote
     }
     bad_semantics_txes_lock.unlock();
 
-    const size_t max_tx_version = CURRENT_TRANSACTION_VERSION;
+    const size_t max_tx_version = TRANSACTION_VERSION_MAX;
     if (tx.version == 0 || tx.version > max_tx_version)
     {
       MERROR_VER("Bad tx version (" << tx.version << ", max is " << max_tx_version << ")");
