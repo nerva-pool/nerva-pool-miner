@@ -5863,17 +5863,17 @@ void simple_wallet::check_for_inactivity_lock(bool user)
     tools::clear_screen();
     m_in_command = true;
 
-    MGUSER_GREEN(ENDL << ENDL
-      << R"(   |  |  |  |  |  |                                  )" << ENDL
-      << R"(  ==================                                 )" << ENDL
-      << R"(--|     /\      ___|--   _ __   ___ _ ____   ____ _  )" << ENDL
-      << R"(--|    /  \    / __     | '_ \ / _ \ '__\ \ / / _` | )" << ENDL
-      << R"(--|   / /\ \  / /  |--  | | | |  __/ |   \ V / (_| | )" << ENDL
-      << R"(--|__/ /  \ \/ /   |--  |_| |_|\___|_|    \_/ \__,_| )" << ENDL
-      << R"(   ___/    \  /    |-- ==============================)" << ENDL
-      << R"(--|         \/     |--  v)" << MONERO_VERSION << ": " << MONERO_RELEASE_NAME << ENDL
-      << R"(  ==================                                 )" << ENDL
-      << R"(   |  |  |  |  |  |                                  )" << ENDL << ENDL);
+    tools::msg_writer() << R"(   |  |  |  |  |  |                                  )";
+    tools::msg_writer() << R"(  ==================                                 )";
+    tools::msg_writer() << R"(--|     /\      ___|--   _ __   ___ _ ____   ____ _  )";
+    tools::msg_writer() << R"(--|    /  \    / __     | '_ \ / _ \ '__\ \ / / _` | )";
+    tools::msg_writer() << R"(--|   / /\ \  / /  |--  | | | |  __/ |   \ V / (_| | )";
+    tools::msg_writer() << R"(--|__/ /  \ \/ /   |--  |_| |_|\___|_|    \_/ \__,_| )";
+    tools::msg_writer() << R"(   ___/    \  /    |-- ==============================)";
+    tools::msg_writer() << R"(--|         \/     |--  )" << MONERO_VERSION << ": " << MONERO_RELEASE_NAME;
+    tools::msg_writer() << R"(  ==================                                 )";
+    tools::msg_writer() << R"(   |  |  |  |  |  |                                  )";
+    tools::msg_writer() << "" << ENDL;
 
     if (!user)
       tools::msg_writer() << tr("Wallet locked due to inactivity.");
