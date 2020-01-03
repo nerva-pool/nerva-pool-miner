@@ -8007,20 +8007,8 @@ bool simple_wallet::show_transfers(const std::vector<std::string> &args_)
   for (const auto& transfer : all_transfers)
   {
     const auto color = transfer.type == "failed" ? console_color_red : transfer.confirmed ? ((transfer.direction == "in" || transfer.direction == "block") ? console_color_green : console_color_magenta) : console_color_default;
-
-    std::string destinations = "-";
-    if (!transfer.outputs.empty())
-    {
-      destinations = "";
-      for (const auto& output : transfer.outputs)
-      {
-        if (!destinations.empty())
-          destinations += ", ";
-        destinations += (transfer.direction == "in" ? output.first.substr(0, 6) : output.first) + ":" + print_money(output.second);
-      }
-    }
-
-    auto formatter = boost::format("%8.8llu %6.6s %8.8s %25.25s %20.20s %s %s %14.14s %s %s - %s");
+    
+    auto formatter = boost::format("%8.8llu %6.6s %8.8s %25.25s %20.20s (%14.14s) %s - %s");
 
     message_writer(color, false) << formatter
       % transfer.block
@@ -8028,11 +8016,8 @@ bool simple_wallet::show_transfers(const std::vector<std::string> &args_)
       % transfer.unlocked
       % tools::get_human_readable_timestamp(transfer.timestamp)
       % print_money(transfer.amount)
-      % string_tools::pod_to_hex(transfer.hash)
-      % transfer.payment_id
       % print_money(transfer.fee)
-      % destinations
-      % boost::algorithm::join(transfer.index | boost::adaptors::transformed([](uint32_t i) { return std::to_string(i); }), ", ")
+      % string_tools::pod_to_hex(transfer.hash)
       % transfer.note;
   }
 
