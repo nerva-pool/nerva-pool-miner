@@ -128,15 +128,18 @@ endif()
 add_subdirectory(cryptonote_protocol)
 if(NOT IOS)
   add_subdirectory(simplewallet)
-  add_subdirectory(gen_multisig)
-  add_subdirectory(gen_ssl_cert)
   add_subdirectory(daemonizer)
   add_subdirectory(daemon)
-  add_subdirectory(blockchain_utilities)
+  
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL Debug AND BUILD_EXTRAS)
+if(CMAKE_BUILD_TYPE STREQUAL Debug AND BUILD_UTILS)
+  add_subdirectory(blockchain_utilities)
   add_subdirectory(debug_utilities)
+endif()
+
+if (BUILD_EXTRAS)
+  add_subdirectory(extras)
 endif()
 
 if(PER_BLOCK_CHECKPOINT)

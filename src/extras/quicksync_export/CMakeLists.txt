@@ -1,4 +1,5 @@
-# Copyright (c) 2017-2019, The Monero Project
+# Copyright (c) 2014-2019, The Monero Project
+# Copyright (c) 2018-2020, The NERVA Project
 #
 # All rights reserved.
 #
@@ -26,31 +27,35 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-if(BUILD_EXTRAS)
-  set(gen_multisig_sources
-    gen_multisig.cpp)
+set(quicksync_export_sources
+  quicksync_export.cpp
+  quicksync_file.cpp
+)
+  
+set(quicksync_export_private_headers
+  quicksync_file.h
+)
+  
+monero_private_headers(quicksync_export
+  ${quicksync_export_private_headers})
 
-  monero_add_executable(gen_multisig
-    ${gen_multisig_sources})
-  target_link_libraries(gen_multisig
-    PRIVATE
-      wallet
-      cryptonote_core
-      cncrypto
-      common
-      epee
-      ${EPEE_READLINE}
-      ${Boost_CHRONO_LIBRARY}
-      ${Boost_PROGRAM_OPTIONS_LIBRARY}
-      ${Boost_FILESYSTEM_LIBRARY}
-      ${Boost_THREAD_LIBRARY}
-      ${CMAKE_THREAD_LIBS_INIT}
-      ${GNU_READLINE_LIBRARY}
-      ${EXTRA_LIBRARIES})
-  add_dependencies(gen_multisig
-    version)
-  set_property(TARGET gen_multisig
-    PROPERTY
-      OUTPUT_NAME "nerva-gen-trusted-multisig")
-  install(TARGETS gen_multisig DESTINATION bin)
-endif()
+monero_add_executable(quicksync_export
+  ${quicksync_export_sources}
+  ${quicksync_export_private_headers})
+
+target_link_libraries(quicksync_export
+  PRIVATE
+    cryptonote_core
+    blockchain_db
+    version
+    epee
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
+    ${Boost_THREAD_LIBRARY}
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${EXTRA_LIBRARIES})
+
+set_property(TARGET quicksync_export
+	PROPERTY
+	OUTPUT_NAME "nerva-quicksync-export")
+install(TARGETS quicksync_export DESTINATION bin)

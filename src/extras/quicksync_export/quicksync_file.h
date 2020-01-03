@@ -50,9 +50,6 @@
 #include "common/command_line.h"
 #include "version.h"
 
-#include "blockchain_utilities.h"
-
-
 using namespace cryptonote;
 
 class QuickSyncFile

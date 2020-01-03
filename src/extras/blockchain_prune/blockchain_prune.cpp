@@ -480,12 +480,12 @@ int main(int argc, char* argv[])
 
   if (command_line::get_arg(vm, command_line::arg_help))
   {
-    std::cout << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
+    std::cout << "NERVA '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
     std::cout << desc_options << std::endl;
     return 1;
   }
 
-  mlog_configure(mlog_get_default_log_path("monero-blockchain-prune.log"), true);
+  mlog_configure(mlog_get_default_log_path("nerva-blockchain-prune.log"), true);
   if (!command_line::is_arg_defaulted(vm, arg_log_level))
     mlog_set_log(command_line::get_arg(vm, arg_log_level).c_str());
   else
@@ -612,7 +612,6 @@ int main(int argc, char* argv[])
   copy_table(env0, env1, "spent_keys", MDB_INTEGERKEY | MDB_DUPSORT | MDB_DUPFIXED, MDB_NODUPDATA, BlockchainLMDB::compare_hash32);
   copy_table(env0, env1, "txpool_meta", 0, MDB_NODUPDATA, BlockchainLMDB::compare_hash32);
   copy_table(env0, env1, "txpool_blob", 0, MDB_NODUPDATA, BlockchainLMDB::compare_hash32);
-  copy_table(env0, env1, "hf_versions", MDB_INTEGERKEY, MDB_APPEND);
   copy_table(env0, env1, "properties", 0, 0, BlockchainLMDB::compare_string);
   if (already_pruned)
   {
