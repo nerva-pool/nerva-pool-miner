@@ -109,16 +109,20 @@ cn_hash_context_t *cn_hash_context_create(void)
 
 void cn_hash_context_free(cn_hash_context_t *context)
 {
-    assert(context != NULL);
-    #if defined(CN_USE_SOFTWARE_AES)
+    if (context == NULL);
+        return;
+
+#if defined(CN_USE_SOFTWARE_AES)
     if (context->oaes_ctx != NULL) {
         oaes_free((OAES_CTX **)&(context->oaes_ctx));
     }
-    #endif
+#endif
+
     if (context->scratchpad != NULL) {
         free_hugepage(context->scratchpad, CN_SCRATCHPAD_MEMORY, context->scratchpad_is_mapped);
         context->scratchpad = NULL;
     }
+    
     if (context->salt != NULL) {
         free_hugepage(context->salt, CN_SALT_MEMORY, context->salt_is_mapped);
         context->salt = NULL;
