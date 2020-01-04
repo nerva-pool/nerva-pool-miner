@@ -109,7 +109,7 @@ cn_hash_context_t *cn_hash_context_create(void)
 
 void cn_hash_context_free(cn_hash_context_t *context)
 {
-    if (context == NULL);
+    if (context == NULL)
         return;
 
 #if defined(CN_USE_SOFTWARE_AES)
