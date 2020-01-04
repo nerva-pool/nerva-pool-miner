@@ -4612,18 +4612,136 @@ void BlockchainLMDB::fixup()
 void BlockchainLMDB::migrate_3_4()
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  uint64_t i;
+  uint64_t i, z;
   int result;
   mdb_txn_safe txn(false);
   MDB_val k, v;
   char *ptr;
   bool past_long_term_weight = false;
 
-  MGINFO_YELLOW("Migrating blockchain from DB version 3 to 4 - this may take a while:");
+  MGINFO_YELLOW("Migrating blockchain from DB version 3 to 4 - Please wait");
+
+  MINFO("Updating TX data.");
 
   do {
-    LOG_PRINT_L1("migrating block info:");
+    result = mdb_txn_begin(m_env, NULL, 0, txn);
+    if (result)
+      throw0(DB_ERROR(lmdb_error("Failed to create a transaction for the db: ", result).c_str()));
 
+    MDB_stat db_stats_txs;
+    MDB_stat db_stats_txs_pruned;
+    MDB_stat db_stats_txs_prunable;
+    MDB_stat db_stats_txs_prunable_hash;
+    if ((result = mdb_stat(txn, m_txs, &db_stats_txs)))
+      throw0(DB_ERROR(lmdb_error("Failed to query m_txs: ", result).c_str()));
+    if ((result = mdb_stat(txn, m_txs_pruned, &db_stats_txs_pruned)))
+      throw0(DB_ERROR(lmdb_error("Failed to query m_txs_pruned: ", result).c_str()));
+    if ((result = mdb_stat(txn, m_txs_prunable, &db_stats_txs_prunable)))
+      throw0(DB_ERROR(lmdb_error("Failed to query m_txs_prunable: ", result).c_str()));
+    if ((result = mdb_stat(txn, m_txs_prunable_hash, &db_stats_txs_prunable_hash)))
+      throw0(DB_ERROR(lmdb_error("Failed to query m_txs_prunable_hash: ", result).c_str()));
+    if (db_stats_txs_pruned.ms_entries != db_stats_txs_prunable.ms_entries)
+      throw0(DB_ERROR("Mismatched sizes for txs_pruned and txs_prunable"));
+    if (db_stats_txs_pruned.ms_entries == db_stats_txs.ms_entries)
+    {
+      txn.commit();
+      MINFO("txs already migrated");
+      break;
+    }
+
+    MDB_cursor *c_old, *c_cur0, *c_cur1, *c_cur2;
+    i = 0;
+
+    while(1) {
+      if (!(i % 1000)) {
+        if (i) {
+          result = mdb_stat(txn, m_txs, &db_stats_txs);
+          if (result)
+            throw0(DB_ERROR(lmdb_error("Failed to query m_txs: ", result).c_str()));
+          LOGIF(el::Level::Info) {
+            std::cout << i << " / " << (i + db_stats_txs.ms_entries) << "  \r" << std::flush;
+          }
+          txn.commit();
+          result = mdb_txn_begin(m_env, NULL, 0, txn);
+          if (result)
+            throw0(DB_ERROR(lmdb_error("Failed to create a transaction for the db: ", result).c_str()));
+        }
+        result = mdb_cursor_open(txn, m_txs_pruned, &c_cur0);
+        if (result)
+          throw0(DB_ERROR(lmdb_error("Failed to open a cursor for txs_pruned: ", result).c_str()));
+        result = mdb_cursor_open(txn, m_txs_prunable, &c_cur1);
+        if (result)
+          throw0(DB_ERROR(lmdb_error("Failed to open a cursor for txs_prunable: ", result).c_str()));
+        result = mdb_cursor_open(txn, m_txs_prunable_hash, &c_cur2);
+        if (result)
+          throw0(DB_ERROR(lmdb_error("Failed to open a cursor for txs_prunable_hash: ", result).c_str()));
+        result = mdb_cursor_open(txn, m_txs, &c_old);
+        if (result)
+          throw0(DB_ERROR(lmdb_error("Failed to open a cursor for txs: ", result).c_str()));
+        if (!i) {
+          i = db_stats_txs_pruned.ms_entries;
+        }
+      }
+      MDB_val_set(k, i);
+      result = mdb_cursor_get(c_old, &k, &v, MDB_SET);
+      if (result == MDB_NOTFOUND) {
+        txn.commit();
+        break;
+      }
+      else if (result)
+        throw0(DB_ERROR(lmdb_error("Failed to get a record from txs: ", result).c_str()));
+
+      cryptonote::blobdata bd;
+      bd.assign(reinterpret_cast<char*>(v.mv_data), v.mv_size);
+      transaction tx;
+      if (!parse_and_validate_tx_from_blob(bd, tx))
+        throw0(DB_ERROR("Failed to parse tx from blob retrieved from the db"));
+      std::stringstream ss;
+      binary_archive<true> ba(ss);
+      bool r = tx.serialize_base(ba);
+      if (!r)
+        throw0(DB_ERROR("Failed to serialize pruned tx"));
+      std::string pruned = ss.str();
+
+      if (pruned.size() > bd.size())
+        throw0(DB_ERROR("Pruned tx is larger than raw tx"));
+      if (memcmp(pruned.data(), bd.data(), pruned.size()))
+        throw0(DB_ERROR("Pruned tx is not a prefix of the raw tx"));
+
+      MDB_val nv;
+      nv.mv_data = (void*)pruned.data();
+      nv.mv_size = pruned.size();
+      result = mdb_cursor_put(c_cur0, (MDB_val *)&k, &nv, 0);
+      if (result)
+        throw0(DB_ERROR(lmdb_error("Failed to put a record into txs_pruned: ", result).c_str()));
+
+      nv.mv_data = (void*)(bd.data() + pruned.size());
+      nv.mv_size = bd.size() - pruned.size();
+      result = mdb_cursor_put(c_cur1, (MDB_val *)&k, &nv, 0);
+      if (result)
+        throw0(DB_ERROR(lmdb_error("Failed to put a record into txs_prunable: ", result).c_str()));
+
+      if (tx.version > 1)
+      {
+        crypto::hash prunable_hash = get_transaction_prunable_hash(tx);
+        MDB_val_set(val_prunable_hash, prunable_hash);
+        result = mdb_cursor_put(c_cur2, (MDB_val *)&k, &val_prunable_hash, 0);
+        if (result)
+          throw0(DB_ERROR(lmdb_error("Failed to put a record into txs_prunable_hash: ", result).c_str()));
+      }
+
+      result = mdb_cursor_del(c_old, 0);
+      if (result)
+        throw0(DB_ERROR(lmdb_error("Failed to delete a record from txs: ", result).c_str()));
+
+      i++;
+    }
+  } while(0);
+
+  LOG_PRINT_L1(i << " transactions migrated (including coinbase)");
+
+  LOG_PRINT_L1("Updating block structure");
+  do {
     result = mdb_txn_begin(m_env, NULL, 0, txn);
     if (result)
       throw0(DB_ERROR(lmdb_error("Failed to create a transaction for the db: ", result).c_str()));
@@ -4774,6 +4892,8 @@ void BlockchainLMDB::migrate_3_4()
     txn.commit();
   } while(0);
 
+  LOG_PRINT_L1(i << " blocks migrated");
+
   uint32_t version = 4;
   v.mv_data = (void *)&version;
   v.mv_size = sizeof(version);
@@ -4785,6 +4905,8 @@ void BlockchainLMDB::migrate_3_4()
   if (result)
     throw0(DB_ERROR(lmdb_error("Failed to update version for the db: ", result).c_str()));
   txn.commit();
+
+  MGINFO_YELLOW("Database migration complete");
 }
 
 void BlockchainLMDB::migrate(const uint32_t oldversion)
