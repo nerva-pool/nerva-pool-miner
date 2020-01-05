@@ -5131,7 +5131,7 @@ void simple_wallet::on_new_block(uint64_t height, const cryptonote::block& block
     m_refresh_progress_reporter.update(height, false);
 }
 //----------------------------------------------------------------------------------------------------
-void simple_wallet::on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index, uint64_t unlock_time)
+void simple_wallet::on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index)
 {
   if (m_locked)
     return;
@@ -5141,29 +5141,6 @@ void simple_wallet::on_money_received(uint64_t height, const crypto::hash &txid,
     print_money(amount) << ", " <<
     tr("idx ") << subaddr_index;
 
-  const uint64_t warn_height = (m_wallet->nettype() == TESTNET || m_wallet->nettype() == STAGENET) ? 100 : 542500;
-  if (height >= warn_height)
-  {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx.extra, tx_extra_fields); // failure ok
-    tx_extra_nonce extra_nonce;
-    if (find_tx_extra_field_by_type(tx_extra_fields, extra_nonce))
-    {
-      crypto::hash payment_id = crypto::null_hash;
-      crypto::hash8 payment_id8 = crypto::null_hash8;
-      if (get_encrypted_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id8))
-      {
-        if (payment_id8 != crypto::null_hash8)
-          message_writer() <<
-            tr("NOTE: this transaction uses an encrypted payment ID");
-      }
-      else if (get_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id))
-        message_writer(console_color_red, false) <<
-          (m_long_payment_id_support ? tr("WARNING: this transaction uses an unencrypted payment ID.") : tr("WARNING: this transaction uses an unencrypted payment ID."));
-   }
-  }
-  if (unlock_time && !cryptonote::is_coinbase(tx))
-    message_writer() << tr("NOTE: This transaction is locked, see details with: show_transfer ") + epee::string_tools::pod_to_hex(txid);
   if (m_auto_refresh_refreshing)
     m_cmd_binder.print_prompt();
   else
