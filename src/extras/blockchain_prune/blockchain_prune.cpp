@@ -567,7 +567,7 @@ int main(int argc, char* argv[])
 
     try
     {
-      db->open(paths[n].string(), n == 0 ? DBF_RDONLY : 0);
+      db->open(paths[n].string(), n == 0 ? db_flags : 0);
     }
     catch (const std::exception& e)
     {
