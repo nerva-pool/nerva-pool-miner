@@ -112,8 +112,6 @@ uint16_t parse_public_rpc_port(const po::variables_map &vm)
 
 int main(int argc, char const * argv[])
 {
-  const command_line::arg_descriptor<bool> arg_noanalytics = {"no-analytics", "Do not submit any information to the node map", false};
-
   try {
 
     // TODO parse the debug options like set log level right here at start
@@ -135,7 +133,7 @@ int main(int argc, char const * argv[])
       command_line::add_arg(visible_options, command_line::arg_version);
       command_line::add_arg(visible_options, daemon_args::arg_os_version);
       command_line::add_arg(visible_options, daemon_args::arg_config_file);
-      command_line::add_arg(visible_options, arg_noanalytics);
+      command_line::add_arg(visible_options, daemon_args::arg_noanalytics);
 
       // Settings
       command_line::add_arg(core_settings, daemon_args::arg_log_file);
@@ -222,7 +220,7 @@ int main(int argc, char const * argv[])
     }
     const bool testnet = command_line::get_arg(vm, cryptonote::arg_testnet_on);
     const bool stagenet = command_line::get_arg(vm, cryptonote::arg_stagenet_on);
-    const bool noanalytics = command_line::get_arg(vm, arg_noanalytics);
+    const bool noanalytics = command_line::get_arg(vm, daemon_args::arg_noanalytics);
 
     if (testnet && stagenet)
     {

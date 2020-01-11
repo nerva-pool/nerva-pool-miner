@@ -133,6 +133,12 @@ namespace daemon_args
   , "Disable ZMQ RPC server"
   };
 
+  const command_line::arg_descriptor<bool> arg_noanalytics = {
+    "no-analytics"
+  , "Do not submit any information to the node map"
+  , false
+  };
+
 }  // namespace daemon_args
 
 #endif // DAEMON_COMMAND_LINE_ARGS_H
