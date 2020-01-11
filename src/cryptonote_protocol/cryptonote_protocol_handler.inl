@@ -1782,8 +1782,6 @@ skip:
   {
     if (!m_sync_pruned_blocks)
       return false;
-    if (!m_core.is_within_compiled_block_hash_area(first_block_height + nblocks - 1))
-      return false;
     const uint32_t local_stripe = tools::get_pruning_stripe(m_core.get_blockchain_pruning_seed());
     if (local_stripe == 0)
       return false;
@@ -2170,7 +2168,7 @@ skip:
   bool t_cryptonote_protocol_handler<t_core>::on_connection_synchronized()
   {
     bool val_expected = false;
-    if(!m_core.is_within_compiled_block_hash_area(m_core.get_current_blockchain_height()) && m_synchronized.compare_exchange_strong(val_expected, true))
+    if(m_synchronized.compare_exchange_strong(val_expected, true))
     {
       MGUSER_YELLOW(ENDL << "**********************************************************************" << ENDL
         << "You are now synchronized with the network. You may now start nerva-wallet-cli." << ENDL

@@ -967,7 +967,6 @@ namespace cryptonote
     cryptonote::blobdata get_txpool_tx_blob(const crypto::hash& txid) const;
     bool for_all_txpool_txes(std::function<bool(const crypto::hash&, const txpool_tx_meta_t&, const cryptonote::blobdata*)>, bool include_blob = false, bool include_unrelayed_txes = true) const;
 
-    bool is_within_compiled_block_hash_area() const { return is_within_compiled_block_hash_area(m_db->height()); }
     uint64_t prevalidate_block_hashes(uint64_t height, const std::vector<crypto::hash> &hashes, const std::vector<uint64_t> &weights);
     uint32_t get_blockchain_pruning_seed() const { return m_db->get_blockchain_pruning_seed(); }
     bool prune_blockchain(uint32_t pruning_seed = 0);
@@ -980,13 +979,6 @@ namespace cryptonote
     void cancel();
 
     /**
-     * @brief called when we see a tx originating from a block
-     *
-     * Used for handling txes from historical blocks in a fast way
-     */
-    void on_new_tx_from_block(const cryptonote::transaction &tx);
-
-    /**
      * @brief returns the timestamps of the last N blocks
      */
     std::vector<time_t> get_last_block_timestamps(unsigned int blocks) const;
@@ -997,13 +989,6 @@ namespace cryptonote
      * @param nblocks number of blocks to be removed
      */
     void pop_blocks(uint64_t nblocks);
-
-    /**
-     * @brief checks whether a given block height is included in the precompiled block hash area
-     *
-     * @param height the height to check for
-     */
-    bool is_within_compiled_block_hash_area(uint64_t height) const;
 
     /**
      * @brief checks whether we have known weights for the given block heights
@@ -1468,17 +1453,6 @@ namespace cryptonote
      */
     void check_ring_signature(const crypto::hash &tx_prefix_hash, const crypto::key_image &key_image,
         const std::vector<rct::ctkey> &pubkeys, const std::vector<crypto::signature> &sig, uint64_t &result) const;
-
-    /**
-     * @brief loads block hashes from compiled-in data set
-     *
-     * A (possibly empty) set of block hashes can be compiled into the
-     * monero daemon binary.  This function loads those hashes into
-     * a useful state.
-     * 
-     * @param get_checkpoints if set, will be called to get checkpoints data
-     */
-    void load_compiled_in_block_hashes(const GetCheckpointsCallback& get_checkpoints);
 
     /**
      * @brief expands transaction data from blockchain

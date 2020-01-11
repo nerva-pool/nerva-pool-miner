@@ -842,13 +842,6 @@ namespace cryptonote
      bool check_blockchain_pruning();
 
      /**
-      * @brief checks whether a given block height is included in the precompiled block hash area
-      *
-      * @param height the height to check for
-      */
-     bool is_within_compiled_block_hash_area(uint64_t height) const;
-
-     /**
       * @brief checks whether block weights are known for the given range
       */
      bool has_block_weights(uint64_t height, uint64_t nblocks) const;

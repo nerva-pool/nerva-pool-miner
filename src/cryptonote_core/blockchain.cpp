@@ -403,11 +403,6 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
   // we only need 1
   m_async_pool.create_thread(boost::bind(&boost::asio::io_service::run, &m_async_service));
 
-#if defined(PER_BLOCK_CHECKPOINT)
-  if (m_nettype != FAKECHAIN)
-    load_compiled_in_block_hashes(get_checkpoints);
-#endif
-
   MINFO("Blockchain initialized. last block: " << m_db->height() - 1 << ", " << epee::misc_utils::get_time_interval_string(timestamp_diff) << " time ago, current difficulty: " << get_difficulty_for_next_block());
 
   rtxn_guard.stop();
@@ -2680,24 +2675,6 @@ bool Blockchain::get_tx_outputs_gindexs(const crypto::hash& tx_id, std::vector<u
   return true;
 }
 //------------------------------------------------------------------
-void Blockchain::on_new_tx_from_block(const cryptonote::transaction &tx)
-{
-#if defined(PER_BLOCK_CHECKPOINT)
-  // check if we're doing per-block checkpointing
-  if (m_db->height() < m_blocks_hash_check.size())
-  {
-    TIME_MEASURE_START(a);
-    m_blocks_txs_check.push_back(get_transaction_hash(tx));
-    TIME_MEASURE_FINISH(a);
-    if(m_show_time_stats)
-    {
-      size_t ring_size = !tx.vin.empty() && tx.vin[0].type() == typeid(txin_to_key) ? boost::get<txin_to_key>(tx.vin[0]).key_offsets.size() : 0;
-      MINFO("HASH: " << "-" << " I/M/O: " << tx.vin.size() << "/" << ring_size << "/" << tx.vout.size() << " H: " << 0 << " chcktx: " << a);
-    }
-  }
-#endif
-}
-//------------------------------------------------------------------
 //FIXME: it seems this function is meant to be merely a wrapper around
 //       another function of the same name, this one adding one bit of
 //       functionality.  Should probably move anything more than that
@@ -2710,16 +2687,6 @@ bool Blockchain::check_tx_inputs(transaction& tx, uint64_t& max_used_block_heigh
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
-
-#if defined(PER_BLOCK_CHECKPOINT)
-  // check if we're doing per-block checkpointing
-  if (m_db->height() < m_blocks_hash_check.size() && kept_by_block)
-  {
-    max_used_block_id = null_hash;
-    max_used_block_height = 0;
-    return true;
-  }
-#endif
 
   TIME_MEASURE_START(a);
   bool res = check_tx_inputs(tx, tvc, &max_used_block_height);
@@ -3544,28 +3511,6 @@ leave:
   // FIXME: height parameter is not used...should it be used or should it not
   // be a parameter?
   // validate proof_of_work versus difficulty target
-  bool fast_check = false;
-#if defined(PER_BLOCK_CHECKPOINT)
-  if (blockchain_height < m_blocks_hash_check.size())
-  {
-    const auto &expected_hash = m_blocks_hash_check[blockchain_height].first;
-    if (expected_hash != crypto::null_hash)
-    {
-      if (memcmp(&id, &expected_hash, sizeof(hash)) != 0)
-      {
-        MERROR_VER("Block with id is INVALID: " << id << ", expected " << expected_hash);
-        bvc.m_verifivation_failed = true;
-        goto leave;
-      }
-      fast_check = true;
-    }
-    else
-    {
-      MCINFO("verify", "No pre-validated hash at height " << blockchain_height << ", verifying fully");
-    }
-  }
-  else
-#endif
 
   const bool quicksync_verified = m_quicksync.check_block(blockchain_height, id);
   if (!quicksync_verified)
@@ -3686,43 +3631,22 @@ leave:
     t_dblspnd += dd;
     TIME_MEASURE_START(cc);
 
-#if defined(PER_BLOCK_CHECKPOINT)
-    if (!fast_check)
-#endif
+    // validate that transaction inputs and the keys spending them are correct.
+    tx_verification_context tvc;
+    if(!check_tx_inputs(tx, tvc))
     {
-      // validate that transaction inputs and the keys spending them are correct.
-      tx_verification_context tvc;
-      if(!check_tx_inputs(tx, tvc))
-      {
-        MERROR_VER("Block with id: " << id  << " has at least one transaction (id: " << tx_id << ") with wrong inputs.");
+      MERROR_VER("Block with id: " << id  << " has at least one transaction (id: " << tx_id << ") with wrong inputs.");
 
-        //TODO: why is this done?  make sure that keeping invalid blocks makes sense.
-        add_block_as_invalid(bl, id);
-        MERROR_VER("Block with id " << id << " added as invalid because of wrong inputs in transactions");
-        MERROR_VER("tx_index " << tx_index << ", m_blocks_txs_check " << m_blocks_txs_check.size() << ":");
-        for (const auto &h: m_blocks_txs_check) MERROR_VER("  " << h);
-        bvc.m_verifivation_failed = true;
-        return_tx_to_pool(txs);
-        goto leave;
-      }
+      //TODO: why is this done?  make sure that keeping invalid blocks makes sense.
+      add_block_as_invalid(bl, id);
+      MERROR_VER("Block with id " << id << " added as invalid because of wrong inputs in transactions");
+      MERROR_VER("tx_index " << tx_index << ", m_blocks_txs_check " << m_blocks_txs_check.size() << ":");
+      for (const auto &h: m_blocks_txs_check) MERROR_VER("  " << h);
+      bvc.m_verifivation_failed = true;
+      return_tx_to_pool(txs);
+      goto leave;
     }
-#if defined(PER_BLOCK_CHECKPOINT)
-    else
-    {
-      // ND: if fast_check is enabled for blocks, there is no need to check
-      // the transaction inputs, but do some sanity checks anyway.
-      if (tx_index >= m_blocks_txs_check.size() || memcmp(&m_blocks_txs_check[tx_index++], &tx_id, sizeof(tx_id)) != 0)
-      {
-        MERROR_VER("Block with id: " << id << " has at least one transaction (id: " << tx_id << ") with wrong inputs.");
-        //TODO: why is this done?  make sure that keeping invalid blocks makes sense.
-        add_block_as_invalid(bl, id);
-        MERROR_VER("Block with id " << id << " added as invalid because of wrong inputs in transactions");
-        bvc.m_verifivation_failed = true;
-        return_tx_to_pool(txs);
-        goto leave;
-      }
-    }
-#endif
+
     TIME_MEASURE_FINISH(cc);
     t_checktx += cc;
     fee_summary += fee;
@@ -4775,103 +4699,6 @@ std::vector<std::pair<Blockchain::block_extended_info,std::vector<crypto::hash>>
 void Blockchain::cancel()
 {
   m_cancel = true;
-}
-
-#if defined(PER_BLOCK_CHECKPOINT)
-static const char expected_block_hashes_hash[] = "d03f6537df70c7432d55423788c46c276b7317bdfc78bb509c4fff9b5ad4490a";
-void Blockchain::load_compiled_in_block_hashes(const GetCheckpointsCallback& get_checkpoints)
-{
-  if (get_checkpoints == nullptr || !m_fast_sync)
-  {
-    return;
-  }
-  const epee::span<const unsigned char> &checkpoints = get_checkpoints(m_nettype);
-  if (!checkpoints.empty())
-  {
-    MINFO("Loading precomputed blocks (" << checkpoints.size() << " bytes)");
-    if (m_nettype == MAINNET)
-    {
-      // first check hash
-      crypto::hash hash;
-      if (!tools::sha256sum(checkpoints.data(), checkpoints.size(), hash))
-      {
-        MERROR("Failed to hash precomputed blocks data");
-        return;
-      }
-      MINFO("precomputed blocks hash: " << hash << ", expected " << expected_block_hashes_hash);
-      cryptonote::blobdata expected_hash_data;
-      if (!epee::string_tools::parse_hexstr_to_binbuff(std::string(expected_block_hashes_hash), expected_hash_data) || expected_hash_data.size() != sizeof(crypto::hash))
-      {
-        MERROR("Failed to parse expected block hashes hash");
-        return;
-      }
-      const crypto::hash expected_hash = *reinterpret_cast<const crypto::hash*>(expected_hash_data.data());
-      if (hash != expected_hash)
-      {
-        MERROR("Block hash data does not match expected hash");
-        return;
-      }
-    }
-
-    if (checkpoints.size() > 4)
-    {
-      const unsigned char *p = checkpoints.data();
-      const uint32_t nblocks = *p | ((*(p+1))<<8) | ((*(p+2))<<16) | ((*(p+3))<<24);
-      if (nblocks > (std::numeric_limits<uint32_t>::max() - 4) / sizeof(hash))
-      {
-        MERROR("Block hash data is too large");
-        return;
-      }
-      const size_t size_needed = 4 + nblocks * (sizeof(crypto::hash) * 2);
-      if(nblocks > 0 && nblocks > (m_db->height() + HASH_OF_HASHES_STEP - 1) / HASH_OF_HASHES_STEP && checkpoints.size() >= size_needed)
-      {
-        p += sizeof(uint32_t);
-        m_blocks_hash_of_hashes.reserve(nblocks);
-        for (uint32_t i = 0; i < nblocks; i++)
-        {
-          crypto::hash hash_hashes, hash_weights;
-          memcpy(hash_hashes.data, p, sizeof(hash_hashes.data));
-          p += sizeof(hash_hashes.data);
-          memcpy(hash_weights.data, p, sizeof(hash_weights.data));
-          p += sizeof(hash_weights.data);
-          m_blocks_hash_of_hashes.push_back(std::make_pair(hash_hashes, hash_weights));
-        }
-        m_blocks_hash_check.resize(m_blocks_hash_of_hashes.size() * HASH_OF_HASHES_STEP, std::make_pair(crypto::null_hash, 0));
-        MINFO(nblocks << " block hashes loaded");
-
-        // FIXME: clear tx_pool because the process might have been
-        // terminated and caused it to store txs kept by blocks.
-        // The core will not call check_tx_inputs(..) for these
-        // transactions in this case. Consequently, the sanity check
-        // for tx hashes will fail in handle_block_to_main_chain(..)
-        CRITICAL_REGION_LOCAL(m_tx_pool);
-
-        std::vector<transaction> txs;
-        m_tx_pool.get_transactions(txs);
-
-        size_t tx_weight;
-        uint64_t fee;
-        bool relayed, do_not_relay, double_spend_seen, pruned;
-        transaction pool_tx;
-        blobdata txblob;
-        for(const transaction &tx : txs)
-        {
-          crypto::hash tx_hash = get_transaction_hash(tx);
-          m_tx_pool.take_tx(tx_hash, pool_tx, txblob, tx_weight, fee, relayed, do_not_relay, double_spend_seen, pruned);
-        }
-      }
-    }
-  }
-}
-#endif
-
-bool Blockchain::is_within_compiled_block_hash_area(uint64_t height) const
-{
-#if defined(PER_BLOCK_CHECKPOINT)
-  return height < m_blocks_hash_of_hashes.size() * HASH_OF_HASHES_STEP;
-#else
-  return false;
-#endif
 }
 
 void Blockchain::lock()

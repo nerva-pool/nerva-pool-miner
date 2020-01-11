@@ -688,11 +688,9 @@ int main(int argc, char* argv[])
   {
 
   core.disable_dns_checkpoints(true);
-#if defined(PER_BLOCK_CHECKPOINT)
-  const GetCheckpointsCallback& get_checkpoints = blocks::GetCheckpointsData;
-#else
+  
   const GetCheckpointsCallback& get_checkpoints = nullptr;
-#endif
+
   if (!core.init(vm, nullptr, get_checkpoints))
   {
     std::cerr << "Failed to initialize core" << ENDL;
