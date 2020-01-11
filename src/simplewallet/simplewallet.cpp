@@ -8456,6 +8456,7 @@ bool simple_wallet::account(const std::vector<std::string> &args/* = std::vector
     // update_prompt();
     LOCK_IDLE_SCOPE();
     print_accounts();
+    m_wallet->device_show_address(m_current_subaddress_account, m_wallet->get_num_subaddresses(m_current_subaddress_account) - 1, boost::none);
   }
   else if (command == "switch" && local_args.size() == 1)
   {
