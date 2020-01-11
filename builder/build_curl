@@ -9,6 +9,7 @@ if [ -d "${BUILDER_DIR}/curl" ]; then
 fi
 
 cd "${NERVA_DIR}/external/curl"
+
 ./buildconf
 
 LIBS="-ldl -lpthread" ./configure --prefix="${BUILDER_DIR}/curl" --without-ssl --without-zlib --disable-dict --disable-ftp --disable-gopher \

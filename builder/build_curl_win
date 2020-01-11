@@ -14,6 +14,8 @@ export "CPPFLAGS=-I/mingw32/local/include -O3"
 export "LDFLAGS=-L/mingw32/local/lib -mwindows"
 export "PKG_CONFIG_PATH=/mingw32/local/lib/pkgconfig"
 
+./buildconf
+
 ./configure --prefix="${BUILDER_DIR}/curl" --without-ssl --without-zlib --disable-dict --disable-ftp --disable-gopher \
 --disable-file --disable-imap --disable-ldap --disable-ldaps --disable-pop3 --disable-proxy --disable-rtsp --disable-smtp \
 --disable-telnet --disable-tftp --disable-smb --disable-smbs --disable-psl --without-brotli --without-nghttp2 \

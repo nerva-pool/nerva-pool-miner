@@ -129,10 +129,11 @@
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-rpc",
             "args": [
                 "--testnet", 
-                "--rpc-bind-port", "22525", 
+                "--rpc-bind-port", "19566", 
                 "--daemon-address", "127.0.0.1:18566", 
                 "--disable-rpc-login", 
-                "--wallet-file", "~/.nerva/wallets/angrywasp-testnet"
+                "--wallet-file", "~/.nerva/wallets/angrywasp-testnet",
+                "--prompt-for-password"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
