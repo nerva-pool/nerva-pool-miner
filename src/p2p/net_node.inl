@@ -2691,7 +2691,7 @@ namespace nodetool
       return false; // Unable to determine how many connections from host
 
     // for testing networks we allow more than 1 connection
-    const size_t max_connections = m_nettype == cryptonote::MAINNET ? 1 : 3;
+    const size_t max_connections = m_nettype == cryptonote::STAGENET ? 3 : 1;
     size_t count = 0;
 
     m_network_zones.at(epee::net_utils::zone::public_).m_net_server.get_config_object().foreach_connection([&](const p2p_connection_context& cntxt)
