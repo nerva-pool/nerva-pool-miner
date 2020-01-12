@@ -47,6 +47,7 @@ namespace hw {
     std::vector<cryptonote::address_parse_info> tx_recipients;  // as entered by user
     boost::optional<int> is_v2_bp;  // BP version to use
     boost::optional<unsigned> client_version;  // Signing client version to use (testing)
+    boost::optional<uint8_t> hard_fork;
   };
 
   class device_cold {

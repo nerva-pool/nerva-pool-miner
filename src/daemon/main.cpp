@@ -47,6 +47,7 @@
 #include "daemon/command_line_args.h"
 #include "version.h"
 #include "common/xnv_https.h"
+#include "common/dns_config.h"
 
 #ifdef STACK_TRACE
 #include "common/stack_trace.h"
@@ -111,8 +112,6 @@ uint16_t parse_public_rpc_port(const po::variables_map &vm)
 
 int main(int argc, char const * argv[])
 {
-  const command_line::arg_descriptor<bool> arg_noanalytics = {"no-analytics", "Do not submit any information to the node map", false};
-
   try {
 
     // TODO parse the debug options like set log level right here at start
@@ -134,7 +133,7 @@ int main(int argc, char const * argv[])
       command_line::add_arg(visible_options, command_line::arg_version);
       command_line::add_arg(visible_options, daemon_args::arg_os_version);
       command_line::add_arg(visible_options, daemon_args::arg_config_file);
-      command_line::add_arg(visible_options, arg_noanalytics);
+      command_line::add_arg(visible_options, daemon_args::arg_noanalytics);
 
       // Settings
       command_line::add_arg(core_settings, daemon_args::arg_log_file);
@@ -145,6 +144,7 @@ int main(int argc, char const * argv[])
       command_line::add_arg(core_settings, daemon_args::arg_public_node);
       command_line::add_arg(core_settings, daemon_args::arg_zmq_rpc_bind_ip);
       command_line::add_arg(core_settings, daemon_args::arg_zmq_rpc_bind_port);
+      command_line::add_arg(core_settings, daemon_args::arg_zmq_rpc_disabled);
 
       daemonizer::init_options(hidden_options, visible_options);
       daemonize::t_executor::init_options(core_settings);
@@ -220,7 +220,7 @@ int main(int argc, char const * argv[])
     }
     const bool testnet = command_line::get_arg(vm, cryptonote::arg_testnet_on);
     const bool stagenet = command_line::get_arg(vm, cryptonote::arg_stagenet_on);
-    const bool noanalytics = command_line::get_arg(vm, arg_noanalytics);
+    const bool noanalytics = command_line::get_arg(vm, daemon_args::arg_noanalytics);
 
     if (testnet && stagenet)
     {
@@ -330,9 +330,7 @@ int main(int argc, char const * argv[])
         {
           login = tools::login::parse(
             has_rpc_arg ? command_line::get_arg(vm, arg.rpc_login) : std::string(env_rpc_login), false, [](bool verify) {
-#ifdef HAVE_READLINE
-        rdln::suspend_readline pause_readline;
-#endif
+              PAUSE_READLINE();
               return tools::password_container::prompt(verify, "Daemon client password");
             }
           );
@@ -354,9 +352,7 @@ int main(int argc, char const * argv[])
         }
         else
         {
-#ifdef HAVE_READLINE
-          rdln::suspend_readline pause_readline;
-#endif
+          PAUSE_READLINE();
           std::cerr << "Unknown command: " << command.front() << std::endl;
           return 1;
         }
@@ -365,6 +361,8 @@ int main(int argc, char const * argv[])
 
     if (!tools::check_aesni())
       return 1;
+
+    dns_config::init(testnet);
 
     if (noanalytics)
       MGINFO("Analytics disabled.");

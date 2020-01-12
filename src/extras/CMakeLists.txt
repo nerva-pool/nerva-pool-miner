@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2019, The Monero Project
+# Copyright (c) 2018-2020, The NERVA Project
 # 
 # All rights reserved.
 # 
@@ -25,24 +25,17 @@
 # INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
+# Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-set(GENERATED_SOURCES "")
 
-foreach(BLOB_NAME checkpoints testnet_blocks stagenet_blocks)
-    set(OUTPUT_C_SOURCE "generated_${BLOB_NAME}.c")
-    list(APPEND GENERATED_SOURCES ${OUTPUT_C_SOURCE})
-    set(INPUT_DAT_FILE "${BLOB_NAME}.dat")
-    add_custom_command(
-        OUTPUT ${OUTPUT_C_SOURCE} 
-        MAIN_DEPENDENCY ${INPUT_DAT_FILE} 
-        COMMAND 
-            cd ${CMAKE_CURRENT_BINARY_DIR} && 
-            echo "'#include\t<stddef.h>'" > ${OUTPUT_C_SOURCE} &&
-            echo "'const\tunsigned\tchar\t${BLOB_NAME}[]={'" >> ${OUTPUT_C_SOURCE} &&
-            od -v -An -tx1 ${CMAKE_CURRENT_SOURCE_DIR}/${INPUT_DAT_FILE} | sed -e "'s/[0-9a-fA-F]\\{1,\\}/0x&,/g'" -e "'$$s/.$$//'" >> ${OUTPUT_C_SOURCE} &&
-            echo "'};'" >> ${OUTPUT_C_SOURCE} &&
-            echo "'const\tsize_t\t${BLOB_NAME}_len\t=\tsizeof(${BLOB_NAME});'" >> ${OUTPUT_C_SOURCE}
-    )
-endforeach()
+# This is broken up into two parts: first we check for miniupnp, compile it if we can't
+# find it, and thereafter we check for libunbound, and compile it if we can't find it.
+# We always compile if we are building statically to reduce static dependency issues...
+# ...except for FreeBSD, because FreeBSD is a special case that doesn't play well with
+# others.
 
-add_library(blocks STATIC blocks.cpp ${GENERATED_SOURCES})
+add_subdirectory(gen_multisig)
+add_subdirectory(gen_ssl_cert)
+add_subdirectory(quicksync_export)
+add_subdirectory(blockchain_prune)

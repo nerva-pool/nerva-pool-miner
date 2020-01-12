@@ -1,4 +1,3 @@
-// Copyright (c) 2019, The Nerva Project
 // Copyright (c) 2016-2019, The Monero Project
 // 
 // All rights reserved.
@@ -35,7 +34,7 @@
 #define MONERO_DEFAULT_LOG_CATEGORY "perf"
 
 #define PERF_LOG_ALWAYS(level, cat, x) \
-  el::base::Writer(level, __FILE__, __LINE__, ELPP_FUNC, el::base::DispatchAction::FileOnlyLog).construct(cat) << x
+  el::base::Writer(level, el::Color::Default, __FILE__, __LINE__, ELPP_FUNC, el::base::DispatchAction::FileOnlyLog).construct(cat) << x
 #define PERF_LOG(level, cat, x) \
   do { \
     if (ELPP->vRegistry()->allowed(level, cat)) PERF_LOG_ALWAYS(level, cat, x); \
@@ -89,7 +88,7 @@ namespace tools
 namespace tools
 {
 
-el::Level performance_timer_log_level = el::Level::Debug;
+el::Level performance_timer_log_level = el::Level::Info;
 
 static __thread std::vector<LoggingPerformanceTimer*> *performance_timers = NULL;
 
@@ -98,8 +97,8 @@ void set_performance_timer_log_level(el::Level level)
   if (level != el::Level::Debug && level != el::Level::Trace && level != el::Level::Info
    && level != el::Level::Warning && level != el::Level::Error && level != el::Level::Fatal)
   {
-    MERROR("Wrong log level: " << el::LevelHelper::convertToString(level) << ", using Debug");
-    level = el::Level::Debug;
+    MERROR("Wrong log level: " << el::LevelHelper::convertToString(level) << ", using Info");
+    level = el::Level::Info;
   }
   performance_timer_log_level = level;
 }

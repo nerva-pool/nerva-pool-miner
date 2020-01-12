@@ -1,154 +1,14 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Stagenet-Node-1",
+             "name": "Mainnet: Node",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
-                "--stagenet",
-                "--data-dir", "${workspaceFolder}/db/n1",
-                "--fixed-difficulty", "250",
-                "--p2p-bind-port", "28080", 
-                "--rpc-bind-port", "28081", 
-                "--zmq-rpc-bind-port", "28082", 
-                "--rpc-restricted-bind-port", "28083",
-                "--add-exclusive-node", "127.0.0.1:38080",
-            ],
-            "stopAtEntry": false,
-            
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true,
-                }
-            ]
-        },
-        {
-            "name": "Stagenet-Node-2",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
-            "args": [
-                "--stagenet",
-                "--data-dir", "${workspaceFolder}/db/n2",
-                "--fixed-difficulty", "250",
-                "--p2p-bind-port", "38080", 
-                "--rpc-bind-port", "38081", 
-                "--zmq-rpc-bind-port", "38082", 
-                "--rpc-restricted-bind-port", "38083",
-                "--add-exclusive-node", "127.0.0.1:28080",
-                "--start-mining", "NV3Co2jzKSKTm7GM3Y8pnyKxGFZwHJ2wf4UWV7Er3JqNa4Hqj8NcdNiJdTBC3KtBSNdxWc5zWmeeyCEFyisSk18J1XSHoc6GV",
-                "--mining-threads", "1"
-            ],
-            "stopAtEntry": false,
-            
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true,
-                }
-            ]
-        },
-        {
-            "name": "Stagenet-Wallet",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
-            "args": [
-                "--stagenet",
-                "--daemon-address", "127.0.0.1:28081",
-                "--wallet-file", "${workspaceFolder}/t2",
-                "--password", "''",
-            ],
-            "stopAtEntry": false,
-            
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true,
-                }
-            ]
-        },
-        {
-            "name": "Testnet-HwWallet",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
-            "args": [
-                "--testnet",
-                "--hw-device", "Ledger",
-                "--wallet-file", "${workspaceFolder}/hw",
-                "--password", "''",
-            ],
-            "stopAtEntry": false,
-            
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true,
-                }
-            ]
-        },
-        {
-            "name": "Testnet-HwWallet-Restore",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
-            "args": [
-                "--testnet",
-                "--generate-from-device", "${workspaceFolder}/hw",
-                "--restore-height", "1",
-                "--password", "''",
-            ],
-            "preLaunchTask": "delete-hw-wallet",
-            "stopAtEntry": false,
-            
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true,
-                }
-            ]
-        },
-        {
-            "name": "Testnet",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
-            "args": [
-                //"--start-mining", "NV1r8P6THPASAQX77re6hXTMJ1ykXXvtYXFXgMv4vFAQNYo3YatUvZ8LFNRu4dPQBjTwqJbMvqoeiipywmREPHpD2AgWnmG7Q",
-                "--block-sync-size", "20",
-                "--testnet"
+                "--quicksync", "${workspaceFolder}/quicksync.raw",
+                "--log-level", "2"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -164,7 +24,79 @@
             ]
         },
         {
-            "name": "Testnet-Wallet",
+            "name": "Mainnet: Cli Wallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "args": [
+                "--wallet-file", "~/.nerva/wallets/angrywasp",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Mainnet: Rpc Wallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-rpc",
+            "args": [
+                "--rpc-bind-port", "21525", 
+                "--daemon-address", "127.0.0.1:17566", 
+                "--disable-rpc-login", 
+                "--wallet-file", "~/.nerva/wallets/angrywasp"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Testnet: Node",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
+            "args": [
+                "--data-dir", "${workspaceFolder}/db",
+                "--testnet",
+                "--log-level", "2",
+                "--allow-local-ip",
+                "--offline"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Testnet: Cli Wallet",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
@@ -188,17 +120,19 @@
             ]
         },
         {
-            "name": "Testnet-Wallet-MS-1",
+            "name": "Testnet: Rpc Wallet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-rpc",
             "args": [
-                "--testnet",
-                "--wallet-file", "${workspaceFolder}/builder/build/dev/debug/bin/ms_1",
-                "--password", "''",
+                "--testnet", 
+                "--rpc-bind-port", "19566", 
+                "--daemon-address", "127.0.0.1:18566", 
+                "--disable-rpc-login", 
+                "--wallet-file", "~/.nerva/wallets/angrywasp-testnet",
+                "--prompt-for-password"
             ],
             "stopAtEntry": false,
-            
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
@@ -207,101 +141,24 @@
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
-                    "ignoreFailures": true,
+                    "ignoreFailures": true
                 }
             ]
         },
         {
-            "name": "Testnet-Wallet-MS-2",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
-            "args": [
-                "--testnet",
-                "--wallet-file", "${workspaceFolder}/builder/build/dev/debug/bin/ms_2",
-                "--password", "''",
-            ],
-            "stopAtEntry": false,
-            
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true,
-                }
-            ]
-        },
-        {
-            "name": "Mainnet",
+            "name": "Stagenet: Node",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
             "args": [
-                "--log-level", "1"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "RpcWallet",
-            "type": "cppdbg",
-            "request": "launch",
-            "linux": {
-                "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-rpc",
-            },
-            "windows": {
-                "program": "${workspaceFolder}\\builder\\build\\dev\\debug\\bin\\nerva-wallet-rpc.exe",
-                "miDebuggerPath": "C:\\msys64\\mingw64\\bin\\gdb.exe",
-            },
-            "args": [
-                "--testnet", "--rpc-bind-port", "22525", "--daemon-address", "127.0.0.1:18566", "--disable-rpc-login", "--wallet-file", "${workspaceFolder}/t1"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "HwWallet",
-            "type": "cppdbg",
-            "request": "launch",
-            "linux": {
-                "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
-            },
-            "windows": {
-                "program": "${workspaceFolder}\\builder\\build\\dev\\debug\\bin\\nerva-wallet-cli.exe",
-                "miDebuggerPath": "C:\\msys64\\mingw64\\bin\\gdb.exe",
-            },
-            "args": [
-                "--hw-device", "Ledger",
-                "--wallet-file", "test-ledger",
+                "--data-dir", "${workspaceFolder}/db",
+                "--stagenet",
                 "--log-level", "2",
-                "--testnet"
+                "--allow-local-ip",
+                "--offline"
             ],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/builder/build/dev/debug/bin",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
@@ -312,6 +169,126 @@
                     "ignoreFailures": true
                 }
             ]
-        }
+        },
+        {
+            "name": "Stagenet: Cli Wallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "args": [
+                "--stagenet",
+                "--wallet-file", "${workspaceFolder}/db/t1",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Testnet: Ledger",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "args": [
+                "--testnet",
+                "--hw-device", "Ledger",
+                "--wallet-file", "~/.nerva/wallets/ledger",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Testnet: Ledger Restore",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "args": [
+                "--testnet",
+                "--generate-from-device", "~/.nerva/wallets/ledger",
+                "--restore-height", "1",
+                "--password", "''",
+            ],
+            "preLaunchTask": "delete-hw-wallet",
+            "stopAtEntry": false,
+            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Utility: Prune",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-blockchain-prune",
+            "args": [
+                "--data-dir", "${workspaceFolder}/db",
+                "--stagenet",
+                "--log-level", "2",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Utility: Export Quicksync",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-quicksync-export",
+            "args": [
+                "--output-file", "${workspaceFolder}/quicksync.raw",
+                "--log-level", "2",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
     ]
 }

@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
-#include <set>
 #include <string>
+
 #include "xnv_https.h"
 #include "cryptonote_config.h"
 #include "version.h"
 #include "misc_log_ex.h"
+#include "common/dns_utils.h"
+#include "common/dns_config.h"
 
 namespace xnvhttp
 {
@@ -51,12 +53,15 @@ namespace blacklist
     {
         if (!testnet)
             return;
-            
-        std::set<std::string> url_list = ::config::testnet::seed_nodes;
-        
+
+        if (!dns_config::has_seed_node_records())
+            return;
+
+        std::vector<std::string> url_list = dns_config::get_seed_node_records();
+
         for (const std::string &a : url_list)
         {
-            std::string url = "http://" + xnvhttp::get_host(a) + "/xnv_blacklist.txt";
+            std::string url = "http://" + a + "/xnv_blacklist.txt";
 
             CURL* curl = curl_easy_init(); 
             if(curl) 
@@ -84,11 +89,17 @@ namespace analytics
 
     bool contact_server(const bool testnet)
     {
-        std::set<std::string> url_list = testnet ? ::config::testnet::seed_nodes : ::config::seed_nodes;
+        if (testnet)
+            return false;
+
+        if (!dns_config::has_seed_node_records())
+            return false;
+
+        std::vector<std::string> url_list = dns_config::get_seed_node_records();
 
         for (const std::string &a : url_list)
         {
-            std::string url = "http://" + xnvhttp::get_host(a) + "/api/analytics/submit/";
+            std::string url = "http://" + a + "/api/analytics/submit/";
             MGINFO("Sending analytics to " << url);
 
             std::string user_agent = "nerva-cli/";
@@ -108,7 +119,7 @@ namespace analytics
                     return true;
                 }
                 else
-                    MGINFO("Curl returned error: " << curl_easy_strerror(res));
+                    MGINFO("Curl returned error code: " << res << " (" << curl_easy_strerror(res) << ")");
             } 
         }
         

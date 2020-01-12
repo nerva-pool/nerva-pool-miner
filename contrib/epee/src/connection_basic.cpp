@@ -128,7 +128,7 @@ connection_basic_pimpl::connection_basic_pimpl(const std::string &name) : m_thro
 int connection_basic_pimpl::m_default_tos;
 
 // methods:
-connection_basic::connection_basic(boost::asio::ip::tcp::socket&& sock, boost::shared_ptr<connection_basic_shared_state> state, ssl_support_t ssl_support)
+connection_basic::connection_basic(boost::asio::ip::tcp::socket&& sock, std::shared_ptr<connection_basic_shared_state> state, ssl_support_t ssl_support)
 	:
 	m_state(std::move(state)),
 	mI( new connection_basic_pimpl("peer") ),
@@ -136,6 +136,7 @@ connection_basic::connection_basic(boost::asio::ip::tcp::socket&& sock, boost::s
 	socket_(GET_IO_SERVICE(sock), get_context(m_state.get())),
 	m_want_close_connection(false),
 	m_was_shutdown(false),
+	m_is_multithreaded(false),
 	m_ssl_support(ssl_support)
 {
 	// add nullptr checks if removed
@@ -152,7 +153,7 @@ connection_basic::connection_basic(boost::asio::ip::tcp::socket&& sock, boost::s
 	_note("Spawned connection #"<<mI->m_peer_number<<" to " << remote_addr_str << " currently we have sockets count:" << m_state->sock_count);
 }
 
-connection_basic::connection_basic(boost::asio::io_service &io_service, boost::shared_ptr<connection_basic_shared_state> state, ssl_support_t ssl_support)
+connection_basic::connection_basic(boost::asio::io_service &io_service, std::shared_ptr<connection_basic_shared_state> state, ssl_support_t ssl_support)
 	:
 	m_state(std::move(state)),
 	mI( new connection_basic_pimpl("peer") ),
@@ -160,6 +161,7 @@ connection_basic::connection_basic(boost::asio::io_service &io_service, boost::s
 	socket_(io_service, get_context(m_state.get())),
 	m_want_close_connection(false),
 	m_was_shutdown(false),
+	m_is_multithreaded(false),
 	m_ssl_support(ssl_support)
 {
 	// add nullptr checks if removed
@@ -282,9 +284,6 @@ double connection_basic::get_sleep_time(size_t cb) {
 	CRITICAL_REGION_LOCAL(epee::net_utils::network_throttle_manager::network_throttle_manager::m_lock_get_global_throttle_out);
     auto t = network_throttle_manager::get_global_throttle_out().get_sleep_time(cb);
     return t;
-}
-
-void connection_basic::set_save_graph(bool save_graph) {
 }
 
 

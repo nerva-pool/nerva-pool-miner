@@ -154,6 +154,12 @@ int main(int argc, char* argv[])
   tx_memory_pool m_mempool(*core_storage);
   core_storage.reset(new Blockchain(m_mempool));
   BlockchainDB* db = new_db();
+  if (db == NULL)
+  {
+    LOG_ERROR("Failed to initialize a database");
+    throw std::runtime_error("Failed to initialize a database");
+  }
+  LOG_PRINT_L0("database: LMDB");
 
   const std::string filename = input;
   LOG_PRINT_L0("Loading blockchain from folder " << filename << " ...");
@@ -211,7 +217,7 @@ int main(int argc, char* argv[])
       }
     }
     return true;
-  });
+  }, true);
 
   std::unordered_map<uint64_t, uint64_t> counts;
   size_t total = 0;

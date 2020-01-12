@@ -44,8 +44,8 @@ namespace hw {
     namespace ledger {
 
     #define MINIMAL_APP_VERSION_MAJOR    1
-    #define MINIMAL_APP_VERSION_MINOR    6
-    #define MINIMAL_APP_VERSION_MICRO    5
+    #define MINIMAL_APP_VERSION_MINOR    7
+    #define MINIMAL_APP_VERSION_MICRO    0
 
     #define VERSION(M,m,u)       ((M)<<16|(m)<<8|(u))
     #define VERSION_MAJOR(v)     (((v)>>16)&0xFF)
@@ -76,7 +76,7 @@ namespace hw {
         rct::key AKout;
         ABPkeys(const rct::key& A, const rct::key& B, const bool is_subaddr, bool is_subaddress, bool is_change_address, size_t index, const rct::key& P,const rct::key& AK);
         ABPkeys(const ABPkeys& keys) ;
-        ABPkeys() {index=0;is_subaddress=false;is_change_address=false;}
+        ABPkeys() {index=0;is_subaddress=false;is_change_address=false;additional_key=false;}
         ABPkeys &operator=(const ABPkeys &keys);
     };
 
@@ -88,6 +88,24 @@ namespace hw {
         void add(const ABPkeys& keys);
         void clear();
         void log();
+    };
+
+    class SecHMAC {
+    public:
+        uint32_t  sec[32];
+        uint32_t  hmac[32];
+
+        SecHMAC(const uint8_t s[32], const uint8_t m[32]);
+
+    };
+
+    class HMACmap {
+    public:
+        std::vector<SecHMAC>  hmacs;
+
+        void find_mac(const uint8_t sec[32], uint8_t hmac[32]) ;
+        void add_mac(const uint8_t sec[32], const uint8_t hmac[32]) ;
+        void clear() ;
     };
 
     #define BUFFER_SEND_SIZE 262
@@ -115,16 +133,22 @@ namespace hw {
         int  set_command_header(unsigned char ins, unsigned char p1 = 0x00, unsigned char p2 = 0x00);
         int  set_command_header_noopt(unsigned char ins, unsigned char p1 = 0x00, unsigned char p2 = 0x00);
         void send_simple(unsigned char ins, unsigned char p1 = 0x00);
-
+        void send_secret(const unsigned char sec[32], int &offset);
+        void receive_secret(unsigned char sec[32], int &offset);
 
         // hw running mode
         device_mode mode;
+        bool tx_in_progress;
+
         // map public destination key to ephemeral destination key
         Keymap key_map;
         bool  add_output_key_mapping(const crypto::public_key &Aout, const crypto::public_key &Bout, const bool is_subaddress, const bool is_change,
                                      const bool need_additional, const size_t real_output_index,
                                      const rct::key &amount_key,  const crypto::public_key &out_eph_public_key);
-        // To speed up blockchain parsing the view key maybe handle here.
+        
+	HMACmap hmac_map;
+        
+	// To speed up blockchain parsing the view key maybe handle here.
         crypto::secret_key viewkey;
         bool has_view_key;
         
@@ -174,7 +198,7 @@ namespace hw {
         bool  get_public_address(cryptonote::account_public_address &pubkey) override;
         bool  get_secret_keys(crypto::secret_key &viewkey , crypto::secret_key &spendkey) override;
         bool  generate_chacha_key(const cryptonote::account_keys &keys, crypto::chacha_key &key, uint64_t kdf_rounds) override;
-
+        void  display_address(const cryptonote::subaddress_index& index, const boost::optional<crypto::hash8> &payment_id) override;
 
         /* ======================================================================= */
         /*                               SUB ADDRESS                               */

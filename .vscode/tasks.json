@@ -15,7 +15,7 @@
         {
             "label": "delete-hw-wallet",
             "type": "shell",
-            "command": "rm -f ${workspaceFolder}/hw.cache && rm -f ${workspaceFolder}/hw.keys",
+            "command": "rm -f ~/.nerva/wallets/ledger.cache && rm -f ~/.nerva/wallets/ledger.keys",
             "group": {
                 "kind": "build",
                 "isDefault": true

@@ -66,7 +66,7 @@ t_command_server::t_command_server(
   m_command_lookup.set_handler(
       "print_pl"
     , std::bind(&t_command_parser_executor::print_peer_list, &m_parser, p::_1)
-    , "print_pl [white] [gray] [<limit>]"
+    , "print_pl [white] [gray] [pruned] [publicrpc] [<limit>]"
     , "Print the current peer list."
     );
   m_command_lookup.set_handler(
@@ -222,16 +222,6 @@ t_command_server::t_command_server(
     , "Set the <max_number> of in peers."
     );
     m_command_lookup.set_handler(
-      "start_save_graph"
-    , std::bind(&t_command_parser_executor::start_save_graph, &m_parser, p::_1)
-    , "Start saving data for dr monero."
-    );
-    m_command_lookup.set_handler(
-      "stop_save_graph"
-    , std::bind(&t_command_parser_executor::stop_save_graph, &m_parser, p::_1)
-    , "Stop saving data for dr monero."
-    );
-    m_command_lookup.set_handler(
       "hard_fork_info"
     , std::bind(&t_command_parser_executor::hard_fork_info, &m_parser, p::_1)
     , "Print the hard fork voting information."
@@ -250,8 +240,14 @@ t_command_server::t_command_server(
     m_command_lookup.set_handler(
       "unban"
     , std::bind(&t_command_parser_executor::unban, &m_parser, p::_1)
-    , "unban <IP>"
+    , "unban <address>"
     , "Unban a given <IP>."
+    );
+    m_command_lookup.set_handler(
+      "banned"
+    , std::bind(&t_command_parser_executor::banned, &m_parser, p::_1)
+    , "banned <address>"
+    , "Check whether an <address> is banned."
     );
     m_command_lookup.set_handler(
       "flush_txpool"
@@ -327,6 +323,29 @@ t_command_server::t_command_server(
       "version"
     , std::bind(&t_command_parser_executor::version, &m_parser, p::_1)
     , "Print version information."
+    );
+    m_command_lookup.set_handler(
+      "prune_blockchain"
+    , std::bind(&t_command_parser_executor::prune_blockchain, &m_parser, p::_1)
+    , "Prune the blockchain."
+    );
+    m_command_lookup.set_handler(
+      "check_blockchain_pruning"
+    , std::bind(&t_command_parser_executor::check_blockchain_pruning, &m_parser, p::_1)
+    , "Check the blockchain pruning."
+    );
+    m_command_lookup.set_handler(
+      "set_bootstrap_daemon"
+    , std::bind(&t_command_parser_executor::set_bootstrap_daemon, &m_parser, p::_1)
+    , "set_bootstrap_daemon (auto | none | host[:port] [username] [password])"
+    , "URL of a 'bootstrap' remote daemon that the connected wallets can use while this daemon is still not fully synced.\n"
+      "Use 'auto' to enable automatic public nodes discovering and bootstrap daemon switching"
+    );
+    m_command_lookup.set_handler(
+      "flush_cache"
+    , std::bind(&t_command_parser_executor::flush_cache, &m_parser, p::_1)
+    , "flush_cache bad-txs"
+    , "Flush the specified cache(s)."
     );
 }
 

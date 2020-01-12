@@ -1,4 +1,3 @@
-// Copyright (c) 2017-2018, The Masari Project
 // Copyright (c) 2014-2019, The Monero Project
 // 
 // All rights reserved.
@@ -33,6 +32,7 @@
 #include "blockchain_db.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "profile_tools.h"
+#include "ringct/rctOps.h"
 
 #include "lmdb/db_lmdb.h"
 
@@ -79,12 +79,12 @@ void BlockchainDB::pop_block()
   pop_block(blk, txs);
 }
 
-void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& txp, const crypto::hash* tx_hash_ptr)
+void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& txp, const crypto::hash* tx_hash_ptr, const crypto::hash* tx_prunable_hash_ptr)
 {
   const transaction &tx = txp.first;
 
   bool miner_tx = false;
-  crypto::hash tx_hash;
+  crypto::hash tx_hash, tx_prunable_hash;
   if (!tx_hash_ptr)
   {
     // should only need to compute hash for miner transactions
@@ -94,6 +94,13 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const std::pair
   else
   {
     tx_hash = *tx_hash_ptr;
+  }
+  if (tx.version >= 2)
+  {
+    if (!tx_prunable_hash_ptr)
+      tx_prunable_hash = get_transaction_prunable_hash(tx, &txp.second);
+    else
+      tx_prunable_hash = *tx_prunable_hash_ptr;
   }
 
   for (const txin_v& tx_input : tx.vin)
@@ -121,7 +128,7 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const std::pair
     }
   }
 
-  uint64_t tx_id = add_transaction_data(blk_hash, txp, tx_hash);
+  uint64_t tx_id = add_transaction_data(blk_hash, txp, tx_hash, tx_prunable_hash);
 
   std::vector<uint64_t> amount_output_indices(tx.vout.size());
 
@@ -148,8 +155,9 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const std::pair
 }
 
 uint64_t BlockchainDB::add_block( const std::pair<block, blobdata>& blck
-                                , size_t block_size
-                                , const difficulty_type& cumulative_difficulty
+                                , size_t block_weight
+                                , uint64_t long_term_block_weight
+                                , const difficulty_type_128& cumulative_difficulty
                                 , const uint64_t& coins_generated
                                 , const std::vector<std::pair<transaction, blobdata>>& txs
                                 )
@@ -170,13 +178,20 @@ uint64_t BlockchainDB::add_block( const std::pair<block, blobdata>& blck
   // call out to add the transactions
   
   time1 = epee::misc_utils::get_tick_count();
+  uint64_t num_rct_outs = 0;
   add_transaction(blk_hash, std::make_pair(blk.miner_tx, tx_to_blob(blk.miner_tx)));
+  num_rct_outs += blk.miner_tx.vout.size();
   int tx_i = 0;
   crypto::hash tx_hash = crypto::null_hash;
   for (const std::pair<transaction, blobdata>& tx : txs)
   {
     tx_hash = blk.tx_hashes[tx_i];
     add_transaction(blk_hash, tx, &tx_hash);
+    for (const auto &vout: tx.first.vout)
+    {
+      if (vout.amount == 0)
+        ++num_rct_outs;
+    }
     ++tx_i;
   }
   TIME_MEASURE_FINISH(time1);
@@ -184,7 +199,7 @@ uint64_t BlockchainDB::add_block( const std::pair<block, blobdata>& blck
 
   // call out to subclass implementation to add the block & metadata
   time1 = epee::misc_utils::get_tick_count();
-  add_block(blk, block_size, cumulative_difficulty, coins_generated, blk_hash);
+  add_block(blk, block_weight, long_term_block_weight, cumulative_difficulty, coins_generated, num_rct_outs, blk_hash);
   TIME_MEASURE_FINISH(time1);
   time_add_block1 += time1;
 
@@ -209,8 +224,8 @@ void BlockchainDB::pop_block(block& blk, std::vector<transaction>& txs)
   for (const auto& h : boost::adaptors::reverse(blk.tx_hashes))
   {
     cryptonote::transaction tx;
-    if (!get_tx(h, tx))
-      throw DB_ERROR("Failed to get transaction from the db");
+    if (!get_tx(h, tx) && !get_pruned_tx(h, tx))
+      throw DB_ERROR("Failed to get pruned or unpruned transaction from the db");
     txs.push_back(std::move(tx));
     remove_transaction(h);
   }
@@ -224,7 +239,7 @@ bool BlockchainDB::is_open() const
 
 void BlockchainDB::remove_transaction(const crypto::hash& tx_hash)
 {
-  transaction tx = get_tx(tx_hash);
+  transaction tx = get_pruned_tx(tx_hash);
 
   for (const txin_v& tx_input : tx.vin)
   {
@@ -269,12 +284,23 @@ bool BlockchainDB::get_tx(const crypto::hash& h, cryptonote::transaction &tx) co
   return true;
 }
 
-difficulty_type BlockchainDB::get_block_cumulative_difficulty(const crypto::hash& id) const
+bool BlockchainDB::get_pruned_tx(const crypto::hash& h, cryptonote::transaction &tx) const
+{
+  blobdata bd;
+  if (!get_pruned_tx_blob(h, bd))
+    return false;
+  if (!parse_and_validate_tx_base_from_blob(bd, tx))
+    throw DB_ERROR("Failed to parse transaction base from blob retrieved from the db");
+
+  return true;
+}
+
+difficulty_type_128 BlockchainDB::get_block_cumulative_difficulty(const crypto::hash& id) const
 {
     return get_block_cumulative_difficulty(get_block_height(id));
 }
 
-difficulty_type BlockchainDB::get_block_difficulty(const crypto::hash& id) const
+uint64_t BlockchainDB::get_block_difficulty(const crypto::hash& id) const
 {
   return get_block_difficulty(get_block_height(id));
 }
@@ -284,6 +310,14 @@ transaction BlockchainDB::get_tx(const crypto::hash& h) const
   transaction tx;
   if (!get_tx(h, tx))
     throw TX_DNE(std::string("tx with hash ").append(epee::string_tools::pod_to_hex(h)).append(" not found in db").c_str());
+  return tx;
+}
+
+transaction BlockchainDB::get_pruned_tx(const crypto::hash& h) const
+{
+  transaction tx;
+  if (!get_pruned_tx(h, tx))
+    throw TX_DNE(std::string("pruned tx with hash ").append(epee::string_tools::pod_to_hex(h)).append(" not found in db").c_str());
   return tx;
 }
 

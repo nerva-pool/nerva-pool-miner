@@ -30,6 +30,7 @@
 
 #include "crypto/hash.h"
 #include "cryptonote_basic/cryptonote_basic.h"
+#include "cryptonote_basic/difficulty.h"
 #include "ringct/rctSigs.h"
 #include "rpc/rpc_handler.h"
 
@@ -80,6 +81,7 @@ namespace rpc
     uint16_t port;
     uint16_t rpc_port;
     uint64_t last_seen;
+    uint32_t pruning_seed;
   };
 
   struct tx_in_pool
@@ -87,6 +89,7 @@ namespace rpc
     cryptonote::transaction tx;
     crypto::hash tx_hash;
     uint64_t blob_size;
+    uint64_t weight;
     uint64_t fee;
     crypto::hash max_used_block_hash;
     uint64_t max_used_block_height;
@@ -131,7 +134,6 @@ namespace rpc
     uint32_t votes;
     uint32_t threshold;
     uint8_t voting;
-    uint32_t state;
     uint64_t earliest_height;
   };
 
@@ -163,6 +165,7 @@ namespace rpc
     uint64_t height;
     uint64_t depth;
     crypto::hash hash;
+    cryptonote::difficulty_type_128 wide_difficulty;
     uint64_t difficulty;
     uint64_t reward;
   };
@@ -171,6 +174,7 @@ namespace rpc
   {
     uint64_t height;
     uint64_t target_height;
+    cryptonote::difficulty_type_128 wide_difficulty;
     uint64_t difficulty;
     uint64_t target;
     uint64_t tx_count;
@@ -185,8 +189,13 @@ namespace rpc
     bool stagenet;
     std::string nettype;
     crypto::hash top_block_hash;
+    cryptonote::difficulty_type_128 wide_cumulative_difficulty;
     uint64_t cumulative_difficulty;
     uint64_t block_size_limit;
+    uint64_t block_weight_limit;
+    uint64_t block_size_median;
+    uint64_t block_weight_median;
+    uint64_t start_time;
     std::string version;
   };
 

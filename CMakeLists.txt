@@ -120,6 +120,7 @@ endif()
 # when ARCH is not set to an explicit identifier, cmake's builtin is used
 # to identify the target architecture, to direct logic in this cmake script.
 # Since ARCH is a cached variable, it will not be set on first cmake invocation.
+if (NOT ARCH_ID)
 if (NOT ARCH OR ARCH STREQUAL "" OR ARCH STREQUAL "native" OR ARCH STREQUAL "default")
   if(CMAKE_SYSTEM_PROCESSOR STREQUAL "")
     set(CMAKE_SYSTEM_PROCESSOR ${CMAKE_HOST_SYSTEM_PROCESSOR})
@@ -127,6 +128,7 @@ if (NOT ARCH OR ARCH STREQUAL "" OR ARCH STREQUAL "native" OR ARCH STREQUAL "def
   set(ARCH_ID "${CMAKE_SYSTEM_PROCESSOR}")
 else()
   set(ARCH_ID "${ARCH}")
+endif()
 endif()
 string(TOLOWER "${ARCH_ID}" ARM_ID)
 string(SUBSTRING "${ARM_ID}" 0 3 ARM_TEST)
@@ -187,15 +189,7 @@ set(CMAKE_C_FLAGS_RELEASE "-DNDEBUG ${OPT_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG ${OPT_FLAGS_RELEASE}")
 
 # set this to 0 if per-block checkpoint needs to be disabled
-set(PER_BLOCK_CHECKPOINT 0)
 set(BUILD_SHARED_LIBS OFF)
-
-if(PER_BLOCK_CHECKPOINT)
-  add_definitions("-DPER_BLOCK_CHECKPOINT")
-  set(Blocks "blocks")
-else()
-  set(Blocks "")
-endif()
 
 list(INSERT CMAKE_MODULE_PATH 0
   "${CMAKE_SOURCE_DIR}/cmake")
@@ -230,7 +224,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 enable_testing()
 
 option(BUILD_DOCUMENTATION "Build the Doxygen documentation." ON)
-option(BUILD_TESTS "Build tests." OFF)
 option(BUILD_EXTRAS "Build extras not needed for ordinary usage." OFF)
 
 # Check whether we're on a 32-bit or 64-bit system
@@ -336,22 +329,9 @@ endif()
 # memory was the default in Cryptonote before Monero implemented LMDB, it still works but is unnecessary.
 # set(DATABASE memory)
 set(DATABASE lmdb)
-
-if (DEFINED ENV{DATABASE})
-  set(DATABASE $ENV{DATABASE})
-  message(STATUS "DATABASE set: ${DATABASE}")
-else()
-  message(STATUS "Could not find DATABASE in env (not required unless you want to change database type from default: ${DATABASE})")
-endif()
-
-if (DATABASE STREQUAL "lmdb")
-  message(STATUS "Using LMDB as default DB type")
-  set(BLOCKCHAIN_DB DB_LMDB)
-  add_definitions("-DDEFAULT_DB_TYPE=\"lmdb\"")
-else()
-  die("Invalid database type: ${DATABASE}")
-endif()
-
+message(STATUS "Using LMDB as default DB type")
+set(BLOCKCHAIN_DB DB_LMDB)
+add_definitions("-DDEFAULT_DB_TYPE=\"lmdb\"")
 add_definitions("-DBLOCKCHAIN_DB=${BLOCKCHAIN_DB}")
 
 # Can't install hook in static build on OSX, because OSX linker does not support --wrap
@@ -403,7 +383,7 @@ if (CMAKE_SYSTEM_NAME MATCHES "(SunOS|Solaris)")
 endif ()
 
 if (APPLE AND NOT IOS)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64 -fvisibility=default")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64 -fvisibility=default -std=c++11")
   if (NOT OpenSSL_DIR)
       EXECUTE_PROCESS(COMMAND brew --prefix openssl
         OUTPUT_VARIABLE OPENSSL_ROOT_DIR
@@ -600,7 +580,7 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing")
 
   # if those don't work for your compiler, single it out where appropriate
-  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT OPENBSD)
     set(C_SECURITY_FLAGS "${C_SECURITY_FLAGS} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1")
     set(CXX_SECURITY_FLAGS "${CXX_SECURITY_FLAGS} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1")
   endif()
@@ -612,7 +592,7 @@ else()
   add_cxx_flag_if_supported(-Wformat-security CXX_SECURITY_FLAGS)
 
   # -fstack-protector
-  if (NOT WIN32)
+  if (NOT OPENBSD AND NOT (WIN32 AND (CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_LESS 9.1)))
     add_c_flag_if_supported(-fstack-protector C_SECURITY_FLAGS)
     add_cxx_flag_if_supported(-fstack-protector CXX_SECURITY_FLAGS)
     add_c_flag_if_supported(-fstack-protector-strong C_SECURITY_FLAGS)
@@ -620,9 +600,11 @@ else()
   endif()
 
   # New in GCC 8.2
-  if (NOT WIN32)
+  if (NOT OPENBSD AND NOT (WIN32 AND (CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_LESS 9.1)))
     add_c_flag_if_supported(-fcf-protection=full C_SECURITY_FLAGS)
     add_cxx_flag_if_supported(-fcf-protection=full CXX_SECURITY_FLAGS)
+  endif()
+  if (NOT WIN32 AND NOT OPENBSD)
     add_c_flag_if_supported(-fstack-clash-protection C_SECURITY_FLAGS)
     add_cxx_flag_if_supported(-fstack-clash-protection CXX_SECURITY_FLAGS)
   endif()
@@ -634,8 +616,8 @@ else()
   endif()
 
   # linker
-  if (NOT WIN32)
-    # Windows binaries die on startup with PIE
+  if (NOT (WIN32 AND (CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_LESS 9.1)))
+    # Windows binaries die on startup with PIE when compiled with GCC <9.x
     add_linker_flag_if_supported(-pie LD_SECURITY_FLAGS)
   endif()
   add_linker_flag_if_supported(-Wl,-z,relro LD_SECURITY_FLAGS)
@@ -650,7 +632,6 @@ else()
   endif()
 
   if(BACKCOMPAT)
-      add_definitions(-DFDELT_TYPE=long\ int)
       add_linker_flag_if_supported(-Wl,--wrap=__divmoddi4 LD_BACKCOMPAT_FLAGS)
       add_linker_flag_if_supported(-Wl,--wrap=glob LD_BACKCOMPAT_FLAGS)
       message(STATUS "Using Lib C back compat flags: ${LD_BACKCOMPAT_FLAGS}")
@@ -660,6 +641,7 @@ else()
   if (WIN32)
     add_linker_flag_if_supported(-Wl,--dynamicbase LD_SECURITY_FLAGS)
     add_linker_flag_if_supported(-Wl,--nxcompat LD_SECURITY_FLAGS)
+    add_linker_flag_if_supported(-Wl,--high-entropy-va LD_SECURITY_FLAGS)
   endif()
 
   message(STATUS "Using C security hardening flags: ${C_SECURITY_FLAGS}")
@@ -769,12 +751,7 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=default -DGTEST_HAS_TR1_TUPLE=0")
   endif()
 
-  set(DEBUG_FLAGS "-g3")
-  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT (CMAKE_C_COMPILER_VERSION VERSION_LESS 4.8))
-    set(DEBUG_FLAGS "${DEBUG_FLAGS} -Og ")
-  else()
-    set(DEBUG_FLAGS "${DEBUG_FLAGS} -O0 ")
-  endif()
+  set(DEBUG_FLAGS "-g3 -O0")
 
   # At least some CLANGs default to not enough for monero
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=900")
@@ -834,10 +811,10 @@ if (${BOOST_IGNORE_SYSTEM_PATHS} STREQUAL "ON")
 endif()
 
 set(OLD_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+set(Boost_NO_BOOST_CMAKE ON)
 if(STATIC)
   if(MINGW)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-    set(Boost_NO_BOOST_CMAKE ON)
   endif()
 
   set(Boost_USE_STATIC_LIBS ON)
@@ -858,9 +835,9 @@ elseif(Boost_FOUND)
     set(BOOST_BEFORE_1_62 true)
   endif()
   if (BOOST_BEFORE_1_62)
-      message(FATAL_ERROR "Boost older than 1.62 is too old to link with OpenSSL 1.1 or newer. "
+      message(FATAL_ERROR "Boost ${Boost_VERSION} (older than 1.62) is too old to link with OpenSSL ${OPENSSL_VERSION} (1.1 or newer) found at ${OPENSSL_INCLUDE_DIR} and ${OPENSSL_LIBRARIES}. "
                           "Update Boost or install OpenSSL 1.0 and set path to it when running cmake: "
-                          "cmake -DOPENSSL_ROOT_DIR='/usr/include/openssl-1.0;/usr/lib/openssl-1.0'")
+                          "cmake -DOPENSSL_ROOT_DIR='/usr/include/openssl-1.0'")
   endif()
 endif()
 
@@ -933,6 +910,7 @@ find_path(ZMQ_INCLUDE_PATH zmq.hpp)
 find_library(ZMQ_LIB zmq)
 find_library(PGM_LIBRARY pgm)
 find_library(NORM_LIBRARY norm)
+find_library(PROTOLIB_LIBRARY protolib)
 find_library(SODIUM_LIBRARY sodium)
 
 if(NOT ZMQ_INCLUDE_PATH)
@@ -947,16 +925,15 @@ endif()
 if(NORM_LIBRARY)
   set(ZMQ_LIB "${ZMQ_LIB};${NORM_LIBRARY}")
 endif()
+if(PROTOLIB_LIBRARY)
+  set(ZMQ_LIB "${ZMQ_LIB};${PROTOLIB_LIBRARY}")
+endif()
 if(SODIUM_LIBRARY)
   set(ZMQ_LIB "${ZMQ_LIB};${SODIUM_LIBRARY}")
 endif()
 
 add_subdirectory(contrib)
 add_subdirectory(src)
-
-if(BUILD_TESTS)
-  add_subdirectory(tests)
-endif()
 
 if(BUILD_DOCUMENTATION)
   set(DOC_GRAPHS "YES" CACHE STRING "Create dependency graphs (needs graphviz)")

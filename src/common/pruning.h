@@ -1,22 +1,21 @@
-// Copyright (c) 2014-2018, The Monero Project
-// Copyright (c) 2019, The NERVA Project
-//
+// Copyright (c) 2018, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -29,52 +28,25 @@
 
 #pragma once
 
-#include <boost/iostreams/stream_buffer.hpp>
-#include <boost/iostreams/stream.hpp>
-#include <boost/iostreams/device/back_inserter.hpp>
-#include <boost/iostreams/filtering_streambuf.hpp>
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem/operations.hpp>
+#include <stdint.h>
 
-#include "cryptonote_basic/cryptonote_basic.h"
-#include "cryptonote_basic/cryptonote_boost_serialization.h"
-#include "cryptonote_core/blockchain.h"
-#include "blockchain_db/blockchain_db.h"
-
-#include <algorithm>
-#include <cstdio>
-#include <fstream>
-#include <boost/iostreams/copy.hpp>
-#include <atomic>
-
-#include "common/command_line.h"
-#include "version.h"
-
-#include "blockchain_utilities.h"
-
-
-using namespace cryptonote;
-
-class QuickSyncFile
+namespace tools
 {
-public:
+  static constexpr uint32_t PRUNING_SEED_LOG_STRIPES_SHIFT = 7;
+  static constexpr uint32_t PRUNING_SEED_LOG_STRIPES_MASK = 0x7;
+  static constexpr uint32_t PRUNING_SEED_STRIPE_SHIFT = 0;
+  static constexpr uint32_t PRUNING_SEED_STRIPE_MASK = 0x7f;
 
-  bool store_blockchain(cryptonote::Blockchain* cs, boost::filesystem::path& output_file, uint64_t start_height = 0, uint64_t stop_height = 0);
+  constexpr inline uint32_t get_pruning_log_stripes(uint32_t pruning_seed) { return (pruning_seed >> PRUNING_SEED_LOG_STRIPES_SHIFT) & PRUNING_SEED_LOG_STRIPES_MASK; }
+  inline uint32_t get_pruning_stripe(uint32_t pruning_seed) { if (pruning_seed == 0) return 0; return 1 + ((pruning_seed >> PRUNING_SEED_STRIPE_SHIFT) & PRUNING_SEED_STRIPE_MASK); }
 
-protected:
+  uint32_t make_pruning_seed(uint32_t stripe, uint32_t log_stripes);
 
-  Blockchain* m_blockchain_storage;
+  bool has_unpruned_block(uint64_t block_height, uint64_t blockchain_height, uint32_t pruning_seed);
+  uint32_t get_pruning_stripe(uint64_t block_height, uint64_t blockchain_height, uint32_t log_stripes);
+  uint32_t get_pruning_seed(uint64_t block_height, uint64_t blockchain_height, uint32_t log_stripes);
+  uint64_t get_next_unpruned_block_height(uint64_t block_height, uint64_t blockchain_height, uint32_t pruning_seed);
+  uint64_t get_next_pruned_block_height(uint64_t block_height, uint64_t blockchain_height, uint32_t pruning_seed);
+  uint32_t get_random_stripe();
+}
 
-  std::ofstream * m_raw_data_file;
-
-  // open export file for write
-  bool open_writer(const boost::filesystem::path& file_path, uint64_t block_start, uint64_t block_stop);
-  bool initialize_file(uint64_t block_start, uint64_t block_stop);
-  void store_blockchain();
-  bool close();
-
-private:
-
-  uint64_t m_cur_height; // tracks current height during export
-  const uint32_t quicksync_magic = 0x149f943e;
-};

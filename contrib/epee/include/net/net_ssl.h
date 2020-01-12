@@ -29,6 +29,7 @@
 #ifndef _NET_SSL_H
 #define _NET_SSL_H
 
+#include <chrono>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -128,13 +129,20 @@ namespace net_utils
 
         \return True if the SSL handshake completes with peer verification
           settings. */
-    bool handshake(boost::asio::ssl::stream<boost::asio::ip::tcp::socket> &socket, boost::asio::ssl::stream_base::handshake_type type, const std::string& host = {}) const;
+    bool handshake(
+      boost::asio::ssl::stream<boost::asio::ip::tcp::socket> &socket,
+      boost::asio::ssl::stream_base::handshake_type type,
+      const std::string& host = {},
+      std::chrono::milliseconds timeout = std::chrono::seconds(15)) const;
   };
 
         // https://security.stackexchange.com/questions/34780/checking-client-hello-for-https-classification
 	constexpr size_t get_ssl_magic_size() { return 9; }
 	bool is_ssl(const unsigned char *data, size_t len);
 	bool ssl_support_from_string(ssl_support_t &ssl, boost::string_ref s);
+
+	bool create_ec_ssl_certificate(EVP_PKEY *&pkey, X509 *&cert);
+	bool create_rsa_ssl_certificate(EVP_PKEY *&pkey, X509 *&cert);
 }
 }
 

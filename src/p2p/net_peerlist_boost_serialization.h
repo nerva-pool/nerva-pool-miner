@@ -38,6 +38,12 @@
 #include "net/i2p_address.h"
 #include "p2p/p2p_protocol_defs.h"
 
+#ifdef CRYPTONOTE_PRUNING_DEBUG_SPOOF_SEED
+#include "common/pruning.h"
+#endif
+
+BOOST_CLASS_VERSION(nodetool::peerlist_entry, 3)
+
 namespace boost
 {
   namespace serialization
@@ -70,6 +76,9 @@ namespace boost
         case epee::net_utils::ipv4_network_address::get_type_id():
           do_serialize<epee::net_utils::ipv4_network_address>(is_saving, a, na);
           break;
+        case epee::net_utils::ipv6_network_address::get_type_id():
+          do_serialize<epee::net_utils::ipv6_network_address>(is_saving, a, na);
+          break;
         case net::tor_address::get_type_id():
           do_serialize<net::tor_address>(is_saving, a, na);
           break;
@@ -86,11 +95,41 @@ namespace boost
     {
       uint32_t ip{na.ip()};
       uint16_t port{na.port()};
+      ip = SWAP32LE(ip);
       a & ip;
+      ip = SWAP32LE(ip);
       a & port;
       if (!typename Archive::is_saving())
         na = epee::net_utils::ipv4_network_address{ip, port};
     }
+
+    template <class Archive, class ver_type>
+    inline void serialize(Archive &a, boost::asio::ip::address_v6& v6, const ver_type ver)
+    {
+      if (typename Archive::is_saving())
+      {
+        auto bytes = v6.to_bytes();
+        for (auto &e: bytes) a & e;
+      }
+      else
+      {
+        boost::asio::ip::address_v6::bytes_type bytes;
+        for (auto &e: bytes) a & e;
+        v6 = boost::asio::ip::address_v6(bytes);
+      }
+    }
+
+    template <class Archive, class ver_type>
+    inline void serialize(Archive &a, epee::net_utils::ipv6_network_address& na, const ver_type ver)
+    {
+      boost::asio::ip::address_v6 ip{na.ip()};
+      uint16_t port{na.port()};
+      a & ip;
+      a & port;
+      if (!typename Archive::is_saving())
+        na = epee::net_utils::ipv6_network_address{ip, port};
+    }
+
 
     template <class Archive, class ver_type>
     inline void save(Archive& a, const net::tor_address& na, const ver_type)
@@ -182,6 +221,13 @@ namespace boost
       a & pl.adr;
       a & pl.id;
       a & pl.last_seen;
+      a & pl.pruning_seed;
+#ifdef CRYPTONOTE_PRUNING_DEBUG_SPOOF_SEED
+      if (!typename Archive::is_saving())
+      {
+        pl.pruning_seed = tools::make_pruning_seed(1+pl.adr.as<epee::net_utils::ipv4_network_address>().ip() % (1<<CRYPTONOTE_PRUNING_LOG_STRIPES), CRYPTONOTE_PRUNING_LOG_STRIPES);
+      }
+#endif
       a & pl.rpc_port;
     }
 

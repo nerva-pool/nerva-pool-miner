@@ -26,8 +26,6 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include_directories(${RANDOMX_INCLUDE})
-
 set(blockchain_db_sources
   blockchain_db.cpp
   lmdb/db_lmdb.cpp
@@ -52,7 +50,6 @@ target_link_libraries(blockchain_db
     cncrypto
     ringct
     ${LMDB_LIBRARY}
-    ${BDB_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
   PRIVATE

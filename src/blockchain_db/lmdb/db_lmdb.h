@@ -1,5 +1,4 @@
 // Copyright (c) 2018-2019, The NERVA Project
-// Copyright (c) 2018, The Masari Project
 // Copyright (c) 2014-2019, The Monero Project
 // All rights reserved.
 //
@@ -44,19 +43,30 @@
 namespace cryptonote
 {
 
-typedef struct mdb_block_info_1
+typedef struct mdb_block_info_3
 {
   uint64_t bi_height;
   uint64_t bi_timestamp;
   uint64_t bi_coins;
-  uint64_t bi_size;
-  difficulty_type bi_diff;
+  uint64_t bi_weight;
+  uint64_t bi_diff;
   crypto::hash bi_hash;
-  // TODO: bi_weight is unused but eventually supplants bi_size
-  difficulty_type bi_weight;
-} mdb_block_info_1;
+} mdb_block_info_3;
 
-typedef mdb_block_info_1 mdb_block_info;
+typedef struct mdb_block_info_4
+{
+  uint64_t bi_height;
+  uint64_t bi_timestamp;
+  uint64_t bi_coins;
+  uint64_t bi_weight;
+  uint64_t bi_diff_hi;
+  uint64_t bi_diff_lo;
+  crypto::hash bi_hash;
+  uint64_t bi_cum_rct;
+  uint64_t bi_long_term_block_weight;
+} mdb_block_info_4;
+
+typedef mdb_block_info_4 mdb_block_info;
 
 typedef struct txindex {
     crypto::hash key;
@@ -73,6 +83,10 @@ typedef struct mdb_txn_cursors
   MDB_cursor *m_txc_output_amounts;
 
   MDB_cursor *m_txc_txs;
+  MDB_cursor *m_txc_txs_pruned;
+  MDB_cursor *m_txc_txs_prunable;
+  MDB_cursor *m_txc_txs_prunable_hash;
+  MDB_cursor *m_txc_txs_prunable_tip;
   MDB_cursor *m_txc_tx_indices;
   MDB_cursor *m_txc_tx_outputs;
 
@@ -84,6 +98,8 @@ typedef struct mdb_txn_cursors
   MDB_cursor *m_txc_alt_blocks;
 
   MDB_cursor *m_txc_hf_versions;
+
+  MDB_cursor *m_txc_properties;
 } mdb_txn_cursors;
 
 #define m_cur_blocks	m_cursors->m_txc_blocks
@@ -92,6 +108,10 @@ typedef struct mdb_txn_cursors
 #define m_cur_output_txs	m_cursors->m_txc_output_txs
 #define m_cur_output_amounts	m_cursors->m_txc_output_amounts
 #define m_cur_txs	m_cursors->m_txc_txs
+#define m_cur_txs_pruned	m_cursors->m_txc_txs_pruned
+#define m_cur_txs_prunable	m_cursors->m_txc_txs_prunable
+#define m_cur_txs_prunable_hash	m_cursors->m_txc_txs_prunable_hash
+#define m_cur_txs_prunable_tip	m_cursors->m_txc_txs_prunable_tip
 #define m_cur_tx_indices	m_cursors->m_txc_tx_indices
 #define m_cur_tx_outputs	m_cursors->m_txc_tx_outputs
 #define m_cur_spent_keys	m_cursors->m_txc_spent_keys
@@ -99,6 +119,7 @@ typedef struct mdb_txn_cursors
 #define m_cur_txpool_blob	m_cursors->m_txc_txpool_blob
 #define m_cur_alt_blocks	m_cursors->m_txc_alt_blocks
 #define m_cur_hf_versions	m_cursors->m_txc_hf_versions
+#define m_cur_properties	m_cursors->m_txc_properties
 
 typedef struct mdb_rflags
 {
@@ -109,6 +130,10 @@ typedef struct mdb_rflags
   bool m_rf_output_txs;
   bool m_rf_output_amounts;
   bool m_rf_txs;
+  bool m_rf_txs_pruned;
+  bool m_rf_txs_prunable;
+  bool m_rf_txs_prunable_hash;
+  bool m_rf_txs_prunable_tip;
   bool m_rf_tx_indices;
   bool m_rf_tx_outputs;
   bool m_rf_spent_keys;
@@ -116,6 +141,7 @@ typedef struct mdb_rflags
   bool m_rf_txpool_blob;
   bool m_rf_alt_blocks;
   bool m_rf_hf_versions;
+  bool m_rf_properties;
 } mdb_rflags;
 
 typedef struct mdb_threadinfo
@@ -230,14 +256,20 @@ public:
 
   virtual uint64_t get_top_block_timestamp() const;
 
-  virtual size_t get_block_size(const uint64_t& height) const;
+  virtual size_t get_block_weight(const uint64_t& height) const;
 
-  virtual difficulty_type get_block_cumulative_difficulty(const uint64_t& height) const;
+  virtual std::vector<uint64_t> get_block_weights(uint64_t start_height, size_t count) const;
 
-  virtual difficulty_type get_block_difficulty(const uint64_t& height) const;
+  virtual difficulty_type_128 get_block_cumulative_difficulty(const uint64_t& height) const;
+
+  virtual uint64_t get_block_difficulty(const uint64_t& height) const;
 
   virtual uint64_t get_block_already_generated_coins(const uint64_t& height) const;
 
+  virtual uint64_t get_block_long_term_weight(const uint64_t& height) const;
+
+  virtual std::vector<uint64_t> get_long_term_block_weights(uint64_t start_height, size_t count) const;
+  
   virtual crypto::hash get_block_hash_from_height(const uint64_t& height) const;
 
   virtual std::vector<block> get_blocks_range(const uint64_t& h1, const uint64_t& h2) const;
@@ -256,6 +288,9 @@ public:
   virtual uint64_t get_tx_unlock_time(const crypto::hash& h) const;
 
   virtual bool get_tx_blob(const crypto::hash& h, cryptonote::blobdata &tx) const;
+  virtual bool get_pruned_tx_blob(const crypto::hash& h, cryptonote::blobdata &tx) const;
+  virtual bool get_prunable_tx_blob(const crypto::hash& h, cryptonote::blobdata &tx) const;
+  virtual bool get_prunable_tx_hash(const crypto::hash& tx_hash, crypto::hash &prunable_hash) const;
 
   virtual uint64_t get_tx_count() const;
 
@@ -287,6 +322,10 @@ public:
   virtual bool get_txpool_tx_meta(const crypto::hash& txid, txpool_tx_meta_t &meta) const;
   virtual bool get_txpool_tx_blob(const crypto::hash& txid, cryptonote::blobdata &bd) const;
   virtual cryptonote::blobdata get_txpool_tx_blob(const crypto::hash& txid) const;
+  virtual uint32_t get_blockchain_pruning_seed() const;
+  virtual bool prune_blockchain(uint32_t pruning_seed = 0);
+  virtual bool update_pruning();
+  virtual bool check_pruning();
 
   virtual void add_alt_block(const crypto::hash &blkid, const cryptonote::alt_block_data_t &data, const cryptonote::blobdata &blob);
   virtual bool get_alt_block(const crypto::hash &blkid, alt_block_data_t *data, cryptonote::blobdata *blob);
@@ -298,14 +337,15 @@ public:
 
   virtual bool for_all_key_images(std::function<bool(const crypto::key_image&)>) const;
   virtual bool for_blocks_range(const uint64_t& h1, const uint64_t& h2, std::function<bool(uint64_t, const crypto::hash&, const cryptonote::block&)>) const;
-  virtual bool for_all_transactions(std::function<bool(const crypto::hash&, const cryptonote::transaction&)>) const;
+  virtual bool for_all_transactions(std::function<bool(const crypto::hash&, const cryptonote::transaction&)>, bool pruned) const;
   virtual bool for_all_outputs(std::function<bool(uint64_t amount, const crypto::hash &tx_hash, uint64_t height, size_t tx_idx)> f) const;
   virtual bool for_all_outputs(uint64_t amount, const std::function<bool(uint64_t height)> &f) const;
   virtual bool for_all_alt_blocks(std::function<bool(const crypto::hash &blkid, const alt_block_data_t &data, const cryptonote::blobdata *blob)> f, bool include_blob = false) const;
 
   virtual uint64_t add_block( const std::pair<block, blobdata>& blk
-                            , size_t block_size
-                            , const difficulty_type& cumulative_difficulty
+                            , size_t block_weight
+                            , uint64_t long_term_block_weight
+                            , const difficulty_type_128& cumulative_difficulty
                             , const uint64_t& coins_generated
                             , const std::vector<std::pair<transaction, blobdata>>& txs
                             );
@@ -356,15 +396,17 @@ private:
   uint64_t get_estimated_batch_size(uint64_t batch_num_blocks, uint64_t batch_bytes) const;
 
   virtual void add_block(const block& blk
-                , size_t block_size
-                , const difficulty_type& cumulative_difficulty
+                , size_t block_weight
+                , uint64_t long_term_block_weight
+                , const difficulty_type_128& cumulative_difficulty
                 , const uint64_t& coins_generated
+                , uint64_t num_rct_outs
                 , const crypto::hash& block_hash
                 );
 
   virtual void remove_block();
 
-  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& tx, const crypto::hash& tx_hash);
+  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& tx, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash);
 
   virtual void remove_transaction_data(const crypto::hash& tx_hash, const transaction& tx);
 
@@ -383,6 +425,8 @@ private:
 
   void remove_output(const uint64_t amount, const uint64_t& out_index);
 
+  virtual void prune_outputs(uint64_t amount);
+
   virtual void add_spent_key(const crypto::key_image& k_image);
 
   virtual void remove_spent_key(const crypto::key_image& k_image);
@@ -399,15 +443,23 @@ private:
 
   inline void check_open() const;
 
+  bool prune_worker(int mode, uint32_t pruning_seed);
+
   virtual bool is_read_only() const;
 
   virtual uint64_t get_database_size() const;
+
+  std::vector<uint64_t> get_block_info_64bit_fields(uint64_t start_height, size_t count, off_t offset) const;
+
+  uint64_t get_max_block_size();
+  void add_max_block_size(uint64_t sz);
 
   // fix up anything that may be wrong due to past bugs
   virtual void fixup();
 
   // migrate from older DB version to current
   void migrate(const uint32_t oldversion);
+  void migrate_3_4();
 
   void cleanup_batch();
 
@@ -419,6 +471,10 @@ private:
   MDB_dbi m_block_info;
 
   MDB_dbi m_txs;
+  MDB_dbi m_txs_pruned;
+  MDB_dbi m_txs_prunable;
+  MDB_dbi m_txs_prunable_hash;
+  MDB_dbi m_txs_prunable_tip;
   MDB_dbi m_tx_indices;
   MDB_dbi m_tx_outputs;
 

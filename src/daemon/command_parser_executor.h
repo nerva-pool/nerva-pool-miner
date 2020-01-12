@@ -109,10 +109,6 @@ public:
   bool out_peers(const std::vector<std::string>& args);
 
   bool in_peers(const std::vector<std::string>& args);
-
-  bool start_save_graph(const std::vector<std::string>& args);
-  
-  bool stop_save_graph(const std::vector<std::string>& args);
   
   bool hard_fork_info(const std::vector<std::string>& args);
 
@@ -121,6 +117,8 @@ public:
   bool ban(const std::vector<std::string>& args);
 
   bool unban(const std::vector<std::string>& args);
+
+  bool banned(const std::vector<std::string>& args);
 
   bool flush_txpool(const std::vector<std::string>& args);
 
@@ -148,7 +146,15 @@ public:
 
   bool version(const std::vector<std::string>& args);
 
+  bool prune_blockchain(const std::vector<std::string>& args);
+
+  bool check_blockchain_pruning(const std::vector<std::string>& args);
+
   bool print_net_stats(const std::vector<std::string>& args);
+
+  bool set_bootstrap_daemon(const std::vector<std::string>& args);
+
+  bool flush_cache(const std::vector<std::string>& args);
 };
 
 } // namespace daemonize

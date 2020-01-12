@@ -27,7 +27,6 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include_directories(${RANDOMX_INCLUDE})
 include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 
 if (WIN32 OR STATIC)
@@ -46,13 +45,15 @@ set(common_sources
   notify.cpp
   password.cpp
   perf_timer.cpp
+  pruning.cpp
   spawn.cpp
   threadpool.cpp
   updates.cpp
   aligned.c
   timings.cc
   combinator.cpp
-  xnv_https.cpp)
+  xnv_https.cpp
+  dns_config.cpp)
 
 if (STACK_TRACE)
   list(APPEND common_sources stack_trace.cpp)
@@ -77,6 +78,7 @@ set(common_private_headers
   http_connection.h
   notify.h
   pod-class.h
+  pruning.h
   rpc_client.h
   scoped_message_writer.h
   unordered_containers_boost_serialization.h
@@ -92,7 +94,8 @@ set(common_private_headers
   aligned.h
   timings.h
   combinator.h
-  xnv_https.h)
+  xnv_https.h
+  dns_config.h)
 
 monero_private_headers(common
   ${common_private_headers})

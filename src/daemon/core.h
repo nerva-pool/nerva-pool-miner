@@ -28,7 +28,6 @@
 
 #pragma once
 
-#include "blocks/blocks.h"
 #include "cryptonote_core/cryptonote_core.h"
 #include "cryptonote_protocol/cryptonote_protocol_handler.h"
 #include "misc_log_ex.h"
@@ -59,6 +58,16 @@ public:
     : m_core{nullptr}
     , m_vm_HACK{vm}
   {
+    //initialize core here
+    MGINFO("Initializing core...");
+    
+    const cryptonote::GetCheckpointsCallback& get_checkpoints = nullptr;
+
+    if (!m_core.init(m_vm_HACK, nullptr, get_checkpoints))
+    {
+      throw std::runtime_error("Failed to initialize core");
+    }
+    MGINFO("Core initialized OK");
   }
 
   // TODO - get rid of circular dependencies in internals
@@ -69,18 +78,6 @@ public:
 
   bool run()
   {
-    //initialize core here
-    MGINFO("Initializing core...");
-#if defined(PER_BLOCK_CHECKPOINT)
-    const cryptonote::GetCheckpointsCallback& get_checkpoints = blocks::GetCheckpointsData;
-#else
-    const cryptonote::GetCheckpointsCallback& get_checkpoints = nullptr;
-#endif
-    if (!m_core.init(m_vm_HACK, nullptr, get_checkpoints))
-    {
-      return false;
-    }
-    MGINFO("Core initialized OK");
     return true;
   }
 

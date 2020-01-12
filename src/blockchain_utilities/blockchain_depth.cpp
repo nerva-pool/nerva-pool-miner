@@ -1,5 +1,5 @@
-// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2019, The NERVA Project
 //
 // All rights reserved.
 //
@@ -140,6 +140,12 @@ int main(int argc, char* argv[])
   tx_memory_pool m_mempool(*core_storage);
   core_storage.reset(new Blockchain(m_mempool));
   BlockchainDB *db = new_db();
+  if (db == NULL)
+  {
+    LOG_ERROR("Failed to initialize a database");
+    throw std::runtime_error("Failed to initialize a database");
+  }
+  LOG_PRINT_L0("database: LMDB");
 
   const std::string filename = (boost::filesystem::path(opt_data_dir) / db->get_db_name()).string();
   LOG_PRINT_L0("Loading blockchain from folder " << filename << " ...");
@@ -199,7 +205,7 @@ int main(int argc, char* argv[])
       for (const crypto::hash &txid: txids)
       {
         cryptonote::blobdata bd;
-        if (!db->get_tx_blob(txid, bd))
+        if (!db->get_pruned_tx_blob(txid, bd))
         {
           LOG_PRINT_L0("Failed to get txid " << txid << " from db");
           return 1;
@@ -259,7 +265,7 @@ int main(int argc, char* argv[])
               {
                 if (found)
                   break;
-                if (!db->get_tx_blob(block_txid, bd))
+                if (!db->get_pruned_tx_blob(block_txid, bd))
                 {
                   LOG_PRINT_L0("Failed to get txid " << block_txid << " from db");
                   return 1;

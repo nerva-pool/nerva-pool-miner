@@ -130,15 +130,16 @@ if(NOT IOS)
   add_subdirectory(simplewallet)
   add_subdirectory(daemonizer)
   add_subdirectory(daemon)
-  add_subdirectory(blockchain_utilities)
+  
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL Debug AND BUILD_EXTRAS)
+if(CMAKE_BUILD_TYPE STREQUAL Debug AND BUILD_UTILS)
+  add_subdirectory(blockchain_utilities)
   add_subdirectory(debug_utilities)
 endif()
 
-if(PER_BLOCK_CHECKPOINT)
-  add_subdirectory(blocks)
+if (BUILD_EXTRAS)
+  add_subdirectory(extras)
 endif()
 
 add_subdirectory(device)

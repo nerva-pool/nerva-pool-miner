@@ -31,6 +31,7 @@
 
 //#include <Winsock2.h>
 //#include <Ws2tcpip.h>
+#include <atomic>
 #include <string>
 #include <boost/version.hpp>
 #include <boost/asio/io_service.hpp>
@@ -107,11 +108,12 @@ namespace net_utils
 				m_ssl_options(epee::net_utils::ssl_support_t::e_ssl_support_autodetect),
 				m_initialized(true),
 				m_connected(false),
-				m_deadline(m_io_service),
+				m_deadline(m_io_service, std::chrono::steady_clock::time_point::max()),
 				m_shutdowned(0),
 				m_bytes_sent(0),
 				m_bytes_received(0)
 		{
+			check_deadline();
 		}
 
 		/*! The first/second parameters are host/port respectively. The third
@@ -154,7 +156,7 @@ namespace net_utils
     }
 
     inline
-			try_connect_result_t try_connect(const std::string& addr, const std::string& port, std::chrono::milliseconds timeout, epee::net_utils::ssl_support_t ssl_support)
+			try_connect_result_t try_connect(const std::string& addr, const std::string& port, std::chrono::milliseconds timeout)
 		{
 				m_deadline.expires_from_now(timeout);
 				boost::unique_future<boost::asio::ip::tcp::socket> connection = m_connector(addr, port, m_deadline);
@@ -174,11 +176,11 @@ namespace net_utils
 					m_connected = true;
 					m_deadline.expires_at(std::chrono::steady_clock::time_point::max());
 					// SSL Options
-					if (ssl_support == epee::net_utils::ssl_support_t::e_ssl_support_enabled || ssl_support == epee::net_utils::ssl_support_t::e_ssl_support_autodetect)
+					if (m_ssl_options.support == epee::net_utils::ssl_support_t::e_ssl_support_enabled || m_ssl_options.support == epee::net_utils::ssl_support_t::e_ssl_support_autodetect)
 					{
-						if (!m_ssl_options.handshake(*m_ssl_socket, boost::asio::ssl::stream_base::client, addr))
+						if (!m_ssl_options.handshake(*m_ssl_socket, boost::asio::ssl::stream_base::client, addr, timeout))
 						{
-							if (ssl_support == epee::net_utils::ssl_support_t::e_ssl_support_autodetect)
+							if (m_ssl_options.support == epee::net_utils::ssl_support_t::e_ssl_support_autodetect)
 							{
 								boost::system::error_code ignored_ec;
 								m_ssl_socket->next_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
@@ -193,7 +195,6 @@ namespace net_utils
 								return CONNECT_FAILURE;
 							}
 						}
-						m_ssl_options.support = ssl_support_t::e_ssl_support_enabled;
 					}
 					return CONNECT_SUCCESS;
 				}else
@@ -218,17 +219,16 @@ namespace net_utils
 
 				// Get a list of endpoints corresponding to the server name.
 
-				try_connect_result_t try_connect_result = try_connect(addr, port, timeout, m_ssl_options.support);
+				try_connect_result_t try_connect_result = try_connect(addr, port, timeout);
 				if (try_connect_result == CONNECT_FAILURE)
 					return false;
 				if (m_ssl_options.support == epee::net_utils::ssl_support_t::e_ssl_support_autodetect)
 				{
-					m_ssl_options.support = epee::net_utils::ssl_support_t::e_ssl_support_enabled;
 					if (try_connect_result == CONNECT_NO_SSL)
 					{
 						MERROR("SSL handshake failed on an autodetect connection, reconnecting without SSL");
 						m_ssl_options.support = epee::net_utils::ssl_support_t::e_ssl_support_disabled;
-						if (try_connect(addr, port, timeout, m_ssl_options.support) != CONNECT_SUCCESS)
+						if (try_connect(addr, port, timeout) != CONNECT_SUCCESS)
 							return false;
 					}
 				}
@@ -396,7 +396,7 @@ namespace net_utils
 			if (!m_connected || !m_ssl_socket->next_layer().is_open())
 				return false;
 			if (ssl)
-				*ssl = m_ssl_options.support == ssl_support_t::e_ssl_support_enabled;
+				*ssl = m_ssl_options.support != ssl_support_t::e_ssl_support_disabled;
 			return true;
 		}
 
@@ -564,7 +564,7 @@ namespace net_utils
 		{
 			m_deadline.cancel();
 			boost::system::error_code ec;
-			if(m_ssl_options.support != ssl_support_t::e_ssl_support_disabled)
+			if(m_ssl_options)
 				shutdown_ssl();
 			m_ssl_socket->next_layer().cancel(ec);
 			if(ec)
@@ -651,7 +651,7 @@ namespace net_utils
 		bool write(const void* data, size_t sz, boost::system::error_code& ec)
 		{
 			bool success;
-			if(m_ssl_options.support == ssl_support_t::e_ssl_support_enabled)
+			if(m_ssl_options.support != ssl_support_t::e_ssl_support_disabled)
 				success = boost::asio::write(*m_ssl_socket, boost::asio::buffer(data, sz), ec);
 			else
 				success = boost::asio::write(m_ssl_socket->next_layer(), boost::asio::buffer(data, sz), ec);
@@ -660,7 +660,7 @@ namespace net_utils
 		
 		void async_write(const void* data, size_t sz, boost::system::error_code& ec) 
 		{
-			if(m_ssl_options.support == ssl_support_t::e_ssl_support_enabled)
+			if(m_ssl_options.support != ssl_support_t::e_ssl_support_disabled)
 				boost::asio::async_write(*m_ssl_socket, boost::asio::buffer(data, sz), boost::lambda::var(ec) = boost::lambda::_1);
 			else
 				boost::asio::async_write(m_ssl_socket->next_layer(), boost::asio::buffer(data, sz), boost::lambda::var(ec) = boost::lambda::_1);
@@ -668,7 +668,7 @@ namespace net_utils
 		
 		void async_read(char* buff, size_t sz, boost::asio::detail::transfer_at_least_t transfer_at_least, handler_obj& hndlr)
 		{
-			if(m_ssl_options.support != ssl_support_t::e_ssl_support_enabled)
+			if(m_ssl_options.support == ssl_support_t::e_ssl_support_disabled)
 				boost::asio::async_read(m_ssl_socket->next_layer(), boost::asio::buffer(buff, sz), transfer_at_least, hndlr);
 			else
 				boost::asio::async_read(*m_ssl_socket, boost::asio::buffer(buff, sz), transfer_at_least, hndlr);

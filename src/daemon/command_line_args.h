@@ -36,6 +36,8 @@
 
 namespace daemon_args
 {
+  std::string const WINDOWS_SERVICE_NAME = "NERVA Daemon";
+
   const command_line::arg_descriptor<std::string, false, true, 2> arg_config_file = {
     "config-file"
   , "Specify configuration file"
@@ -124,6 +126,17 @@ namespace daemon_args
         return std::to_string(config::stagenet::ZMQ_RPC_DEFAULT_PORT);
       return val;
     }
+  };
+
+  const command_line::arg_descriptor<bool> arg_zmq_rpc_disabled = {
+    "no-zmq"
+  , "Disable ZMQ RPC server"
+  };
+
+  const command_line::arg_descriptor<bool> arg_noanalytics = {
+    "no-analytics"
+  , "Do not submit any information to the node map"
+  , false
   };
 
 }  // namespace daemon_args

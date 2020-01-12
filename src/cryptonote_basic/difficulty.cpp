@@ -109,7 +109,7 @@ namespace cryptonote {
     return a + b < a || (c && a + b == (uint64_t) -1);
   }
 
-  bool check_hash(const crypto::hash &hash, difficulty_type difficulty) {
+  bool check_hash(const crypto::hash &hash, uint64_t difficulty) {
     uint64_t low, high, top, cur;
     // First check the highest word, this will most likely fail for a random hash.
     mul(swap64le(((const uint64_t *) &hash)[3]), difficulty, top, high);
@@ -126,7 +126,21 @@ namespace cryptonote {
     return !carry;
   }
 
-  difficulty_type next_difficulty(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds) {
+  std::string hex(difficulty_type_128 v) {
+    static const char chars[] = "0123456789abcdef";
+    std::string s;
+    while (v > 0)
+    {
+      s.push_back(chars[(v & 0xf).convert_to<unsigned>()]);
+      v >>= 4;
+    }
+    if (s.empty())
+      s += "0";
+    std::reverse(s.begin(), s.end());
+    return "0x" + s;
+  }
+
+  uint64_t next_difficulty(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds) {
 
     if(timestamps.size() > DIFFICULTY_WINDOW)
     {
@@ -157,7 +171,7 @@ namespace cryptonote {
     if (time_span == 0) {
       time_span = 1;
     }
-    difficulty_type total_work = cumulative_difficulties[cut_end - 1] - cumulative_difficulties[cut_begin];
+    uint64_t total_work = (cumulative_difficulties[cut_end - 1] - cumulative_difficulties[cut_begin]).convert_to<uint64_t>();
     assert(total_work > 0);
     uint64_t low, high;
     mul(total_work, target_seconds, low, high);
@@ -169,7 +183,7 @@ namespace cryptonote {
     return (low + time_span - 1) / time_span;
   }
 
-  difficulty_type next_difficulty_v2(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds) {
+  uint64_t next_difficulty_v2(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds) {
 
     if (timestamps.size() > DIFFICULTY_BLOCKS_COUNT_V2)
     {
@@ -227,7 +241,7 @@ namespace cryptonote {
       adjusted_total_timespan = MIN_AVERAGE_TIMESPAN * timespan_length;
     }
 
-    difficulty_type total_work = cumulative_difficulties[cut_end - 1] - cumulative_difficulties[cut_begin];
+    uint64_t total_work = (cumulative_difficulties[cut_end - 1] - cumulative_difficulties[cut_begin]).convert_to<uint64_t>();
     assert(total_work > 0);
 
     uint64_t low, high;
@@ -264,7 +278,7 @@ namespace cryptonote {
   t=T*N/2 if t < T*N/2  # in case of startup weirdness, keep t reasonable
   next_D = d * k / t
   */
-  difficulty_type next_difficulty_v3(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds, bool v4) {
+  uint64_t next_difficulty_v3(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds, bool v4) {
 
     if (timestamps.size() > DIFFICULTY_BLOCKS_COUNT_V3)
     {
@@ -326,7 +340,7 @@ namespace cryptonote {
       weighted_timespans = minimum_timespan;
     }
 
-    difficulty_type total_work = cumulative_difficulties.back() - cumulative_difficulties.front();
+    uint64_t total_work = (cumulative_difficulties.back() - cumulative_difficulties.front()).convert_to<uint64_t>();
     assert(total_work > 0);
 
     uint64_t low, high;
@@ -363,7 +377,7 @@ namespace cryptonote {
 
   // Cryptonote clones:  #define DIFFICULTY_BLOCKS_COUNT_V2 DIFFICULTY_WINDOW_V2 + 1
 
-  difficulty_type next_difficulty_v6(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds) {
+  uint64_t next_difficulty_v6(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds) {
 
     const int64_t T = static_cast<int64_t>(target_seconds);
     size_t N = DIFFICULTY_WINDOW_V6;
@@ -396,7 +410,7 @@ namespace cryptonote {
     for (size_t i = 1; i <= N; i++) {
       solveTime = static_cast<int64_t>(timestamps[i]) - static_cast<int64_t>(timestamps[i - 1]);
       solveTime = std::min<int64_t>((T * 10), std::max<int64_t>(solveTime, -FTL));
-      difficulty = cumulative_difficulties[i] - cumulative_difficulties[i - 1];
+      difficulty = (cumulative_difficulties[i] - cumulative_difficulties[i - 1]).convert_to<uint64_t>();
       LWMA += (int64_t)(solveTime * i) / k;
       sum_inverse_D += 1 / static_cast<double>(difficulty);
     }

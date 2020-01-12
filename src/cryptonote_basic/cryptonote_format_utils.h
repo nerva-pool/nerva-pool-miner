@@ -57,6 +57,8 @@ namespace cryptonote
   bool parse_and_validate_tx_from_blob(const blobdata& tx_blob, transaction& tx, crypto::hash& tx_hash);
   bool parse_and_validate_tx_from_blob(const blobdata& tx_blob, transaction& tx);
   bool parse_and_validate_tx_base_from_blob(const blobdata& tx_blob, transaction& tx);
+  bool is_v1_tx(const blobdata_ref& tx_blob);
+  bool is_v1_tx(const blobdata& tx_blob);
 
   template<typename T>
   bool find_tx_extra_field_by_type(const std::vector<tx_extra_field>& tx_extra_fields, T& field, size_t index = 0)
@@ -109,10 +111,13 @@ namespace cryptonote
   bool get_transaction_hash(const transaction& t, crypto::hash& res);
   bool get_transaction_hash(const transaction& t, crypto::hash& res, size_t& blob_size);
   bool get_transaction_hash(const transaction& t, crypto::hash& res, size_t* blob_size);
+  bool calculate_transaction_prunable_hash(const transaction& t, const cryptonote::blobdata *blob, crypto::hash& res);
+  crypto::hash get_transaction_prunable_hash(const transaction& t, const cryptonote::blobdata *blob = NULL);
   bool calculate_transaction_hash(const transaction& t, crypto::hash& res, size_t* blob_size);
+  crypto::hash get_pruned_transaction_hash(const transaction& t, const crypto::hash &pruned_data_hash);
   blobdata get_block_hashing_blob(const block& b);
 
-  bool calculate_block_hash(const block& b, crypto::hash& res);
+  bool calculate_block_hash(const block& b, crypto::hash& res, const blobdata *blob = NULL);
   bool get_block_hash(const block& b, crypto::hash& res);
   crypto::hash get_block_hash(const block& b);
   bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b, crypto::hash *block_hash);  
@@ -123,6 +128,9 @@ namespace cryptonote
   bool check_inputs_types_supported(const transaction& tx);
   bool check_outs_valid(const transaction& tx);
   bool parse_amount(uint64_t& amount, const std::string& str_amount);
+  uint64_t get_transaction_weight(const transaction &tx);
+  uint64_t get_transaction_weight(const transaction &tx, size_t blob_size);
+  uint64_t get_pruned_transaction_weight(const transaction &tx);
 
   bool check_money_overflow(const transaction& tx);
   bool check_outs_overflow(const transaction& tx);

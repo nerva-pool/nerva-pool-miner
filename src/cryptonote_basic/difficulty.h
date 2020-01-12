@@ -33,29 +33,19 @@
 
 #include <cstdint>
 #include <vector>
-
+#include <boost/multiprecision/cpp_int.hpp>
 #include "crypto/hash.h"
 
 namespace cryptonote
 {
-    typedef std::uint64_t difficulty_type;
+    typedef boost::multiprecision::uint128_t difficulty_type_128;
 
-    /**
-     * @brief checks if a hash fits the given difficulty
-     *
-     * The hash passes if (hash * difficulty) < 2^256.
-     * Phrased differently, if (hash * difficulty) fits without overflow into
-     * the least significant 256 bits of the 320 bit multiplication result.
-     *
-     * @param hash the hash to check
-     * @param difficulty the difficulty to check against
-     *
-     * @return true if valid, else false
-     */
-    bool check_hash(const crypto::hash &hash, difficulty_type difficulty);
+    std::string hex(difficulty_type_128 v);
 
-    difficulty_type next_difficulty_v2(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds);
-    difficulty_type next_difficulty(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds);
-    difficulty_type next_difficulty_v3(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds, bool v4);
-    difficulty_type next_difficulty_v6(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds);
+    bool check_hash(const crypto::hash &hash, uint64_t difficulty);
+
+    uint64_t next_difficulty(std::vector<uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds);
+    uint64_t next_difficulty_v2(std::vector<uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds);
+    uint64_t next_difficulty_v3(std::vector<uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds, bool v4);
+    uint64_t next_difficulty_v6(std::vector<uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds);
 }

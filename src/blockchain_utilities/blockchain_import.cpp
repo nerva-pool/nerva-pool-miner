@@ -38,7 +38,6 @@
 #include "misc_log_ex.h"
 #include "bootstrap_file.h"
 #include "bootstrap_serialization.h"
-#include "blocks/blocks.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "serialization/binary_utils.h" // dump_binary(), parse_binary()
 #include "serialization/json_utils.h" // dump_json()
@@ -140,7 +139,7 @@ int check_flush(cryptonote::core &core, std::vector<block_complete_entry> &block
     }
     hashes.push_back(cryptonote::get_block_hash(block));
   }
-  core.prevalidate_block_hashes(core.get_blockchain_storage().get_db().height(), hashes);
+  core.prevalidate_block_hashes(core.get_blockchain_storage().get_db().height(), hashes, {});
 
   std::vector<block> pblocks;
   if (!core.prepare_handle_incoming_blocks(blocks, pblocks))
@@ -166,7 +165,7 @@ int check_flush(cryptonote::core &core, std::vector<block_complete_entry> &block
       if(tvc.m_verifivation_failed)
       {
         MERROR("transaction verification failed, tx_id = "
-            << epee::string_tools::pod_to_hex(get_blob_hash(tx_blob)));
+            << epee::string_tools::pod_to_hex(get_blob_hash(tx_blob.blob)));
         core.cleanup_handle_incoming_blocks();
         return 1;
       }
@@ -174,7 +173,7 @@ int check_flush(cryptonote::core &core, std::vector<block_complete_entry> &block
 
     // process block
 
-    block_verification_context bvc = boost::value_initialized<block_verification_context>();
+    block_verification_context bvc = {};
 
     core.handle_incoming_block(block_entry.block, pblocks.empty() ? NULL : &pblocks[blockidx++], bvc, false); // <--- process block
 
@@ -401,13 +400,17 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
         {
           cryptonote::blobdata block;
           cryptonote::block_to_blob(bp.block, block);
-          std::vector<cryptonote::blobdata> txs;
+          std::vector<tx_blob_entry> txs;
           for (const auto &tx: bp.txs)
           {
-            txs.push_back(cryptonote::blobdata());
-            cryptonote::tx_to_blob(tx, txs.back());
+            txs.push_back({cryptonote::blobdata(), crypto::null_hash});
+            cryptonote::tx_to_blob(tx, txs.back().blob);
           }
-          blocks.push_back({block, txs});
+          block_complete_entry bce;
+          bce.pruned = false;
+          bce.block = std::move(block);
+          bce.txs = std::move(txs);
+          blocks.push_back(bce);
           int ret = check_flush(core, blocks, false);
           if (ret)
           {
@@ -437,17 +440,18 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
             txs.push_back(std::make_pair(tx, tx_to_blob(tx)));
           }
 
-          size_t block_size;
-          difficulty_type cumulative_difficulty;
+          size_t block_weight;
+          difficulty_type_128 cumulative_difficulty;
           uint64_t coins_generated;
 
-          block_size = bp.block_size;
+          block_weight = bp.block_weight;
           cumulative_difficulty = bp.cumulative_difficulty;
           coins_generated = bp.coins_generated;
 
           try
           {
-            core.get_blockchain_storage().get_db().add_block(std::make_pair(b, block_to_blob(b)), block_size, cumulative_difficulty, coins_generated, txs);
+            uint64_t long_term_block_weight = core.get_blockchain_storage().get_next_long_term_block_weight(block_weight);
+            core.get_blockchain_storage().get_db().add_block(std::make_pair(b, block_to_blob(b)), block_weight, long_term_block_weight, cumulative_difficulty, coins_generated, txs);
           }
           catch (const std::exception& e)
           {
@@ -659,6 +663,7 @@ int main(int argc, char* argv[])
     return 0;
   }
 
+  MINFO("database: LMDB");
   MINFO("verify:  " << std::boolalpha << opt_verify << std::noboolalpha);
   if (opt_batch)
   {
@@ -682,11 +687,9 @@ int main(int argc, char* argv[])
   {
 
   core.disable_dns_checkpoints(true);
-#if defined(PER_BLOCK_CHECKPOINT)
-  const GetCheckpointsCallback& get_checkpoints = blocks::GetCheckpointsData;
-#else
+  
   const GetCheckpointsCallback& get_checkpoints = nullptr;
-#endif
+
   if (!core.init(vm, nullptr, get_checkpoints))
   {
     std::cerr << "Failed to initialize core" << ENDL;
