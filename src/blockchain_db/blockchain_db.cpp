@@ -59,6 +59,11 @@ const command_line::arg_descriptor<uint32_t> arg_db_readers  = {
 , "Number of database readers to use"
 , 126U
 };
+const command_line::arg_descriptor<uint32_t> arg_pop_blocks  = {
+  "pop-blocks"
+, "Pop n blocks from the chain"
+, 0U
+};
 
 BlockchainDB *new_db()
 {
@@ -70,6 +75,7 @@ void BlockchainDB::init_options(boost::program_options::options_description& des
   command_line::add_arg(desc, arg_db_sync_mode);
   command_line::add_arg(desc, arg_db_salvage);
   command_line::add_arg(desc, arg_db_readers);
+  command_line::add_arg(desc, arg_pop_blocks);
 }
 
 void BlockchainDB::pop_block()

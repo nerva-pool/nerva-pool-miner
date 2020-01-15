@@ -476,6 +476,7 @@ namespace cryptonote
     size_t max_txpool_weight = command_line::get_arg(vm, arg_max_txpool_weight);
     bool prune_blockchain = command_line::get_arg(vm, arg_prune_blockchain);
     bool keep_alt_blocks = command_line::get_arg(vm, arg_keep_alt_blocks);
+    uint32_t pop_blocks_count = command_line::get_arg(vm, cryptonote::arg_pop_blocks);
 
     boost::filesystem::path folder(m_config_folder);
     if (m_nettype == FAKECHAIN)
@@ -605,6 +606,21 @@ namespace cryptonote
         db_flags |= DBF_SALVAGE;
 
       db->open(filename, db_flags, db_readers);
+
+      if (pop_blocks_count > 0)
+      {
+        db->batch_start();
+
+        block popped_block;
+        std::vector<transaction> popped_txs;
+        for (uint32_t i=0; i < pop_blocks_count; ++i)
+          db->pop_block(popped_block, popped_txs);
+
+        db->batch_stop();
+        db->show_stats();
+        MGUSER_BLUE("Popped " << pop_blocks_count << " from the chain");
+      }
+      
       if(!db->m_open)
         return false;
     }

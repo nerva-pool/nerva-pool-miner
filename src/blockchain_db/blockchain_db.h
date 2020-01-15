@@ -108,6 +108,7 @@ typedef std::pair<crypto::hash, uint64_t> tx_out_index;
 extern const command_line::arg_descriptor<std::string> arg_db_sync_mode;
 extern const command_line::arg_descriptor<bool, false> arg_db_salvage;
 extern const command_line::arg_descriptor<uint32_t> arg_db_readers;
+extern const command_line::arg_descriptor<uint32_t> arg_pop_blocks;
 
 #pragma pack(push, 1)
 
