@@ -12,6 +12,3 @@
 [submodule "external/curl"]
 	path = external/curl
 	url = https://github.com/curl/curl.git
-[submodule "external/randomx"]
-	path = external/randomx
-	url = https://bitbucket.org/nerva-project/randomx
