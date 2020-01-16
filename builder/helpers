@@ -92,7 +92,7 @@ elif [ $(uname) == "Darwin" ]; then
 		fi
 
 		brew update
-		brew upgrade -all
+		brew upgrade
 		brew install git
 		brew install zeromq
 		brew install cppzmq
