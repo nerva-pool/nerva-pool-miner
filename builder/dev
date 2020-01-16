@@ -20,9 +20,11 @@ if [ ${NERVA_BUILD_OS} = "linux" ]; then
     cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D NO_AES=OFF -D BUILD_EXTRAS=ON -D BUILD_TAG="dev" ../../../..
 elif [ ${NERVA_BUILD_OS} = "windows" ]; then
     cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D NO_AES=OFF -D STATIC=ON -D BUILD_EXTRAS=ON -D BUILD_TAG="dev" -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
+elif [ ${NERVA_BUILD_OS} = "osx" ]; then
+    cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D NO_AES=OFF -D STATIC=ON -D BUILD_EXTRAS=ON -D BUILD_TAG="osx" ../../../..
 else
-    echo "Development builds not supported"
-    exit 0
+    echo "No development build for this platform"
+    exit 1
 fi
 
-make -j30
+make -j8
