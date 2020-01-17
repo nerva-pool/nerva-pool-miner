@@ -188,8 +188,10 @@ POP_WARNINGS
 		return boost::lexical_cast<std::string>(val);
 	}
 	//----------------------------------------------------------------------------
-	inline std::string to_string_hex(uint32_t val)
+	template<typename T>
+	inline std::string to_string_hex(const T &val)
 	{
+    static_assert(std::is_arithmetic<T>::value, "only arithmetic types");
 		std::stringstream ss;
 		ss << std::hex << val;
 		std::string s;
@@ -200,7 +202,7 @@ POP_WARNINGS
 	
 	inline bool compare_no_case(const std::string& str1, const std::string& str2)
 	{
-		
+    
 		return !boost::iequals(str1, str2);
 	}
 	//----------------------------------------------------------------------------
