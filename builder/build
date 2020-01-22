@@ -31,6 +31,8 @@ function build()
 build aes
 build noaes
 
+build_dir=${BUILDER_DIR}/output/${NERVA_BUILD_OS}/${BUILD_TYPE}
+
 mv ${build_dir}-aes/bin/nervad ${build_dir}-aes/bin/nervad-aes
 mv ${build_dir}-noaes/bin/nervad ${build_dir}-noaes/bin/nervad-noaes
 
