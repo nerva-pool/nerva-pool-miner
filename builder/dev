@@ -1,30 +1,20 @@
-#!/bin/bash -e
-
-reset
+#!/bin/bash
 
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
-source ${BUILDER_DIR}/helpers
-
-detectos
-detectversion
 
 if [ -z ${BUILD_TYPE} ]; then
 	export BUILD_TYPE=debug
 fi
 
-mkdir -p ${BUILDER_DIR}/build/dev/${BUILD_TYPE}
-cd ${BUILDER_DIR}/build/dev/${BUILD_TYPE}
+source ${BUILDER_DIR}/environment
 
-if [ ${NERVA_BUILD_OS} = "linux" ]; then
-    cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D NO_AES=OFF -D BUILD_EXTRAS=ON -D BUILD_TAG="dev" ../../../..
-elif [ ${NERVA_BUILD_OS} = "windows" ]; then
-    cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D NO_AES=OFF -D STATIC=ON -D BUILD_EXTRAS=ON -D BUILD_TAG="dev" -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
-elif [ ${NERVA_BUILD_OS} = "osx" ]; then
-    cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D NO_AES=OFF -D STATIC=ON -D BUILD_EXTRAS=ON -D BUILD_TAG="osx" ../../../..
-else
-    echo "No development build for this platform"
-    exit 1
-fi
+detectos
+detectversion
 
-make -j8
+build_dir=${BUILDER_DIR}/output/${NERVA_BUILD_OS}/${BUILD_TYPE}
+
+mkdir -p ${build_dir}-aes
+cd ${build_dir}-aes
+cmake_cmd aes
+make -j20

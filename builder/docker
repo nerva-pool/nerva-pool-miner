@@ -12,12 +12,12 @@ echo Version detected as ${NERVA_VERSION}: ${NERVA_CODENAME}
 mkdir -p ${BUILDER_DIR}/build/release-aes
 cd ${BUILDER_DIR}/build/release-aes
 cmake -D CMAKE_BUILD_TYPE=release -D STATIC=ON -D BUILD_EXTRAS=ON -D NO_AES=OFF -D BUILD_TAG="docker" ../../..
-make -j20
+make -j4
 
 mkdir -p ${BUILDER_DIR}/build/release-noaes
 cd ${BUILDER_DIR}/build/release-noaes
 cmake -D CMAKE_BUILD_TYPE=release -D STATIC=ON -D NO_AES=ON -D BUILD_TAG="docker" ../../..
-make -j20
+make -j4
 
 mv ${BUILDER_DIR}/build/release-aes/bin/nervad ${BUILDER_DIR}/build/release-aes/bin/nervad-aes
 mv ${BUILDER_DIR}/build/release-noaes/bin/nervad ${BUILDER_DIR}/build/release-noaes/bin/nervad-noaes

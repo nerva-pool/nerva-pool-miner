@@ -1,0 +1,81 @@
+#!/bin/bash
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+
+if [ -z ${REPO_NAME_FULL} ]; then
+	export REPO_NAME_FULL=NERVA
+fi
+
+if [ -z ${REPO_NAME} ]; then
+	export REPO_NAME=nerva
+fi
+
+if [ -z ${BUILD_TYPE} ]; then
+	export BUILD_TYPE=release
+fi
+
+function detectos()
+{
+	if [ "$(uname)" == "Linux" ]; then
+		if [[ -z "${NERVA_BUILD_DISTRO}" ]]; then
+			local os_distro="unknown"
+
+			if [ -f /etc/os-release ]; then
+				source /etc/os-release
+				os_distro=$ID
+			elif [ -f /etc/lsb-release ]; then
+				source /etc/lsb-release
+				os_distro=$DISTRIB_ID
+			fi
+		fi
+		export NERVA_BUILD_OS="linux"
+		export NERVA_BUILD_DISTRO=${os_distro}
+	elif [ "$(uname)" == "Darwin" ]; then
+		export NERVA_BUILD_OS="osx"
+	elif [ "$(expr substr $(uname -s) 1 7)" == "MSYS_NT" ]; then
+		export NERVA_BUILD_OS="windows"
+	else
+		echo "Unsupported OS"
+		exit 0
+	fi
+
+	echo OS detected ${NERVA_BUILD_OS} ${NERVA_BUILD_DISTRO}
+}
+
+function detectversion()
+{
+    ver=$(awk '/#define DEF_MONERO_VERSION /{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
+	name=$(awk '/#define DEF_MONERO_RELEASE_NAME /{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
+    export NERVA_VERSION=$(echo ${ver} | tr -d '"')
+	export NERVA_CODENAME=$(echo ${name} | tr -d '"')
+    echo Version detected as ${REPO_NAME_FULL} ${NERVA_VERSION}: ${NERVA_CODENAME}
+}
+
+function cmake_cmd()
+{
+	no_aes=OFF
+	build_extras=OFF
+
+	if [ "$1" == "aes" ]; then
+		no_aes=OFF
+		build_extras=ON
+	elif [ "$1" == "no-aes" ]; then
+		no_aes=ON
+		build_extras=OFF
+	else
+		echo "Unsupported configuration" $1
+		exit 1
+	fi
+	
+	if [ ${NERVA_BUILD_OS} == "linux" ]; then
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=OFF -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
+	elif [ ${NERVA_BUILD_OS} == "osx" ]; then
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=OFF -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
+	elif [ ${NERVA_BUILD_OS} == "windows" ]; then
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
+	else
+		echo "Unsupported build platform"
+		exit 1
+	fi
+}
