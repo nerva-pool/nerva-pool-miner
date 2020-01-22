@@ -7,22 +7,29 @@ if [ -z ${BUILD_TYPE} ]; then
 	export BUILD_TYPE=release
 fi
 
+if [ -z ${THREAD_COUNT} ]; then
+	export THREAD_COUNT=4
+fi
+
 source ${BUILDER_DIR}/environment
 
 detectos
 detectversion
 
-build_dir=${BUILDER_DIR}/output/${NERVA_BUILD_OS}/${BUILD_TYPE}
+function build()
+{
+	aes=$1
 
-mkdir -p ${build_dir}-aes
-cd ${build_dir}-aes
-cmake_cmd aes
-make -j4
+	build_dir=${BUILDER_DIR}/output/${NERVA_BUILD_OS}/${BUILD_TYPE}-${aes}
 
-mkdir -p ${build_dir}-noaes
-cd ${build_dir}-noaes
-cmake_cmd no-aes
-make -j4
+	mkdir -p ${build_dir}
+	cd ${build_dir}
+	cmake_cmd ${aes}
+	make -j${THREAD_COUNT}
+}
+
+build aes
+build noaes
 
 mv ${build_dir}-aes/bin/nervad ${build_dir}-aes/bin/nervad-aes
 mv ${build_dir}-noaes/bin/nervad ${build_dir}-noaes/bin/nervad-noaes

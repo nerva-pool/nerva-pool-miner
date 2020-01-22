@@ -60,7 +60,7 @@ function cmake_cmd()
 	if [ "$1" == "aes" ]; then
 		no_aes=OFF
 		build_extras=ON
-	elif [ "$1" == "no-aes" ]; then
+	elif [ "$1" == "noaes" ]; then
 		no_aes=ON
 		build_extras=OFF
 	else
