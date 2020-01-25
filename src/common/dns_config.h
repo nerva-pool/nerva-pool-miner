@@ -23,6 +23,10 @@ namespace dns_config
         "update.getnerva.org"
     };
 
+    static const std::vector<std::string> DOWNLOAD = {
+        "download.getnerva.org"
+    };
+
     static const std::string ROOT_DOMAIN = "getnerva.org";
 
     namespace testnet
@@ -41,8 +45,10 @@ namespace dns_config
     void init(const bool testnet);
 
     std::vector<std::string> get_update_records();
+    std::vector<std::string> get_download_records();
     std::vector<std::string> get_seed_node_records();
     bool has_update_records();
+    bool has_download_records();
     bool has_seed_node_records();
     bool is_dnssec_ok();
 

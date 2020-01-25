@@ -54,7 +54,7 @@ namespace tools
       boost::split(fields, record, boost::is_any_of(":"));
       if (fields.size() != 4)
       {
-        MWARNING("Updates record does not have 4 fields: " << record);
+        MWARNING("Update record does not have 4 fields: " << record);
         continue;
       }
 
@@ -81,6 +81,23 @@ namespace tools
 
   std::string get_update_url(const std::string &software, const std::string &buildtag, const std::string &version)
   {
-    return "https://getnerva.org/content/binaries/" + software + "-v" + version + "_" + buildtag + ".zip";
+    std::vector<std::string> records = dns_config::get_download_records();
+
+    std::string key;
+    std::string value;
+
+    for (const auto& record : records)
+    {
+      const auto idx = record.find_first_of(':');
+      if (idx != std::string::npos)
+      {
+        key = record.substr(0, idx);
+        value = record.substr(idx + 1);
+        if (buildtag == key)
+          return value;
+      }
+    }
+
+    return "Link not available";
   }
 }
