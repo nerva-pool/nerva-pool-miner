@@ -1,4 +1,3 @@
-// Copyright (c) 2019, The Nerva Project
 // Copyright (c) 2017-2019, The Monero Project
 // 
 // All rights reserved.
@@ -66,7 +65,7 @@ namespace hw {
     #endif
 
     /* ===================================================================== */
-    /* ===                        Keymap                                ==== */
+    /* ===                        hmacmap                               ==== */
     /* ===================================================================== */
 
     SecHMAC::SecHMAC(const uint8_t s[32], const uint8_t h[32]) {
@@ -98,6 +97,10 @@ namespace hw {
     void HMACmap::clear() {
       hmacs.clear();
     }
+
+    /* ===================================================================== */
+    /* ===                        Keymap                                ==== */
+    /* ===================================================================== */
 
     ABPkeys::ABPkeys(const rct::key& A, const rct::key& B, const bool is_subaddr,  const bool is_change, const bool need_additional_txkeys,  const size_t real_output_index, const rct::key& P, const rct::key& AK) {
       Aout = A;
@@ -922,7 +925,7 @@ namespace hw {
         this->length_send = offset;
         this->exchange();
 
-        //pub key
+        //sec key
         offset = 0;
         this->receive_secret((unsigned char*)r.data, offset);
 
@@ -1057,7 +1060,7 @@ namespace hw {
         #endif
 
         int offset = set_command_header_noopt(INS_DERIVATION_TO_SCALAR);
-        //derivattion
+        //derivation
         this->send_secret((unsigned char*)derivation.data, offset);
 
         //index
@@ -1071,7 +1074,7 @@ namespace hw {
         this->length_send = offset;
         this->exchange();
 
-        //derivattion data
+        //derivation data
         offset = 0;
         this->receive_secret((unsigned char*)res.data, offset);
 
@@ -1115,7 +1118,7 @@ namespace hw {
         this->exchange();
 
         offset = 0;
-        //pub key
+        //sec key
         this->receive_secret((unsigned char*)derived_sec.data, offset);
 
         #ifdef DEBUG_HWDEVICE
@@ -1309,7 +1312,6 @@ namespace hw {
 
     bool device_ledger::open_tx(crypto::secret_key &tx_key) {
         AUTO_LOCK_CMD();
-
         this->lock();
         key_map.clear();
         hmac_map.clear();
@@ -1327,11 +1329,13 @@ namespace hw {
         this->length_send = offset;
         this->exchange();
 
+        //skip R, receive: r, r_hmac, fake_a, a_hmac, fake_b, hmac_b
         unsigned char tmp[32];
         offset = 32;
         this->receive_secret((unsigned char*)tx_key.data, offset);
         this->receive_secret(tmp, offset);
         this->receive_secret(tmp, offset);
+
         #ifdef DEBUG_HWDEVICE
         const crypto::secret_key r_x = hw::ledger::decrypt(tx_key); 
         log_hexbuffer("open_tx: [[OUT]] R ", (char*)&this->buffer_recv[0], 32);
@@ -1739,7 +1743,6 @@ namespace hw {
           offset+=32;
           //AKout
           this->send_secret(outKeys.AKout.bytes, offset);
-          // dummy: is_subaddress Aout Bout AKout
 
           //C
           memmove(this->buffer_send+offset, data+C_offset,32);

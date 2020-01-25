@@ -1,4 +1,3 @@
-// Copyright (c) 2019, The Nerva Project
 // Copyright (c) 2017-2019, The Monero Project
 // 
 // All rights reserved.
