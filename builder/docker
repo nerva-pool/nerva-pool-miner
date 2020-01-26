@@ -1,0 +1,8 @@
+#!/bin/bash
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+export BUILD_TYPE=Release
+export THREAD_COUNT=12
+export STATIC=ON
+
+${dir}/build
