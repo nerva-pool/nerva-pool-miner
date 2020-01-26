@@ -33,7 +33,7 @@ function detectos()
 		export NERVA_BUILD_DISTRO=${os_distro}
 	elif [ "$(uname)" == "Darwin" ]; then
 		export NERVA_BUILD_OS="osx"
-	elif [ "$(expr substr $(uname -s) 1 7)" == "MSYS_NT" ]; then
+	elif [ "$(expr substr $(uname -s) 1 7)" == "MSYS_NT" ] || [ "$(expr substr $(uname -s) 1 7)" == "MINGW64" ]; then
 		export NERVA_BUILD_OS="windows"
 	else
 		echo "Unsupported OS"
@@ -69,9 +69,9 @@ function cmake_cmd()
 	fi
 	
 	if [ ${NERVA_BUILD_OS} == "linux" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=OFF -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
 	elif [ ${NERVA_BUILD_OS} == "osx" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=OFF -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
 	elif [ ${NERVA_BUILD_OS} == "windows" ]; then
 		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
 	else
