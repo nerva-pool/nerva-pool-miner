@@ -5,10 +5,12 @@
              "name": "Mainnet: Node",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nervad",
             "args": [
                 "--quicksync", "${workspaceFolder}/quicksync.raw",
-                "--log-level", "2"
+                "--log-level", "1",
+                "--min-version", "0.1.6.8",
+                "--add-exclusive-node", "180.150.72.169"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -27,7 +29,7 @@
             "name": "Mainnet: Cli Wallet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nerva-wallet-cli",
             "args": [
                 "--wallet-file", "~/.nerva/wallets/angrywasp",
                 "--password", "''",
@@ -50,7 +52,7 @@
             "name": "Mainnet: Rpc Wallet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-rpc",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nerva-wallet-rpc",
             "args": [
                 "--rpc-bind-port", "21525", 
                 "--daemon-address", "127.0.0.1:17566", 
@@ -74,7 +76,7 @@
             "name": "Testnet: Node",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nervad",
             "args": [
                 "--data-dir", "${workspaceFolder}/db",
                 "--testnet",
@@ -99,7 +101,7 @@
             "name": "Testnet: Cli Wallet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nerva-wallet-cli",
             "args": [
                 "--testnet",
                 "--wallet-file", "~/.nerva/wallets/angrywasp-testnet",
@@ -123,7 +125,7 @@
             "name": "Testnet: Rpc Wallet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-rpc",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nerva-wallet-rpc",
             "args": [
                 "--testnet", 
                 "--rpc-bind-port", "19566", 
@@ -149,7 +151,7 @@
             "name": "Stagenet: Node",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nervad",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nervad",
             "args": [
                 "--data-dir", "${workspaceFolder}/db",
                 "--stagenet",
@@ -174,7 +176,7 @@
             "name": "Stagenet: Cli Wallet",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nerva-wallet-cli",
             "args": [
                 "--stagenet",
                 "--wallet-file", "${workspaceFolder}/db/t1",
@@ -198,7 +200,7 @@
             "name": "Testnet: Ledger",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nerva-wallet-cli",
             "args": [
                 "--testnet",
                 "--hw-device", "Ledger",
@@ -223,7 +225,7 @@
             "name": "Testnet: Ledger Restore",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-wallet-cli",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nerva-wallet-cli",
             "args": [
                 "--testnet",
                 "--generate-from-device", "~/.nerva/wallets/ledger",
@@ -249,7 +251,7 @@
             "name": "Utility: Prune",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-blockchain-prune",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nerva-blockchain-prune",
             "args": [
                 "--data-dir", "${workspaceFolder}/db",
                 "--stagenet",
@@ -272,7 +274,7 @@
             "name": "Utility: Export Quicksync",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builder/build/dev/debug/bin/nerva-quicksync-export",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nerva-quicksync-export",
             "args": [
                 "--output-file", "${workspaceFolder}/quicksync.raw",
                 "--log-level", "2",

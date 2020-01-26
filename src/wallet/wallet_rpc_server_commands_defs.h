@@ -2208,7 +2208,7 @@ namespace wallet_rpc
   struct COMMAND_RPC_RESTORE_NONDETERMINISTIC_WALLET
   {
    
-    struct request
+    struct request_t
     {
       uint64_t restore_height;
       std::string filename;
@@ -2230,8 +2230,9 @@ namespace wallet_rpc
       KV_SERIALIZE_OPT(autosave_current, true)
       END_KV_SERIALIZE_MAP()
     };
+    typedef epee::misc_utils::struct_init<request_t> request;
 
-    struct response
+    struct response_t
     {
       std::string address;
       std::string seed;
@@ -2243,6 +2244,7 @@ namespace wallet_rpc
       KV_SERIALIZE(info)
       END_KV_SERIALIZE_MAP()
     };
+    typedef epee::misc_utils::struct_init<response_t> response;
   };
 
   struct COMMAND_RPC_RESTORE_DETERMINISTIC_WALLET

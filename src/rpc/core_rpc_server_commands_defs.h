@@ -1817,6 +1817,7 @@ namespace cryptonote
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<request_t> request;
+
     struct response_t
     {
       std::string status;

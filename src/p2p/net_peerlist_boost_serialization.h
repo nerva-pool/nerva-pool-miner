@@ -42,8 +42,6 @@
 #include "common/pruning.h"
 #endif
 
-BOOST_CLASS_VERSION(nodetool::peerlist_entry, 3)
-
 namespace boost
 {
   namespace serialization
