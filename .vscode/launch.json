@@ -6,12 +6,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/nervad",
-            "args": [
-                "--quicksync", "${workspaceFolder}/quicksync.raw",
-                "--log-level", "1",
-                "--min-version", "0.1.6.8",
-                "--add-exclusive-node", "180.150.72.169"
-            ],
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

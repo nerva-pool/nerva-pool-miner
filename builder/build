@@ -2,15 +2,6 @@
 
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
-
-if [ -z ${BUILD_TYPE} ]; then
-	export BUILD_TYPE=release
-fi
-
-if [ -z ${THREAD_COUNT} ]; then
-	export THREAD_COUNT=4
-fi
-
 source ${BUILDER_DIR}/environment
 
 detectos
@@ -27,6 +18,8 @@ function build()
 	cmake_cmd ${aes}
 	make -j${THREAD_COUNT}
 }
+
+print_env
 
 build aes
 build noaes

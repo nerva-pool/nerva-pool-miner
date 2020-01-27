@@ -1000,8 +1000,8 @@ PRAGMA_WARNING_DISABLE_VS(4355)
       MDEBUG("start accept (IPv4)");
       new_connection_.reset(new connection<t_protocol_handler>(io_service_, m_state, m_connection_type, m_state->ssl_options().support));
       acceptor_.async_accept(new_connection_->socket(),
-	boost::bind(&boosted_tcp_server<t_protocol_handler>::handle_accept_ipv4, this,
-	boost::asio::placeholders::error));
+      boost::bind(&boosted_tcp_server<t_protocol_handler>::handle_accept_ipv4, this,
+      boost::asio::placeholders::error));
     }
     catch (const std::exception &e)
     {

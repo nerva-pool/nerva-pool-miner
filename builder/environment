@@ -19,6 +19,10 @@ if [ -z ${STATIC} ]; then
 	export STATIC=OFF
 fi
 
+if [ -z ${THREAD_COUNT} ]; then
+	export THREAD_COUNT=30
+fi
+
 function detectos()
 {
 	if [ "$(uname)" == "Linux" ]; then
@@ -82,5 +86,15 @@ function cmake_cmd()
 		echo "Unsupported build platform"
 		exit 1
 	fi
+}
+
+function print_env()
+{
+	stat="static"
+	if [ -z ${STATIC} ] || [ ${STATIC} == "OFF" ]; then
+		stat="dynamic"
+	fi
+
+	echo Build args: ${BUILD_TYPE} -j${THREAD_COUNT} ${stat}
 }
 
