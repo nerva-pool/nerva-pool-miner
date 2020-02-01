@@ -31,8 +31,10 @@
 
 #include <string>
 
+#include "cryptonote_config.h"
+
 namespace tools
 {
-  bool check_updates(const std::string &software, std::string &version, std::string &codename, std::string &notice);
+  bool check_updates(const cryptonote::network_type nettype, const std::string &software, std::string &version, std::string &codename, std::string &notice);
   std::string get_update_url(const std::string &software, const std::string &buildtag, const std::string &version);
 }

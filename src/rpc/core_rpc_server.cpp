@@ -2636,7 +2636,7 @@ namespace cryptonote
 #endif
 
     std::string version, codename, notice;
-    if (!tools::check_updates(software, version, codename, notice))
+    if (!tools::check_updates(nettype(), software, version, codename, notice))
     {
       res.status = "Error checking for updates";
       return true;

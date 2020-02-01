@@ -344,14 +344,6 @@ std::string DNSResolver::get_dns_format_from_oa_address(const std::string& oa_ad
   return addr;
 }
 
-DNSResolver& DNSResolver::instance()
-{
-  boost::lock_guard<boost::mutex> lock(instance_lock);
-
-  static DNSResolver staticInstance;
-  return staticInstance;
-}
-
 DNSResolver DNSResolver::create()
 {
   return DNSResolver();
@@ -416,10 +408,11 @@ std::string address_from_txt_record(const std::string& s)
 std::vector<std::string> addresses_from_url(const std::string& url, bool& dnssec_valid)
 {
   std::vector<std::string> addresses;
+  tools::DNSResolver dr = tools::DNSResolver::create();
   // get txt records
   bool dnssec_available, dnssec_isvalid;
-  std::string oa_addr = DNSResolver::instance().get_dns_format_from_oa_address(url);
-  auto records = DNSResolver::instance().get_txt_record(oa_addr, dnssec_available, dnssec_isvalid);
+  std::string oa_addr = dr.get_dns_format_from_oa_address(url);
+  auto records = dr.get_txt_record(oa_addr, dnssec_available, dnssec_isvalid);
 
   // TODO: update this to allow for conveying that dnssec was not available
   if (dnssec_available && dnssec_isvalid)
@@ -476,7 +469,13 @@ namespace
   }
 }
 
-bool load_txt_records_from_dns(std::vector<std::string> &good_records, const std::vector<std::string> &dns_urls)
+bool load_txt_records_from_dns(std::vector<std::string> &records, const std::vector<std::string> &dns_urls)
+{
+  tools::DNSResolver dr = tools::DNSResolver::create();
+  return load_txt_records_from_dns(dr, records, dns_urls);
+}
+
+bool load_txt_records_from_dns(DNSResolver &dr, std::vector<std::string> &good_records, const std::vector<std::string> &dns_urls)
 {
   // Prevent infinite recursion when distributing
   if (dns_urls.empty()) return false;
@@ -492,8 +491,8 @@ bool load_txt_records_from_dns(std::vector<std::string> &good_records, const std
   tools::threadpool::waiter waiter;
   for (size_t n = 0; n < dns_urls.size(); ++n)
   {
-    tpool.submit(&waiter,[n, dns_urls, &records, &avail, &valid](){
-      records[n] = tools::DNSResolver::instance().get_txt_record(dns_urls[n], avail[n], valid[n]); 
+    tpool.submit(&waiter,[&dr, n, dns_urls, &records, &avail, &valid](){
+      records[n] = dr.get_txt_record(dns_urls[n], avail[n], valid[n]); 
     });
   }
   waiter.wait(&tpool);

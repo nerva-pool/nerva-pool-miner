@@ -1735,7 +1735,7 @@ namespace cryptonote
 
     std::string version, codename, notice;
     MCDEBUG("updates", "Checking for a new " << software << " version for " << buildtag);
-    if (!tools::check_updates(software, version, codename, notice))
+    if (!tools::check_updates(m_nettype, software, version, codename, notice))
     {
       MGUSER_MAGENTA("No new update available");
       return false;

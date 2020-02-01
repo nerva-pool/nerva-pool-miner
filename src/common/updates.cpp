@@ -39,9 +39,11 @@
 
 namespace tools
 {
-  bool check_updates(const std::string &software, std::string &version, std::string &codename, std::string &notice)
+  bool check_updates(const cryptonote::network_type nettype, const std::string &software, std::string &version, std::string &codename, std::string &notice)
   {
     bool found = false;
+
+    dns_config::init(nettype == cryptonote::TESTNET);
 
     if (!dns_config::has_update_records())
       return false;
