@@ -1,0 +1,47 @@
+#!/bin/bash
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/environment
+
+detectos
+detectversion
+
+function build()
+{
+	aes=$1
+
+	build_dir=${BUILDER_DIR}/output/${NERVA_BUILD_OS}/${BUILD_TYPE}-${aes}
+
+	mkdir -p ${build_dir}
+	cd ${build_dir}
+	cmake_cmd ${aes}
+	make -j${THREAD_COUNT}
+}
+
+print_env
+
+build aes
+build noaes
+
+build_dir=${BUILDER_DIR}/output/${NERVA_BUILD_OS}/${BUILD_TYPE}
+
+ext=""
+
+if [ ${NERVA_BUILD_OS} == "windows" ]; then
+	ext=".exe"
+fi
+
+mv ${build_dir}-aes/bin/nervad${ext} ${build_dir}-aes/bin/nervad-aes${ext}
+mv ${build_dir}-noaes/bin/nervad${ext} ${build_dir}-noaes/bin/nervad-noaes${ext}
+
+zip -rj ${BUILDER_DIR}/output/nerva-v${NERVA_VERSION}_${NERVA_BUILD_OS}.zip \
+	${build_dir}-aes/bin/nervad-aes${ext} \
+	${build_dir}-noaes/bin/nervad-noaes${ext} \
+	${build_dir}-aes/bin/nerva-wallet-cli${ext} \
+	${build_dir}-aes/bin/nerva-wallet-rpc${ext} \
+	${build_dir}-aes/bin/nerva-quicksync-export${ext} \
+	${build_dir}-aes/bin/nerva-blockchain-prune${ext} \
+	${build_dir}-aes/bin/nerva-gen-ssl-cert${ext} \
+	${build_dir}-aes/bin/nerva-gen-trusted-multisig${ext}
+
