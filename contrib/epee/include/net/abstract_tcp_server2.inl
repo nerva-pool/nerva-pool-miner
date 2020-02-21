@@ -1013,7 +1013,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
       MERROR("Failed to bind IPv4: " << ipv4_failed);
       if (require_ipv4)
       {
-        throw std::runtime_error("Failed to bind IPv4 (set to required)");
+        throw std::runtime_error("Failed to IPv4 address. Perhaps there is another instance running?");
       }
     }
 
@@ -1051,7 +1051,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
         MERROR("Failed to bind IPv6: " << ipv6_failed);
         if (ipv4_failed != "")
         {
-          throw std::runtime_error("Failed to bind IPv4 and IPv6");
+          throw std::runtime_error("Failed to bind IPv4 and IPv6. Perhaps there is another instance running?");
         }
       }
 

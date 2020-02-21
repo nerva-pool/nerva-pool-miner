@@ -361,13 +361,13 @@ namespace cryptonote
       I prefer pushing target height to the core at the same time it is pushed to the user.
       Nz. */
       int64_t diff = static_cast<int64_t>(hshd.current_height) - static_cast<int64_t>(m_core.get_current_blockchain_height());
-    uint64_t abs_diff = std::abs(diff);
-      uint64_t max_block_height = std::max(hshd.current_height,m_core.get_current_blockchain_height());
-      MGUSER_BLUE(context <<  "New top block candidate: " << m_core.get_current_blockchain_height() << " -> " << hshd.current_height
-        << " [Your node is " << std::abs(diff) << " blocks "
-        << (0 <= diff ? std::string("behind") : std::string("ahead"))
-        << "]");
-      MGUSER_BLUE("SYNCHRONIZATION started");
+      uint64_t abs_diff = std::abs(diff);
+      if (abs_diff > 1)
+      {
+        //This message gets a bit spammy when one block behind
+        MGUSER_BLUE(context << "is " << abs_diff << " blocks "
+          << (0 <= diff ? std::string("ahead") : std::string("behind")));
+      }
       
       if (hshd.current_height >= m_core.get_current_blockchain_height() + 5) // don't switch to unsafe mode just for a few blocks
       {
@@ -1445,8 +1445,8 @@ namespace cryptonote
                 + std::to_string(previous_stripe) + " -> " + std::to_string(current_stripe);
             if (ELPP->vRegistry()->allowed(el::Level::Debug, "sync-info"))
               timing_message += std::string(": ") + m_block_queue.get_overview(current_blockchain_height);
-            MGUSER_YELLOW("Synced " << current_blockchain_height << "/" << target_blockchain_height
-                << progress_message << timing_message);
+            if (current_blockchain_height != target_blockchain_height)
+              MGUSER_YELLOW("Synced " << current_blockchain_height << "/" << target_blockchain_height << progress_message << timing_message);
             if (previous_stripe != current_stripe)
               notify_new_stripe(context, current_stripe);
           }

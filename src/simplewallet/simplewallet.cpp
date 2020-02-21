@@ -4853,10 +4853,7 @@ void simple_wallet::check_background_mining(const epee::wipeable_string &passwor
 {
   tools::wallet2::BackgroundMiningSetupType setup = m_wallet->setup_background_mining();
   if (setup == tools::wallet2::BackgroundMiningNo)
-  {
-    message_writer(console_color_red, false) << tr("Background mining not enabled. Run \"set setup-background-mining 1\" to change.");
     return;
-  }
 
   if (!m_wallet->is_trusted_daemon())
   {
