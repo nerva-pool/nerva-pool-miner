@@ -7,8 +7,8 @@ source ${BUILDER_DIR}/environment
 detectos
 detectversion
 
-export STATIC=ON
-export THREAD_COUNT=2
+export STATIC=OFF
+export THREAD_COUNT=4
 export BUILD_TYPE=release
 
 function build()
