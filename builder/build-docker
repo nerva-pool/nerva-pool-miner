@@ -8,7 +8,7 @@ detectos
 detectversion
 
 export STATIC=OFF
-export THREAD_COUNT=4
+export THREAD_COUNT=20
 export BUILD_TYPE=release
 
 function build()
