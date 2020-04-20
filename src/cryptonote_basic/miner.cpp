@@ -1,3 +1,4 @@
+// Copyright (c) 2020, The NERVA-POOL Project
 // Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2014-2019, The Monero Project
 //
@@ -47,6 +48,10 @@
 #include "string_tools.h"
 #include "storages/portable_storage_template_helper.h"
 #include "boost/logic/tribool.hpp"
+#include "cryptonote_core/blockchain.h"
+
+#include "rapidjson/document.h"     // rapidjson's DOM-style API
+#include "rapidjson/prettywriter.h" // for stringify JSON
 
 #ifdef __APPLE__
   #include <sys/times.h>
@@ -91,8 +96,12 @@ namespace cryptonote
   {
     const command_line::arg_descriptor<std::string> arg_extra_messages =  {"extra-messages-file", "Specify file for extra messages to include into coinbase transactions", "", true};
     const command_line::arg_descriptor<std::string> arg_start_mining =    {"start-mining", "Specify wallet address to mining for", "", true};
+    const command_line::arg_descriptor<bool> arg_pool_mining =            {"pool-mining", "Enable pool mining", true, false};
+    const command_line::arg_descriptor<std::string> arg_pool_host =    {"pool-host", "Specify pool host", "nerva.pooled.work", false};
+    const command_line::arg_descriptor<std::string> arg_pool_port =    {"pool-port", "Specify pool port", "4444", false};
+    const command_line::arg_descriptor<std::string> arg_pool_pass =    {"pool-pass", "Specify pool password", "x", false};
     const command_line::arg_descriptor<uint16_t>    arg_donate_mining =    {"donate-level", "Specify a percentage of blocks to mine to the development wallet", miner::MINING_DEFAULT_DONATION_LEVEL, true};
-    const command_line::arg_descriptor<uint32_t>      arg_mining_threads =  {"mining-threads", "Specify mining threads count", 0, true};
+    const command_line::arg_descriptor<uint32_t>      arg_mining_threads =  {"mining-threads", "Specify mining threads count", 1, false};
     const command_line::arg_descriptor<bool>        arg_bg_mining_enable =  {"bg-mining-enable", "enable background mining", true, true};
     const command_line::arg_descriptor<bool>        arg_bg_mining_ignore_battery =  {"bg-mining-ignore-battery", "if true, assumes plugged in when unable to query system power status", false, true};    
     const command_line::arg_descriptor<uint64_t>    arg_bg_mining_min_idle_interval_seconds =  {"bg-mining-min-idle-interval", "Specify min lookback interval in seconds for determining idle state", miner::BACKGROUND_MINING_DEFAULT_MIN_IDLE_INTERVAL_IN_SECONDS, true};
@@ -100,6 +109,124 @@ namespace cryptonote
     const command_line::arg_descriptor<uint16_t>     arg_bg_mining_miner_target_percentage =  {"bg-mining-miner-target", "Specify maximum percentage cpu use by miner(s)", miner::BACKGROUND_MINING_DEFAULT_MINING_TARGET_PERCENTAGE, true};
   }
 
+  int
+  socket_connect(const std::string &host, const std::string &port)
+  {
+      struct addrinfo hints;
+      struct addrinfo *result, *rp;
+      int s, sfd;
+
+      memset(&hints, 0, sizeof(struct addrinfo));
+      hints.ai_family = AF_UNSPEC;
+      hints.ai_socktype = SOCK_STREAM;
+      hints.ai_flags = AI_NUMERICSERV;
+      hints.ai_protocol = 0;
+
+      s = getaddrinfo(host.c_str(), port.c_str(), &hints, &result);
+      if (s != 0) {
+          LOG_ERROR("getaddrinfo: " << gai_strerror(s));
+          return -1;
+      }
+
+      for (rp = result; rp != NULL; rp = rp->ai_next) {
+          sfd = socket(rp->ai_family, rp->ai_socktype,
+                  rp->ai_protocol);
+          if (sfd == -1)
+              continue;
+
+          if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
+              break;
+
+          close(sfd);
+      }
+
+      if (rp == NULL) {
+          LOG_ERROR("Could not connect");
+          freeaddrinfo(result);
+          return -1;
+      }
+
+      freeaddrinfo(result);
+
+      return sfd;
+  }
+
+  int
+  read_until(int s, std::string &buf, const unsigned char d)
+  {
+      int r = 0;
+      unsigned char c;
+      while ((r = ::recv(s, &c, 1, 0)) > 0 && c != d)
+          buf += c;
+
+      return r;
+  }
+
+  bool
+  stratum_login(int s, const std::string &address, const std::string &pass)
+  {
+      MDEBUG("stratum_login");
+      std::string buf = "{\"jsonrpc\":\"2.0\",\"method\":\"login\",\"params\":{"
+        "\"login\":\"";
+      buf += address + "\",\"pass\":\"" + pass + "\"}}\n";
+
+      int r = ::send(s, buf.data(), buf.size(), 0);
+
+      return r == (int)buf.size();
+  }
+
+  bool
+  stratum_submit(int s,
+      const std::string &id,
+      const std::string &job_id,
+      uint32_t nonce,
+      const crypto::hash &result)
+  {
+      MDEBUG("stratum_submit");
+      char hex_nonce[9];
+
+      snprintf(hex_nonce, sizeof (hex_nonce), "%08x", htonl(nonce));
+
+      std::string buf = "{\"jsonrpc\":\"2.0\",\"method\":\"submit\",\"params\":{"
+          "\"id\":\"";
+      buf += id + "\",\"job_id\":\"" + job_id + "\",\"result\":\"" + epee::string_tools::pod_to_hex(result) + "\",";
+      buf += "\"nonce\":\"";
+      buf += hex_nonce;
+      buf += "\"}}\n";
+
+      int r = ::send(s, buf.data(), buf.size(), 0);
+
+      return r == (int)buf.size();
+  }
+
+  bool
+  stratum_on_job(const rapidjson::Value &job,
+      std::string &id,
+      std::string &blob,
+      std::string &job_id,
+      uint64_t &target,
+      uint64_t &height
+      )
+  {
+      if (job.HasMember("id"))
+          id = job["id"].GetString();
+
+      blob = job["blob"].GetString();
+      job_id = job["job_id"].GetString();
+      height = job["height"].GetUint64();
+      std::string target_hex = job["target"].GetString();
+
+      errno = 0;
+      target = strtoull(target_hex.c_str(), NULL, 16);
+      target = ((uint64_t)ntohl(target) << 32) | (ntohl(target >> 32));
+      if (errno)
+      {
+          LOG_ERROR("Invalid target hex");
+          return false;
+      }
+
+      return true;
+  }
 
   miner::miner(i_miner_handler* phandler, Blockchain* pbc):m_stop(1),
     m_template{},
@@ -121,6 +248,7 @@ namespace cryptonote
     m_total_hashes(0),
     m_do_print_hashrate(false),
     m_do_mining(false),
+    m_pool_mining(true),
     m_current_hash_rate(0),
     m_is_background_mining_enabled(false),
     m_min_idle_seconds(BACKGROUND_MINING_DEFAULT_MIN_IDLE_INTERVAL_IN_SECONDS),
@@ -136,6 +264,17 @@ namespace cryptonote
   {
     try { stop(); }
     catch (...) { /* ignore */ }
+  }
+  //-----------------------------------------------------------------------------------------------------
+  bool miner::set_blob_template(const blobdata& bl, const uint64_t& di, uint64_t height)
+  {
+    CRITICAL_REGION_LOCAL(m_template_lock);
+    m_blob_template = bl;
+    m_diffic = di;
+    m_height = height;
+    ++m_template_no;
+    m_starter_nonce = crypto::rand<uint32_t>();
+    return true;
   }
   //-----------------------------------------------------------------------------------------------------
   bool miner::set_block_template(const block& bl, const uint64_t& di, uint64_t height, uint64_t block_reward)
@@ -157,6 +296,35 @@ namespace cryptonote
 
     return request_block_template();
   }
+
+  bool miner::pool_on_job(
+        std::string id,
+        std::string blob,
+        std::string job_id,
+        uint64_t target,
+        uint64_t height
+        )
+  {
+	CRITICAL_REGION_LOCAL(m_id_lock);
+
+	blobdata blockblob;
+	if(!string_tools::parse_hexstr_to_binbuff(blob, blockblob))
+	{
+	    LOG_ERROR("Invalid hex blob");
+	    return false;
+	}
+
+	if (target >> 32 == 0)
+        target = 0xFFFFFFFFFFFFFFFFULL / (0xFFFFFFFFULL / target);
+
+	m_login_id = id;
+	m_job_id = job_id;
+
+	set_blob_template(blockblob, target, height);
+
+    MGUSER_CYAN("New Job: height: " << height << " target: " << target);
+	return true;
+  }
   //-----------------------------------------------------------------------------------------------------
   bool miner::request_block_template()
   {
@@ -164,6 +332,9 @@ namespace cryptonote
     uint64_t di = AUTO_VAL_INIT(di);
     uint64_t height = AUTO_VAL_INIT(height);
     uint64_t expected_reward; //only used for RPC calls - could possibly be useful here too?
+
+    if (m_pool_mining)
+        return true;
 
     cryptonote::blobdata extra_nonce;
     if(m_extra_messages.size() && m_config.current_extra_message_index < m_extra_messages.size())
@@ -337,14 +508,19 @@ namespace cryptonote
     }
     boost::interprocess::ipcdetail::atomic_write32(&m_stop, 0);
     boost::interprocess::ipcdetail::atomic_write32(&m_thread_index, 0);
+    m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::pool_stratum_thread, this)));
     for(size_t i = 0; i != m_threads_total; i++)
-      m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::worker_thread, this)));
+      m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::pool_worker_thread, this)));
   }
   //-----------------------------------------------------------------------------------------------------
   void miner::init_options(boost::program_options::options_description& desc)
   {
     command_line::add_arg(desc, arg_extra_messages);
     command_line::add_arg(desc, arg_start_mining);
+    command_line::add_arg(desc, arg_pool_mining);
+    command_line::add_arg(desc, arg_pool_host);
+    command_line::add_arg(desc, arg_pool_port);
+    command_line::add_arg(desc, arg_pool_pass);
     command_line::add_arg(desc, arg_donate_mining);
     command_line::add_arg(desc, arg_mining_threads);
     command_line::add_arg(desc, arg_bg_mining_enable);
@@ -380,15 +556,34 @@ namespace cryptonote
       MINFO("Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index);
     }
 
+    if (command_line::has_arg(vm, arg_pool_mining))
+    {
+        m_pool_mining = command_line::get_arg(vm, arg_pool_mining);
+    }
+    if (command_line::has_arg(vm, arg_pool_host))
+    {
+        m_pool_host = command_line::get_arg(vm, arg_pool_host);
+    }
+    if (command_line::has_arg(vm, arg_pool_port))
+    {
+        m_pool_port = command_line::get_arg(vm, arg_pool_port);
+    }
+    if (command_line::has_arg(vm, arg_pool_pass))
+    {
+        m_pool_pass = command_line::get_arg(vm, arg_pool_pass);
+    }
+
     address_parse_info info;
 
     if(command_line::has_arg(vm, arg_start_mining))
     {
-      if(!cryptonote::get_account_address_from_str(info, nettype, command_line::get_arg(vm, arg_start_mining)) || info.is_subaddress)
+      std::string address = command_line::get_arg(vm, arg_start_mining);
+      if(!cryptonote::get_account_address_from_str(info, nettype, address) || (!m_pool_mining && info.is_subaddress))
       {
         LOG_ERROR("Target account address " << command_line::get_arg(vm, arg_start_mining) << " has wrong format, starting daemon canceled");
         return false;
       }
+      m_mining_address = address;
       m_mine_address = info.address;
       m_threads_total = 0;
       m_do_mining = true;
@@ -446,6 +641,10 @@ namespace cryptonote
   bool miner::start(const account_public_address& adr, size_t threads_count, bool do_background, bool ignore_battery)
   {
     m_block_reward = 0;
+
+    if (!m_mining_address.size())
+        m_mining_address = get_account_address_as_str(cryptonote::MAINNET, false, adr);
+
     m_mine_address = adr;
     m_threads_total = static_cast<uint32_t>(threads_count);
     if (threads_count == 0)
@@ -475,10 +674,14 @@ namespace cryptonote
     set_is_background_mining_enabled(do_background);
     set_ignore_battery(ignore_battery);
     
+    m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::pool_stratum_thread, this)));
     for(size_t i = 0; i != m_threads_total; i++)
     {
-      m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::worker_thread, this)));
+      m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::pool_worker_thread, this)));
     }
+
+    if (m_pool_mining)
+        MGUSER_CYAN("Pool mining to " << m_pool_host << ":" << m_pool_port);
 
     if (threads_count == 0)
       MGUSER_CYAN("Mining has started, autodetecting optimal number of threads, good luck!" );
@@ -550,6 +753,9 @@ namespace cryptonote
     MINFO("Mining has been stopped, " << m_threads.size() << " finished" );
     m_threads.clear();
     m_threads_autodetect.clear();
+
+    shutdown(m_socket, SHUT_RDWR);
+    close(m_socket);
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -582,6 +788,175 @@ namespace cryptonote
     }
     if(!m_pausers_count && is_mining())
       MDEBUG("MINING RESUMED");
+  }
+  //-----------------------------------------------------------------------------------------------------
+  bool miner::pool_stratum_thread()
+  {
+      std::string buf;
+
+      m_socket = socket_connect(m_pool_host, m_pool_port);
+      stratum_login(m_socket, m_mining_address, m_pool_pass);
+
+      while (!m_stop) {
+          rapidjson::Document d;
+          buf.clear();
+          int r = read_until(m_socket, buf, '\n');
+          MDEBUG("pool_stratum_thread: read: " << buf);
+
+          if (r <= 0) {
+              close(m_socket);
+
+              if (!m_stop) {
+                  LOG_ERROR("read failure - reconnecting");
+                  misc_utils::sleep_no_w(5000);
+                  m_socket = socket_connect(m_pool_host, m_pool_port);
+                  stratum_login(m_socket, m_mining_address, m_pool_pass);
+              }
+              continue;
+          }
+
+          if (d.Parse(buf.c_str()).HasParseError()) {
+              MDEBUG("Invalid JSON: " << buf);
+              continue;
+          }
+
+          if (!d.IsObject()) {
+              MDEBUG("Invalid JSONRPC: " << buf);
+              continue;
+          }
+
+          auto error = d.FindMember("error");
+
+          if (error != d.MemberEnd() && error->value.IsObject()) {
+              LOG_ERROR("message: " << error->value["message"].GetString());
+              continue;
+          }
+
+          auto result = d.FindMember("result");
+
+          if (result != d.MemberEnd() && result->value.IsObject()) {
+              //auto status = result->value.FindMember("status");
+              auto result_id = result->value.FindMember("id");
+              std::string id = result_id != result->value.MemberEnd() ? result_id->value.GetString() : "";
+              auto job = result->value.FindMember("job");
+              if (job != result->value.MemberEnd() && job->value.IsObject()) {
+                  std::string blob, job_id, target_hex;
+                  uint64_t target = 0, height = 0;
+
+                  stratum_on_job(job->value, id, blob, job_id, target, height);
+
+                  pool_on_job(id, blob, job_id, target, height);
+              }
+          }
+
+          auto method = d.FindMember("method");
+          auto params = d.FindMember("params");
+          if (method != d.MemberEnd() && method->value.IsString()) {
+              const std::string mn = method->value.GetString();
+              if ("job" == mn && params != d.MemberEnd()) {
+                  std::string id, blob, job_id, target_hex;
+                  uint64_t target = 0, height = 0;
+
+                  stratum_on_job(params->value, id, blob, job_id, target, height);
+
+                  pool_on_job(id, blob, job_id, target, height);
+              }
+          }
+
+      }
+
+      close(m_socket);
+      return true;
+  }
+  //-----------------------------------------------------------------------------------------------------
+  bool miner::pool_worker_thread()
+  {
+      uint32_t th_local_index = boost::interprocess::ipcdetail::atomic_inc32(&m_thread_index);
+      MLOG_SET_THREAD_NAME(std::string("[miner ") + std::to_string(th_local_index) + "]");
+      MGINFO("Miner thread was started ["<< th_local_index << "]");
+      uint32_t nonce = m_starter_nonce + th_local_index;
+      uint64_t height = 0;
+      uint64_t local_diff = 0;
+      uint32_t local_template_ver = 0;
+      crypto::cn_hash_context_t *hash_context = crypto::cn_hash_context_create();
+      if (hash_context == NULL)
+      {
+          MERROR("Unable to allocate hash context, terminating miner thread");
+          return false;
+      }
+      blobdata blob;
+      ++m_threads_active;
+      while(!m_stop)
+      {
+          if(m_pausers_count)//anti split workaround
+          {
+              misc_utils::sleep_no_w(100);
+              continue;
+          }
+          else if( m_is_background_mining_enabled )
+          {
+              misc_utils::sleep_no_w(m_miner_extra_sleep);
+              while( !m_is_background_mining_started )
+              {
+                  MGINFO("background mining is enabled, but not started, waiting until start triggers");
+                  boost::unique_lock<boost::mutex> started_lock( m_is_background_mining_started_mutex );
+                  m_is_background_mining_started_cond.wait( started_lock );
+                  if( m_stop ) break;
+              }
+
+              if( m_stop ) continue;
+          }
+
+          if(local_template_ver != m_template_no)
+          {
+              CRITICAL_REGION_BEGIN(m_template_lock);
+              blob = m_blob_template;
+              local_diff = m_diffic;
+              height = m_height;
+              CRITICAL_REGION_END();
+              local_template_ver = m_template_no;
+              nonce = m_starter_nonce + th_local_index;
+          }
+
+          if(!local_template_ver
+             || height > m_phandler->get_current_blockchain_height())
+          {
+              LOG_PRINT_L2("Block template not set yet");
+              epee::misc_utils::sleep_no_w(1000);
+              continue;
+          }
+
+          if (blob.size() < 43)
+              continue;
+
+          blob.replace(39, sizeof (nonce), (const char *)&nonce, sizeof (nonce));
+          crypto::hash h;
+          get_block_longhash(
+                  hash_context,
+                  m_pbc->get_db(),
+                  (uint8_t)blob[0], /*version*/
+                  blob,
+                  h,
+                  height
+                  );
+          uint64_t pow_diff = *(uint64_t *)(h.data + 24);
+
+          if (pow_diff < local_diff)
+          {
+              //we lucky!
+              CRITICAL_REGION_LOCAL(m_id_lock); // also protects socket write
+              ++m_config.current_extra_message_index;
+              MGUSER_GREEN("Found share at height: " << height << " nonce:" << nonce << " pow: " << h << " di: " << pow_diff << " target: " << local_diff);
+              stratum_submit(m_socket, m_login_id, m_job_id, nonce, h);
+          }
+          nonce+=m_threads_total;
+          ++m_hashes;
+          ++m_total_hashes;
+      }
+      crypto::cn_hash_context_free(hash_context);
+      MGINFO("Miner thread stopped ["<< th_local_index << "]");
+      --m_threads_active;
+      return true;
   }
   //-----------------------------------------------------------------------------------------------------
   bool miner::worker_thread()

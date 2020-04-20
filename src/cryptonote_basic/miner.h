@@ -72,6 +72,7 @@ namespace cryptonote
     ~miner();
     bool init(const boost::program_options::variables_map& vm, network_type nettype);
     static void init_options(boost::program_options::options_description& desc);
+    bool set_blob_template(const blobdata& bl, const uint64_t& diffic, uint64_t height);
     bool set_block_template(const block& bl, const uint64_t& diffic, uint64_t height, uint64_t block_reward);
     bool on_block_chain_update();
     bool start(const account_public_address& adr, size_t threads_count, bool do_background = false, bool ignore_battery = false);
@@ -116,6 +117,14 @@ namespace cryptonote
 
   private:
     bool worker_thread();
+    bool pool_stratum_thread();
+    bool pool_worker_thread();
+    bool pool_on_job(
+        std::string id,
+        std::string blob,
+        std::string job_id,
+        uint64_t target,
+        uint64_t height);
     bool request_block_template();
     void  merge_hr();
     void  update_autodetection();
@@ -129,6 +138,17 @@ namespace cryptonote
       END_KV_SERIALIZE_MAP()
     };
 
+    int m_socket;
+
+    blobdata m_blob_template;
+    bool m_pool_mining;
+    std::string m_mining_address;
+    std::string m_pool_host;
+    std::string m_pool_port;
+    std::string m_pool_pass;
+    std::string m_login_id;
+    std::string m_job_id;
+    epee::critical_section m_id_lock;
 
     volatile uint32_t m_stop;
     epee::critical_section m_template_lock;
