@@ -29,10 +29,6 @@
 
 include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 
-if (WIN32 OR STATIC)
-  add_definitions(-DCURL_STATICLIB)
-endif ()
-
 set(common_sources
   base58.cpp
   command_line.cpp
@@ -52,7 +48,6 @@ set(common_sources
   aligned.c
   timings.cc
   combinator.cpp
-  xnv_https.cpp
   dns_config.cpp)
 
 if (STACK_TRACE)
@@ -94,7 +89,6 @@ set(common_private_headers
   aligned.h
   timings.h
   combinator.h
-  xnv_https.h
   dns_config.h)
 
 monero_private_headers(common
@@ -116,7 +110,6 @@ target_link_libraries(common
     ${Boost_REGEX_LIBRARY}
     ${Boost_CHRONO_LIBRARY}
   PRIVATE
-    ${CURL_LIBRARIES}
     ${OPENSSL_LIBRARIES}
     ${EXTRA_LIBRARIES})
 

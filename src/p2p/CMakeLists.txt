@@ -41,7 +41,6 @@ target_link_libraries(p2p
     version
     cryptonote_core
 	net
-    ${CURL_LIBRARIES}
     ${UPNP_LIBRARIES}
     ${Boost_CHRONO_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}

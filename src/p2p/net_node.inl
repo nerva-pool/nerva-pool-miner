@@ -61,7 +61,6 @@
 #include "cryptonote_core/cryptonote_core.h"
 #include "net/parse.h"
 #include "cryptonote_config.h"
-#include "common/xnv_https.h"
 #include "common/dns_config.h"
 
 #include <miniupnp/miniupnpc/miniupnpc.h>
@@ -949,20 +948,6 @@ namespace nodetool
 
       if (hsh_result)
       {
-        std::string host_compare = xnvhttp::get_host(context.m_remote_address.str());
-        for (auto i : blacklist::get_ip_list())
-        {
-          if (i == host_compare)
-          {
-            LOG_PRINT_L0("Host " << i << " is on blacklist");
-            hsh_result = false;
-            break;
-          }
-        }
-      }
-
-      if (hsh_result)
-      {
         uint32_t rsp_ver = version_string_to_integer(rsp.version);
         m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.get_core().get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
         if (rsp_ver < m_minimum_version)
@@ -1001,17 +986,6 @@ namespace nodetool
       {
         LOG_WARNING_CC(context, "COMMAND_HANDSHAKE invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
         return;
-      }
-
-      std::string host_compare = xnvhttp::get_host(context.m_remote_address.str());
-      for (auto i : blacklist::get_ip_list())
-      {
-        if (i == host_compare)
-        {
-          LOG_PRINT_L0("Host " << i << " is on blacklist");
-          block_host(context.m_remote_address);
-          return;
-        }
       }
 
       if (rsp.node_data.version.size() == 0)
@@ -2312,18 +2286,6 @@ namespace nodetool
       drop_connection(context);
       block_host(context.m_remote_address);
       return 1;
-    }
-
-    std::string host_compare = xnvhttp::get_host(context.m_remote_address.str());
-    for (auto i : blacklist::get_ip_list())
-    {
-      if (i == host_compare)
-      {
-        LOG_PRINT_L0("Host " << i << " is on blacklist");
-        drop_connection(context);
-        block_host(context.m_remote_address);
-        return 1;
-      }
     }
 
     uint32_t rsp_ver = version_string_to_integer(arg.node_data.version);
