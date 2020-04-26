@@ -155,7 +155,7 @@ namespace cryptonote
   read_until(int s, std::string &buf, const unsigned char d)
   {
       int r = 0;
-      unsigned char c;
+      char c;
       while ((r = ::recv(s, &c, 1, 0)) > 0 && c != d)
           buf += c;
 
@@ -754,7 +754,6 @@ namespace cryptonote
     m_threads.clear();
     m_threads_autodetect.clear();
 
-    shutdown(m_socket, SHUT_RDWR);
     close(m_socket);
     return true;
   }
