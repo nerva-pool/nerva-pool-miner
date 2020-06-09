@@ -77,7 +77,7 @@ function cmake_cmd()
 	fi
 	
 	if [ ${NERVA_BUILD_OS} == "linux" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D NO_AES=${no_aes} -D BUILD_GUI_DEPS=ON -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
 	elif [ ${NERVA_BUILD_OS} == "osx" ]; then
 		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
 	elif [ ${NERVA_BUILD_OS} == "windows" ]; then
