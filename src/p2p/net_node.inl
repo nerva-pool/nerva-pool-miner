@@ -938,11 +938,7 @@ namespace nodetool
 
       if(code < 0)
       {
-        std::string desc = std::string(epee::levin::get_err_descr(code));
-        ban_reason = "COMMAND_REQUEST_PEER_ID invoke failed (" + desc + ")";
-        LOG_WARNING_CC(context, ban_reason << "(" << code <<  ", " << desc << ")");
-        block_host(context.m_remote_address, ban_reason);
-        hsh_result = false;
+        LOG_WARNING_CC(context, "COMMAND_HANDSHAKE invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
         return;
       }
 
