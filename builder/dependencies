@@ -7,14 +7,6 @@ source ${BUILDER_DIR}/environment
 detectversion
 detectos
 
-if [ -z ${REPO_NAME_FULL} ]; then
-	export REPO_NAME_FULL=NERVA
-fi
-
-if [ -z ${REPO_NAME} ]; then
-	export REPO_NAME=nerva
-fi
-
 if [ ${NERVA_BUILD_OS} == "linux" ]; then
 
 	if [ $NERVA_BUILD_DISTRO == "ubuntu" ] || [ $NERVA_BUILD_DISTRO == "debian" ]; then
