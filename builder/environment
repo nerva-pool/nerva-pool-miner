@@ -70,11 +70,11 @@ function cmake_cmd()
 	fi
 	
 	if [ ${NERVA_BUILD_OS} == "linux" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D BUILD_64=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} -D ARCH="x86-64" ../../../..
 	elif [ ${NERVA_BUILD_OS} == "osx" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D BUILD_64=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} -D ARCH="x86-64" ../../../..
 	elif [ ${NERVA_BUILD_OS} == "windows" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D BUILD_64=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
 	else
 		echo "Unsupported build platform"
 		exit 1
