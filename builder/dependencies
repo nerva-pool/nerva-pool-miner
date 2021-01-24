@@ -34,12 +34,11 @@ elif [ ${NERVA_BUILD_OS} == "osx" ]; then
 	xcode-select --install
 
 	if ! [ -x "$(command -v brew)" ]; then
-		ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+		/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 	fi
 
 	brew update
 	brew upgrade
-	brew install git
 	brew install zeromq
 	brew install cppzmq
 	brew install libsodium
