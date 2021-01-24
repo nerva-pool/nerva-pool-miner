@@ -23,6 +23,10 @@ if [ -z ${THREAD_COUNT} ]; then
 	export THREAD_COUNT=30
 fi
 
+if [ -z ${BUILD_EXTRAS} ]; then
+	export BUILD_EXTRAS=OFF
+fi
+
 function detectos()
 {
 	if [ "$(uname)" == "Linux" ]; then
@@ -63,25 +67,22 @@ function detectversion()
 function cmake_cmd()
 {
 	no_aes=OFF
-	build_extras=OFF
 
 	if [ "$1" == "aes" ]; then
 		no_aes=OFF
-		build_extras=ON
 	elif [ "$1" == "noaes" ]; then
 		no_aes=ON
-		build_extras=OFF
 	else
 		echo "Unsupported configuration" $1
 		exit 1
 	fi
 	
 	if [ ${NERVA_BUILD_OS} == "linux" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D NO_AES=${no_aes} -D BUILD_GUI_DEPS=ON -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D NO_AES=${no_aes} -D BUILD_GUI_DEPS=ON -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} ../../../..
 	elif [ ${NERVA_BUILD_OS} == "osx" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} ../../../..
 	elif [ ${NERVA_BUILD_OS} == "windows" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
 	else
 		echo "Unsupported build platform"
 		exit 1
