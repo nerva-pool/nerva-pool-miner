@@ -371,7 +371,7 @@ int main(int argc, char const * argv[])
 
     analytics::enable(!noanalytics);
 
-    blacklist::read_blacklist_from_url(testnet);
+    blacklist::read_blacklist_from_url();
     if (blacklist::get_ip_list().size() > 0)
       MGINFO("Blacklist loaded: " << blacklist::get_ip_list().size() << " items");
 

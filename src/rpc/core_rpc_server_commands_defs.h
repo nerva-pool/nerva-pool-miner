@@ -1741,11 +1741,13 @@ namespace cryptonote
       std::string host;
       uint32_t ip;
       uint32_t seconds;
+      std::string reason;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(host)
         KV_SERIALIZE(ip)
         KV_SERIALIZE(seconds)
+        KV_SERIALIZE(reason);
       END_KV_SERIALIZE_MAP()
     };
 

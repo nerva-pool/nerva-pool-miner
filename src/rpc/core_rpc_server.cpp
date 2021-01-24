@@ -270,7 +270,7 @@ namespace cryptonote
       auto it = m_host_fails_score.find(ctx->m_remote_address.host_str());
       CHECK_AND_ASSERT_MES(it != m_host_fails_score.end(), false, "internal error");
       it->second = RPC_IP_FAILS_BEFORE_BLOCK / 2;
-      m_p2p.block_host(ctx->m_remote_address);
+      m_p2p.block_host(ctx->m_remote_address, "Too many RPC failures");
     }
     return true;
   }
@@ -2221,17 +2221,18 @@ namespace cryptonote
     RPC_TRACKER(get_bans);
 
     auto now = time(nullptr);
-    std::map<std::string, time_t> blocked_hosts = m_p2p.get_blocked_hosts();
-    for (std::map<std::string, time_t>::const_iterator i = blocked_hosts.begin(); i != blocked_hosts.end(); ++i)
+    std::map<std::string, std::pair<time_t, std::string>> blocked_hosts = m_p2p.get_blocked_hosts();
+    for (std::map<std::string, std::pair<time_t, std::string>>::const_iterator i = blocked_hosts.begin(); i != blocked_hosts.end(); ++i)
     {
-      if (i->second > now) {
+      if (i->second.first > now) {
         COMMAND_RPC_GETBANS::ban b;
         b.host = i->first;
         b.ip = 0;
         uint32_t ip;
         if (epee::string_tools::get_ip_int32_from_string(ip, b.host))
           b.ip = ip;
-        b.seconds = i->second - now;
+        b.seconds = i->second.first - now;
+        b.reason = i->second.second;
         res.bans.push_back(b);
       }
     }
@@ -2243,6 +2244,7 @@ namespace cryptonote
         b.host = i->first.host_str();
         b.ip = 0;
         b.seconds = i->second - now;
+        b.reason = "Banned subnet";
         res.bans.push_back(b);
       }
     }
@@ -2317,7 +2319,7 @@ namespace cryptonote
         na = epee::net_utils::ipv4_network_address{i->ip, 0};
       }
       if (i->ban)
-        m_p2p.block_host(na, i->seconds);
+        m_p2p.block_host(na, "Banned by operator", i->seconds);
       else
         m_p2p.unblock_host(na);
     }

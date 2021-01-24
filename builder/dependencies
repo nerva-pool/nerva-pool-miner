@@ -19,7 +19,7 @@ if [ ${NERVA_BUILD_OS} == "linux" ]; then
 
 	if [ $NERVA_BUILD_DISTRO == "ubuntu" ] || [ $NERVA_BUILD_DISTRO == "debian" ]; then
 		sudo apt install -y \
-		git curl ca-certificates nano zip unzip tar xz-utils cmake g++ make pkg-config libtool-bin autoconf \
+		git ca-certificates nano zip unzip tar xz-utils cmake g++ make pkg-config libtool-bin autoconf \
 		automake build-essential cmake pkg-config pcsc-tools pcscd libpcsclite1 python-dev virtualenv \
 		libudev-dev libhidapi-dev libzmq3-dev libunbound-dev libboost-all-dev libusb-1.0-0-dev libusb-dev \
 		libssl-dev libsodium-dev libcurl4-openssl-dev libminiupnpc-dev libunwind8-dev liblzma-dev \
@@ -52,26 +52,6 @@ elif [ ${NERVA_BUILD_OS} == "osx" ]; then
 	brew tap jmuncaster/homebrew-header-only
 	brew install jmuncaster/header-only/cppzmq
 	brew install cmake
-
-	if ! [ -f "/usr/local/lib/libcurl.a" ]; then
-		#build libcurl if not already built
-		if ! [ -d ${BUILDER_DIR}/curl ]; then
-			cd ${NERVA_DIR}/external/curl
-			./buildconf
-
-			./configure --prefix="/Users/virtual/nerva/builder/curl" --without-ssl --disable-dict --disable-ftp --disable-gopher \
-			--disable-file --disable-imap --disable-ldap --disable-ldaps --disable-pop3 --disable-proxy --disable-rtsp --disable-smtp \
-			--disable-telnet --disable-tftp --disable-smb --disable-smbs --disable-psl --without-zlib --without-brotli \
-			--without-libidn2 --disable-ftmp --enable-static --disable-shared
-
-			make -j4
-			make install
-		fi
-
-		#copy to /usr/local
-		cp ${BUILDER_DIR}/curl/lib/libcurl.a /usr/local/lib/libcurl.a
-		cp -r ${BUILDER_DIR}/curl/include/curl /usr/local/include
-	fi
 
 elif [ ${NERVA_BUILD_OS} == "windows" ]; then
 

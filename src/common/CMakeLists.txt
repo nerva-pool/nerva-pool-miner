@@ -29,10 +29,6 @@
 
 include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 
-if (WIN32 OR STATIC)
-  add_definitions(-DCURL_STATICLIB)
-endif ()
-
 set(common_sources
   base58.cpp
   command_line.cpp
@@ -116,7 +112,6 @@ target_link_libraries(common
     ${Boost_REGEX_LIBRARY}
     ${Boost_CHRONO_LIBRARY}
   PRIVATE
-    ${CURL_LIBRARIES}
     ${OPENSSL_LIBRARIES}
     ${EXTRA_LIBRARIES})
 
