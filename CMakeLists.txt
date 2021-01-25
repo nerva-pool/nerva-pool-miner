@@ -40,7 +40,7 @@ if (IOS)
     INCLUDE(CmakeLists_IOS.txt)
 endif()
 
-cmake_minimum_required(VERSION 3.18.4)
+cmake_minimum_required(VERSION 3.14.6)
 message(STATUS "CMake version ${CMAKE_VERSION}")
 
 project(monero)

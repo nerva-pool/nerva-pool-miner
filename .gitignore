@@ -1,6 +1,7 @@
 .vscode/ipch
 build
 builder/output
+builder/deployed
 builder/check_aesni
 builder/credentials
 db
