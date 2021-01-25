@@ -7,25 +7,71 @@ source ${BUILDER_DIR}/environment
 detectos
 detectversion
 
-if [ ! -f "${BUILDER_DIR}/check_aesni" ]; then
-    echo Building the check_aesni tool
-    make ${BUILDER_DIR}/check_aesni
-fi
-
-${BUILDER_DIR}/check_aesni
-aes_supported=$?
-
 build_dir=${BUILDER_DIR}/output/${NERVA_BUILD_OS}/${BUILD_TYPE}
 
 print_env
 
-mkdir -p ${build_dir}
-cd ${build_dir}
+function production()
+{
+    mkdir -p ${build_dir}-aes
+    mkdir -p ${build_dir}-noaes
 
-if [ ${aes_supported} == 1 ]; then
+    cd ${build_dir}-aes
     cmake_cmd aes
-else
-    cmake_cmd noaes
-fi
+    make -j${THREAD_COUNT}
 
-make -j${THREAD_COUNT}
+    cd ${build_dir}-noaes
+    cmake_cmd noaes
+    make -j${THREAD_COUNT}
+
+    ext=""
+
+    if [ ${NERVA_BUILD_OS} == "windows" ]; then
+        ext=".exe"
+    fi
+
+    zip -rj ${BUILDER_DIR}/output/nerva-v${NERVA_VERSION}_${NERVA_BUILD_OS}_minimal.zip \
+        ${build_dir}-aes/bin/nervad${ext} \
+        ${build_dir}-aes/bin/nerva-wallet-cli${ext}
+
+    mv ${build_dir}-aes/bin/nervad${ext} ${build_dir}-aes/bin/nervad-aes${ext}
+    mv ${build_dir}-noaes/bin/nervad${ext} ${build_dir}-noaes/bin/nervad-noaes${ext}
+
+    zip -rj ${BUILDER_DIR}/output/nerva-v${NERVA_VERSION}_${NERVA_BUILD_OS}.zip \
+        ${build_dir}-aes/bin/nervad-aes${ext} \
+        ${build_dir}-noaes/bin/nervad-noaes${ext} \
+        ${build_dir}-aes/bin/nerva-wallet-cli${ext} \
+        ${build_dir}-aes/bin/nerva-wallet-rpc${ext} \
+        ${build_dir}-aes/bin/nerva-quicksync-export${ext} \
+        ${build_dir}-aes/bin/nerva-blockchain-prune${ext} \
+        ${build_dir}-aes/bin/nerva-gen-ssl-cert${ext} \
+        ${build_dir}-aes/bin/nerva-gen-trusted-multisig${ext}
+
+    exit
+}
+
+function default()
+{
+    if [ ! -f "${BUILDER_DIR}/check_aesni" ]; then
+        echo Building the check_aesni tool
+        make ${BUILDER_DIR}/check_aesni
+    fi
+
+    ${BUILDER_DIR}/check_aesni
+    aes_supported=$?
+
+    mkdir -p ${build_dir}
+    cd ${build_dir}
+
+    if [ ${aes_supported} == 1 ]; then
+        cmake_cmd aes
+    else
+        cmake_cmd noaes
+    fi
+
+    make -j${THREAD_COUNT}
+}
+
+$1
+
+default

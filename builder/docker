@@ -1,0 +1,16 @@
+#!/bin/bash
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NERVA_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/environment
+
+function container()
+{
+	docker build -t nerva/builder:latest -f ${BUILDER_DIR}/Dockerfile .
+	exit
+}
+
+$1
+
+docker run --rm -i --privileged -v ${NERVA_DIR}:/code --user 1000:1000 --name nerva_builder -t nerva/builder:latest \
+/bin/bash -c "export STATIC=ON && export THREAD_COUNT=30 && export BUILD_TYPE=release && export BUILD_EXTRAS=ON && /code/builder/build production"

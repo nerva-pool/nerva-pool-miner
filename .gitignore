@@ -1,6 +1,7 @@
 .vscode/ipch
 builder/output
 builder/check_aesni
+builder/credentials
 db
 *.zip
 *.patch

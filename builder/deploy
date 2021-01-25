@@ -1,0 +1,27 @@
+#!/bin/bash
+
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source ${dir}/credentials
+
+function deploy()
+{
+	target_file=${dir}/$1
+	sig_file=${target_file}.sig
+
+	if [ -f ${dir}/${sig_file} ]; then
+		echo "Signature file already exists"
+	else
+		gpg --detach-sign --default-key ${GPG_KEY_EMAIL} ${target_file}
+	fi
+
+	echo Uploading ${target_file}
+	curl --verbose "https://${BB_USERNAME}:${BB_PASS}@api.bitbucket.org/2.0/repositories/nerva-xnv/nerva/downloads" --form files=@"${target_file}"
+	curl --verbose "https://${BB_USERNAME}:${BB_PASS}@api.bitbucket.org/2.0/repositories/nerva-xnv/nerva/downloads" --form files=@"${sig_file}"
+	
+	mv ${dir}/$1 ${dir}/deployed/$1
+	mv ${dir}/$1.sig ${dir}/deployed/$1.sig
+	
+}
+
+deploy $1
