@@ -1,4 +1,5 @@
 .vscode/ipch
+build
 builder/output
 builder/check_aesni
 builder/credentials

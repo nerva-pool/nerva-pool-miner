@@ -31,20 +31,21 @@ function production()
     fi
 
     zip -rj ${BUILDER_DIR}/output/nerva-v${NERVA_VERSION}_${NERVA_BUILD_OS}_minimal.zip \
-        ${build_dir}-aes/bin/nervad${ext} \
+        ${build_dir}-aes/bin/nervad${ext}                                               \
+        ${build_dir}-aes/bin/nerva-wallet-rpc${ext}                                     \
         ${build_dir}-aes/bin/nerva-wallet-cli${ext}
 
     mv ${build_dir}-aes/bin/nervad${ext} ${build_dir}-aes/bin/nervad-aes${ext}
     mv ${build_dir}-noaes/bin/nervad${ext} ${build_dir}-noaes/bin/nervad-noaes${ext}
 
-    zip -rj ${BUILDER_DIR}/output/nerva-v${NERVA_VERSION}_${NERVA_BUILD_OS}.zip \
-        ${build_dir}-aes/bin/nervad-aes${ext} \
-        ${build_dir}-noaes/bin/nervad-noaes${ext} \
-        ${build_dir}-aes/bin/nerva-wallet-cli${ext} \
-        ${build_dir}-aes/bin/nerva-wallet-rpc${ext} \
-        ${build_dir}-aes/bin/nerva-quicksync-export${ext} \
-        ${build_dir}-aes/bin/nerva-blockchain-prune${ext} \
-        ${build_dir}-aes/bin/nerva-gen-ssl-cert${ext} \
+    zip -rj ${BUILDER_DIR}/output/nerva-v${NERVA_VERSION}_${NERVA_BUILD_OS}.zip         \
+        ${build_dir}-aes/bin/nervad-aes${ext}                                           \
+        ${build_dir}-noaes/bin/nervad-noaes${ext}                                       \
+        ${build_dir}-aes/bin/nerva-wallet-cli${ext}                                     \
+        ${build_dir}-aes/bin/nerva-wallet-rpc${ext}                                     \
+        ${build_dir}-aes/bin/nerva-quicksync-export${ext}                               \
+        ${build_dir}-aes/bin/nerva-blockchain-prune${ext}                               \
+        ${build_dir}-aes/bin/nerva-gen-ssl-cert${ext}                                   \
         ${build_dir}-aes/bin/nerva-gen-trusted-multisig${ext}
 
     exit
