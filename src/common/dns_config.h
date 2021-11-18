@@ -12,33 +12,35 @@ namespace dns_config
     static const std::vector<std::string> SEED_NODES = { };
 
     static const std::vector<std::string> TXT_SEED_NODES = {
-        "seed.getnerva.org"
+        "seed.nerva.one",
+        "seed.nerva.tools"
     };
 
     static const std::vector<std::string> CHECKPOINTS = {
-        "checkpoint.getnerva.org"
+        "checkpoint.nerva.one"
     };
 
     static const std::vector<std::string> UPDATE = {
-        "update.getnerva.org"
+        "update.nerva.one"
     };
 
     static const std::vector<std::string> DOWNLOAD = {
-        "download.getnerva.org"
+        "download.nerva.one"
     };
 
-    static const std::string ROOT_DOMAIN = "getnerva.org";
+    static const std::string ROOT_DOMAIN = "nerva.one";
 
     namespace testnet
     {
         static const std::vector<std::string> SEED_NODES = { };
 
         static const std::vector<std::string> TXT_SEED_NODES = {
-            "seed-tn.getnerva.org"
+            "seed-tn.nerva.one",
+            "seed-tn.nerva.tools"
         };
 
         static const std::vector<std::string> CHECKPOINTS = {
-            "checkpoint-tn.getnerva.org"
+            "checkpoint-tn.nerva.one"
         };
     }
 

@@ -313,7 +313,7 @@ namespace cryptonote
         if (version < hshd.top_version && version == m_core.get_ideal_hard_fork_version())
           MGUSER_RED(context << " peer claims higher version (" <<
               (unsigned)hshd.top_version << " for " << (hshd.current_height - 1) << " instead of " << (unsigned)version <<
-              ") - check https://getnerva.org for updates");
+              ") - check https://nerva.one for updates");
         return false;
       }
     }
