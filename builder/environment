@@ -12,7 +12,7 @@ if [ -z ${STATIC} ]; then
 fi
 
 if [ -z ${THREAD_COUNT} ]; then
-	export THREAD_COUNT=30
+	export THREAD_COUNT=8
 fi
 
 if [ -z ${BUILD_EXTRAS} ]; then

@@ -382,7 +382,10 @@ if (CMAKE_SYSTEM_NAME MATCHES "(SunOS|Solaris)")
 endif ()
 
 if (APPLE AND NOT IOS)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64 -fvisibility=hidden -fvisibility-inlines-hidden -std=c++11")
+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64 -fvisibility=hidden -fvisibility-inlines-hidden -std=c++11")  
+  set(MACOS_BUILD_TARGET "x86_64-macos-gnu")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --target=${MACOS_BUILD_TARGET} -fvisibility=default -std=c++11")
+  
   if (NOT OpenSSL_DIR)
       EXECUTE_PROCESS(COMMAND brew --prefix openssl
         OUTPUT_VARIABLE OPENSSL_ROOT_DIR
@@ -478,6 +481,9 @@ else()
   elseif(IOS AND ARCH STREQUAL "arm64")
     message(STATUS "IOS: Changing arch from arm64 to armv8")
     set(ARCH_FLAG "-march=armv8")
+  elseif (APPLE AND NOT IOS)
+    message(STATUS "APPLE: setting target to: ${MACOS_BUILD_TARGET}")
+    set(ARCH_FLAG "--target=${MACOS_BUILD_TARGET}")
   else()
     set(ARCH_FLAG "-march=${ARCH}")
     if(ARCH STREQUAL "native")

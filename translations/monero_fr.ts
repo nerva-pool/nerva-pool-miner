@@ -2317,7 +2317,7 @@ Cette transaction sera déverrouillée au bloc %llu, dans approximativement %s j
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2157"/>
-        <source>Welcome to Nerva and financial privacy. For more information, see https://getnerva.org/</source>
+        <source>Welcome to Nerva and financial privacy. For more information, see https://nerva.one/</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2408,8 +2408,8 @@ Amount, Spent(&quot;T&quot;|&quot;F&quot;), &quot;frozen&quot;|&quot;locked&quot
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2797"/>
-        <source>Donate &lt;amount&gt; to the development team (getnerva.org).</source>
-        <translation>Donner &lt;montant&gt; à l&apos;équipe de développement (getnerva.org).</translation>
+        <source>Donate &lt;amount&gt; to the development team (nerva.one).</source>
+        <translation>Donner &lt;montant&gt; à l&apos;équipe de développement (nerva.one).</translation>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2804"/>
@@ -4099,8 +4099,8 @@ Input %llu/%llu (%s): amount=%s</source>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="6830"/>
-        <source>Donating %s %s to The Nerva Project (getnerva.org or %s).</source>
-        <translation>Don de %s %s à The Nerva Project (getnerva.org ou %s).</translation>
+        <source>Donating %s %s to The Nerva Project (nerva.one or %s).</source>
+        <translation>Don de %s %s à The Nerva Project (nerva.one ou %s).</translation>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="7164"/>

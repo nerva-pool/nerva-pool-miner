@@ -1543,7 +1543,7 @@ Denna transaktion låses upp vid block %llu, om ungefär %s dagar (förutsatt en
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2157"/>
-        <source>Welcome to Nerva and financial privacy. For more information, see https://getnerva.org/</source>
+        <source>Welcome to Nerva and financial privacy. For more information, see https://nerva.one/</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1634,8 +1634,8 @@ Amount, Spent(&quot;T&quot;|&quot;F&quot;), &quot;frozen&quot;|&quot;locked&quot
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2797"/>
-        <source>Donate &lt;amount&gt; to the development team (getnerva.org).</source>
-        <translation>Donera &lt;belopp&gt; till utvecklingsteamet (getnerva.org).</translation>
+        <source>Donate &lt;amount&gt; to the development team (nerva.one).</source>
+        <translation>Donera &lt;belopp&gt; till utvecklingsteamet (nerva.one).</translation>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2804"/>
@@ -2439,7 +2439,7 @@ Varning: Några ingångsnycklar som spenderas kommer från </translation>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="6830"/>
-        <source>Donating %s %s to The Nerva Project (getnerva.org or %s).</source>
+        <source>Donating %s %s to The Nerva Project (nerva.one or %s).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

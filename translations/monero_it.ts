@@ -980,8 +980,8 @@ Questa transazione verrà sbloccata al blocco %llu, in approssimativamente %s gi
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="6830"/>
-        <source>Donating %s %s to The Nerva Project (getnerva.org or %s).</source>
-        <translation>Donare %s %s a The Nerva Project (getnerva.org o %s).</translation>
+        <source>Donating %s %s to The Nerva Project (nerva.one or %s).</source>
+        <translation>Donare %s %s a The Nerva Project (nerva.one o %s).</translation>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="6832"/>
@@ -1482,7 +1482,7 @@ Questa transazione verrà sbloccata al blocco %llu, in approssimativamente %s gi
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2157"/>
-        <source>Welcome to Nerva and financial privacy. For more information, see https://getnerva.org/</source>
+        <source>Welcome to Nerva and financial privacy. For more information, see https://nerva.one/</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1573,8 +1573,8 @@ Amount, Spent(&quot;T&quot;|&quot;F&quot;), &quot;frozen&quot;|&quot;locked&quot
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2797"/>
-        <source>Donate &lt;amount&gt; to the development team (getnerva.org).</source>
-        <translation>Dona &lt;amount&gt; al team di sviluppo (getnerva.org).</translation>
+        <source>Donate &lt;amount&gt; to the development team (nerva.one).</source>
+        <translation>Dona &lt;amount&gt; al team di sviluppo (nerva.one).</translation>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2804"/>
