@@ -26,7 +26,7 @@ If you run production build, files are created under: `nerva/build/output/`. Tho
 Linux: `sudo apt install zip` 
 Windows: `pacman -S zip` 
 
-Inside `nerva/builder/environment`, there is THREAD_COUNT variables that's set to 30.  If you're building on low end system and seeing errors, change it to 1 or something lower than 30. 
+Inside `nerva/builder/environment`, there is THREAD_COUNT variable that's set to 8.  You can increase or decrease it based on your system.  If you're building on low end system and seeing errors, change it to 1 or something lower than 8. 
 
 
 
