@@ -45,12 +45,13 @@ using namespace epee;
 
 static const char *DEFAULT_DNS_PUBLIC_ADDR[] =
 {
-  "194.150.168.168",    // CCC (Germany)
-  "80.67.169.40",       // FDN (France)
-  "89.233.43.71",       // http://censurfridns.dk (Denmark)
-  "109.69.8.51",        // punCAT (Spain)
-  "193.58.251.251",     // SkyDNS (Russia)
+  "1.1.1.1",          // Cloudflare
+  "8.8.8.8",          // Google
+  "208.67.222.222",   // OpenDNS
+  "76.76.19.19",      // Alternate DNS
 };
+
+static int IS_FIRST_RUN;
 
 static boost::mutex instance_lock;
 
@@ -255,6 +256,12 @@ DNSResolver::DNSResolver() : m_data(new DNSResolverData())
   for (size_t i = 0; i < sizeof(DEFAULT_DNS_PUBLIC_ADDR) / sizeof(DEFAULT_DNS_PUBLIC_ADDR[0]); ++i)
     dns_public_addr.push_back(DEFAULT_DNS_PUBLIC_ADDR[i]);
   LOG_PRINT_L0("Using public DNS server(s): " << boost::join(dns_public_addr, ", ") << " (TCP)");
+
+  if(IS_FIRST_RUN < 2)
+  {
+    MGUSER_GREEN("Connecting to NERVA network. Please wait...");
+    IS_FIRST_RUN += 1;
+  }
 
   // init libunbound context
   m_data->m_ub_context = ub_ctx_create();
