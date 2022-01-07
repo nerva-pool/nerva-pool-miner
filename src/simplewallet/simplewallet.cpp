@@ -2180,7 +2180,7 @@ bool simple_wallet::public_nodes(const std::vector<std::string> &args)
 
 bool simple_wallet::welcome(const std::vector<std::string> &args)
 {
-  message_writer() << tr("NERVA (XNV) is a private and secure cryptocurrency that you can mine on your computer. It's GPU and ASIC resistant and stays true to Satoshi Nakamoto's vision of 1 CPU = 1 VOTE. It is extremely important that you write down your unique 25 word seed phrase. These words are all that is needed to access your funds should your wallet file become lost or corrupted.");
+  message_writer() << tr("NERVA (XNV) is a private and secure cryptocurrency that you can mine on your computer.  It's GPU and ASIC resistant and stays true to Satoshi Nakamoto's vision of 1 CPU = 1 VOTE.  It is extremely important that you write down your unique 25 word seed phrase.  These words are all that is needed to access your funds should your wallet file become lost or corrupted.");
   return true;
 }
 
