@@ -7844,14 +7844,28 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
     }
 
     // get the keys for those
-    req.get_txid = false;
+    // the response can get large and end up rejected by the anti DoS limits, so chunk it if needed
+    size_t offset = 0;
+    while (offset < req.outputs.size())
     {
+      static const size_t chunk_size = 1000;
+      COMMAND_RPC_GET_OUTPUTS_BIN::request chunk_req = AUTO_VAL_INIT(chunk_req);
+      COMMAND_RPC_GET_OUTPUTS_BIN::response chunk_daemon_resp = AUTO_VAL_INIT(chunk_daemon_resp);
+      chunk_req.get_txid = false;
+      for (size_t i = 0; i < std::min<size_t>(req.outputs.size() - offset, chunk_size); ++i)
+        chunk_req.outputs.push_back(req.outputs[offset + i]);
+
       const boost::lock_guard<boost::recursive_mutex> lock{m_daemon_rpc_mutex};
-      bool r = epee::net_utils::invoke_http_bin("/get_outs.bin", req, daemon_resp, m_http_client, rpc_timeout);
-      THROW_ON_RPC_RESPONSE_ERROR(r, {}, daemon_resp, "get_outs.bin", error::get_outs_error, get_rpc_status(daemon_resp.status));
-      THROW_WALLET_EXCEPTION_IF(daemon_resp.outs.size() != req.outputs.size(), error::wallet_internal_error,
+      bool r = epee::net_utils::invoke_http_bin("/get_outs.bin", chunk_req, chunk_daemon_resp, m_http_client, rpc_timeout);
+      THROW_ON_RPC_RESPONSE_ERROR(r, {}, chunk_daemon_resp, "get_outs.bin", error::get_outs_error, get_rpc_status(chunk_daemon_resp.status));
+      THROW_WALLET_EXCEPTION_IF(chunk_daemon_resp.outs.size() != chunk_req.outputs.size(), error::wallet_internal_error,
         "daemon returned wrong response for get_outs.bin, wrong amounts count = " +
-        std::to_string(daemon_resp.outs.size()) + ", expected " +  std::to_string(req.outputs.size()));
+        std::to_string(chunk_daemon_resp.outs.size()) + ", expected " +  std::to_string(chunk_req.outputs.size()));
+
+      MDEBUG("outputs " << req.outputs.size() << ", chunk size " << chunk_size << ", offset " << offset);
+      offset += chunk_size;    
+      for (size_t i = 0; i < chunk_daemon_resp.outs.size(); ++i)
+        daemon_resp.outs.push_back(std::move(chunk_daemon_resp.outs[i]));
     }
 
     std::unordered_map<uint64_t, uint64_t> scanty_outs;
