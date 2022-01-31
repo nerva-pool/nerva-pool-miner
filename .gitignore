@@ -1,9 +1,12 @@
 .vscode/ipch
+build
 builder/output
-builder/curl
+builder/deployed
+builder/check_aesni
+builder/credentials
 db
 *.zip
-
+*.patch
 external/miniupnpc/Makefile
 miniupnpcstrings.h
 version/

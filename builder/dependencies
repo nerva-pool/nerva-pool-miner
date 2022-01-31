@@ -7,19 +7,11 @@ source ${BUILDER_DIR}/environment
 detectversion
 detectos
 
-if [ -z ${REPO_NAME_FULL} ]; then
-	export REPO_NAME_FULL=NERVA
-fi
-
-if [ -z ${REPO_NAME} ]; then
-	export REPO_NAME=nerva
-fi
-
 if [ ${NERVA_BUILD_OS} == "linux" ]; then
 
 	if [ $NERVA_BUILD_DISTRO == "ubuntu" ] || [ $NERVA_BUILD_DISTRO == "debian" ]; then
 		sudo apt install -y \
-		git curl ca-certificates nano zip unzip tar xz-utils cmake g++ make pkg-config libtool-bin autoconf \
+		ca-certificates nano zip unzip tar xz-utils cmake g++ make pkg-config libtool-bin autoconf \
 		automake build-essential cmake pkg-config pcsc-tools pcscd libpcsclite1 python-dev virtualenv \
 		libudev-dev libhidapi-dev libzmq3-dev libunbound-dev libboost-all-dev libusb-1.0-0-dev libusb-dev \
 		libssl-dev libsodium-dev libcurl4-openssl-dev libminiupnpc-dev libunwind8-dev liblzma-dev \
@@ -34,48 +26,14 @@ elif [ ${NERVA_BUILD_OS} == "osx" ]; then
 	xcode-select --install
 
 	if ! [ -x "$(command -v brew)" ]; then
-		ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+		/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 	fi
 
 	brew update
 	brew upgrade
-	brew install git
-	brew install zeromq
-	brew install cppzmq
-	brew install libsodium
-	brew install openSSL
-	brew install PkgConfig
-	brew install readline
-	brew install boost
-	brew install miniupnpc
-	brew install hidapi
-	brew tap jmuncaster/homebrew-header-only
-	brew install jmuncaster/header-only/cppzmq
-	brew install cmake
-
-	if ! [ -f "/usr/local/lib/libcurl.a" ]; then
-		#build libcurl if not already built
-		if ! [ -d ${BUILDER_DIR}/curl ]; then
-			cd ${NERVA_DIR}/external/curl
-			./buildconf
-
-			./configure --prefix="/Users/virtual/nerva/builder/curl" --without-ssl --disable-dict --disable-ftp --disable-gopher \
-			--disable-file --disable-imap --disable-ldap --disable-ldaps --disable-pop3 --disable-proxy --disable-rtsp --disable-smtp \
-			--disable-telnet --disable-tftp --disable-smb --disable-smbs --disable-psl --without-zlib --without-brotli \
-			--without-libidn2 --disable-ftmp --enable-static --disable-shared
-
-			make -j4
-			make install
-		fi
-
-		#copy to /usr/local
-		cp ${BUILDER_DIR}/curl/lib/libcurl.a /usr/local/lib/libcurl.a
-		cp -r ${BUILDER_DIR}/curl/include/curl /usr/local/include
-	fi
+	brew bundle --file=${NERVA_DIR}/contrib/brew/Brewfile
 
 elif [ ${NERVA_BUILD_OS} == "windows" ]; then
-
-	echo "Don't be ridiculous."
-	exit 1
-
+	pacman -S mingw-w64-x86_64-toolchain make mingw-w64-x86_64-boost mingw-w64-x86_64-cmake mingw-w64-x86_64-openssl mingw-w64-x86_64-zeromq mingw-w64-x86_64-libsodium mingw-w64-x86_64-hidapi
 fi
+

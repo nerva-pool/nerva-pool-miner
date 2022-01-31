@@ -3,14 +3,6 @@
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NERVA_DIR=$(dirname $BUILDER_DIR)
 
-if [ -z ${REPO_NAME_FULL} ]; then
-	export REPO_NAME_FULL=NERVA
-fi
-
-if [ -z ${REPO_NAME} ]; then
-	export REPO_NAME=nerva
-fi
-
 if [ -z ${BUILD_TYPE} ]; then
 	export BUILD_TYPE=release
 fi
@@ -20,7 +12,11 @@ if [ -z ${STATIC} ]; then
 fi
 
 if [ -z ${THREAD_COUNT} ]; then
-	export THREAD_COUNT=30
+	export THREAD_COUNT=8
+fi
+
+if [ -z ${BUILD_EXTRAS} ]; then
+	export BUILD_EXTRAS=OFF
 fi
 
 function detectos()
@@ -57,31 +53,31 @@ function detectversion()
 	name=$(awk '/#define DEF_MONERO_RELEASE_NAME /{ print $3 }' < ${NERVA_DIR}/src/version.cpp.in)
     export NERVA_VERSION=$(echo ${ver} | tr -d '"')
 	export NERVA_CODENAME=$(echo ${name} | tr -d '"')
-    echo Version detected as ${REPO_NAME_FULL} ${NERVA_VERSION}: ${NERVA_CODENAME}
+    echo Detected version ${NERVA_VERSION}: ${NERVA_CODENAME}
 }
 
 function cmake_cmd()
 {
 	no_aes=OFF
-	build_extras=OFF
 
 	if [ "$1" == "aes" ]; then
 		no_aes=OFF
-		build_extras=ON
 	elif [ "$1" == "noaes" ]; then
 		no_aes=ON
-		build_extras=OFF
 	else
 		echo "Unsupported configuration" $1
 		exit 1
 	fi
 	
 	if [ ${NERVA_BUILD_OS} == "linux" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D BUILD_64=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} -D ARCH="x86-64" ../../../..
 	elif [ ${NERVA_BUILD_OS} == "osx" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D BUILD_64=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} -D ARCH="x86-64" ../../../..
+		# If you have arm64 but want to bild for x86_64. A lot of setup is required before this works. Good start is here:
+		# https://stackoverflow.com/questions/67386941/using-x86-libraries-and-openmp-on-macos-arm64-architecture/67418208#67418208
+		#cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=${STATIC} -D BUILD_64=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} -D CMAKE_C_COMPILER="/Library/Developer/CommandLineTools/usr/bin/clang" -D CMAKE_CXX_COMPILER="/Library/Developer/CommandLineTools/usr/bin/clang++" -D CMAKE_OSX_ARCHITECTURES="x86_64" ../../../..
 	elif [ ${NERVA_BUILD_OS} == "windows" ]; then
-		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${build_extras} -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
+		cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} -D STATIC=ON -D BUILD_64=ON -D NO_AES=${no_aes} -D BUILD_TAG=${NERVA_BUILD_OS} -D BUILD_EXTRAS=${BUILD_EXTRAS} -D ARCH="x86-64" -G "MSYS Makefiles" ../../../..
 	else
 		echo "Unsupported build platform"
 		exit 1

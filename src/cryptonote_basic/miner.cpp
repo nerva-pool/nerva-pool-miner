@@ -48,6 +48,8 @@
 #include "string_tools.h"
 #include "storages/portable_storage_template_helper.h"
 #include "boost/logic/tribool.hpp"
+#include <boost/filesystem.hpp>
+
 #include "cryptonote_core/blockchain.h"
 
 #include "rapidjson/document.h"     // rapidjson's DOM-style API

@@ -535,7 +535,7 @@ bool ssl_options_t::handshake(
 
   if (ec)
   {
-    MERROR("SSL handshake failed, connection dropped: " << ec.message());
+    MINFO("SSL handshake failed, connection dropped: " << ec.message());
     return false;
   }
   MDEBUG("SSL handshake success");
