@@ -9,9 +9,7 @@ cd nerva-pool-miner
 make release
 ```
 
-[Building the NERVA CLI tools](https://bitbucket.org/snippets/nerva-project/kejLB4/building-the-nerva-cli-tools): To build and run the CLI tools
-
-[NERVA CLI: Getting Started](https://bitbucket.org/snippets/nerva-project/KeLrBy/nerva-cli-getting-started): To get the basics on how to create a wallet and mine NERVA, along with some useful information on common commands
+[NERVA CLI: Getting Started](https://docs.nerva.one/guides/cli/): To get the basics on how to create a wallet and mine NERVA, along with some useful information on common commands
 
 ## Example
 
