@@ -97,7 +97,7 @@ namespace cryptonote
     const command_line::arg_descriptor<std::string> arg_extra_messages =  {"extra-messages-file", "Specify file for extra messages to include into coinbase transactions", "", true};
     const command_line::arg_descriptor<std::string> arg_start_mining =    {"start-mining", "Specify wallet address to mining for", "", true};
     const command_line::arg_descriptor<bool> arg_pool_mining =            {"pool-mining", "Enable pool mining", true, false};
-    const command_line::arg_descriptor<std::string> arg_pool_host =    {"pool-host", "Specify pool host", "nerva.pooled.work", false};
+    const command_line::arg_descriptor<std::string> arg_pool_host =    {"pool-host", "Specify pool host", "stratum.nerva.pooled.work", false};
     const command_line::arg_descriptor<std::string> arg_pool_port =    {"pool-port", "Specify pool port", "4444", false};
     const command_line::arg_descriptor<std::string> arg_pool_pass =    {"pool-pass", "Specify pool password", "x", false};
     const command_line::arg_descriptor<uint16_t>    arg_donate_mining =    {"donate-level", "Specify a percentage of blocks to mine to the development wallet", miner::MINING_DEFAULT_DONATION_LEVEL, true};

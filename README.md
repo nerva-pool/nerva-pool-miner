@@ -9,9 +9,7 @@ cd nerva-pool-miner
 make release
 ```
 
-[Building the NERVA CLI tools](https://bitbucket.org/snippets/nerva-project/kejLB4/building-the-nerva-cli-tools): To build and run the CLI tools
-
-[NERVA CLI: Getting Started](https://bitbucket.org/snippets/nerva-project/KeLrBy/nerva-cli-getting-started): To get the basics on how to create a wallet and mine NERVA, along with some useful information on common commands
+[NERVA CLI: Getting Started](https://docs.nerva.one/guides/cli/): To get the basics on how to create a wallet and mine NERVA, along with some useful information on common commands
 
 ## Example
 
@@ -24,7 +22,7 @@ nervad --start-mining <address> --mining-threads 4
 Once NERVA is synced, you should see some messages along the lines of:
 
 ```
-2020-04-20 10:32:22.676 I Pool mining to nerva.pooled.work:4444
+2020-04-20 10:32:22.676 I Pool mining to stratum.nerva.pooled.work:4444
 2020-04-20 10:32:22.677 I Mining has started with 4 threads, good luck!
 2020-04-20 10:32:22.884 I New Job: height: 1035621 target: 18446742802399232
 2020-04-20 10:32:24.990 I Found share at height: 1035621 nonce:516700416 pow: <2805db85e36713bc8b6c6bc3db10aacb19ff5c0b630c6c6527589a88b8e02900> di: 11787557215557671 target: 18446742802399232
