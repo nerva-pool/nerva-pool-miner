@@ -1536,7 +1536,7 @@ This transaction will unlock on block %llu, in approximately %s days (assuming 2
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2157"/>
-        <source>Welcome to Nerva and financial privacy. For more information, see https://getnerva.org/</source>
+        <source>Welcome to Nerva and financial privacy. For more information, see https://nerva.one/</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1627,7 +1627,7 @@ Amount, Spent(&quot;T&quot;|&quot;F&quot;), &quot;frozen&quot;|&quot;locked&quot
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="2797"/>
-        <source>Donate &lt;amount&gt; to the development team (getnerva.org).</source>
+        <source>Donate &lt;amount&gt; to the development team (nerva.one).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2419,7 +2419,7 @@ Warning: Some input keys being spent are from </source>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="6830"/>
-        <source>Donating %s %s to The Nerva Project (getnerva.org or %s).</source>
+        <source>Donating %s %s to The Nerva Project (nerva.one or %s).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

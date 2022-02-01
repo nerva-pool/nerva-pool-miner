@@ -313,7 +313,7 @@ namespace cryptonote
         if (version < hshd.top_version && version == m_core.get_ideal_hard_fork_version())
           MGUSER_RED(context << " peer claims higher version (" <<
               (unsigned)hshd.top_version << " for " << (hshd.current_height - 1) << " instead of " << (unsigned)version <<
-              ") - check https://getnerva.org for updates");
+              ") - check https://nerva.one for updates");
         return false;
       }
     }
@@ -361,13 +361,13 @@ namespace cryptonote
       I prefer pushing target height to the core at the same time it is pushed to the user.
       Nz. */
       int64_t diff = static_cast<int64_t>(hshd.current_height) - static_cast<int64_t>(m_core.get_current_blockchain_height());
-    uint64_t abs_diff = std::abs(diff);
-      uint64_t max_block_height = std::max(hshd.current_height,m_core.get_current_blockchain_height());
-      MGUSER_BLUE(context <<  "New top block candidate: " << m_core.get_current_blockchain_height() << " -> " << hshd.current_height
-        << " [Your node is " << std::abs(diff) << " blocks "
-        << (0 <= diff ? std::string("behind") : std::string("ahead"))
-        << "]");
-      MGUSER_BLUE("SYNCHRONIZATION started");
+      uint64_t abs_diff = std::abs(diff);
+      if (abs_diff > 1)
+      {
+        //This message gets a bit spammy when one block behind
+        MGUSER_BLUE(context << "is " << abs_diff << " blocks "
+          << (0 <= diff ? std::string("ahead") : std::string("behind")));
+      }
       
       if (hshd.current_height >= m_core.get_current_blockchain_height() + 5) // don't switch to unsafe mode just for a few blocks
       {
@@ -403,6 +403,7 @@ namespace cryptonote
     ++context.m_callback_request_count;
     m_p2p->request_callback(context);
     MLOG_PEER_STATE("requesting callback");
+    context.m_num_requested = 0;
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------
@@ -1445,8 +1446,8 @@ namespace cryptonote
                 + std::to_string(previous_stripe) + " -> " + std::to_string(current_stripe);
             if (ELPP->vRegistry()->allowed(el::Level::Debug, "sync-info"))
               timing_message += std::string(": ") + m_block_queue.get_overview(current_blockchain_height);
-            MGUSER_YELLOW("Synced " << current_blockchain_height << "/" << target_blockchain_height
-                << progress_message << timing_message);
+            if (current_blockchain_height != target_blockchain_height)
+              MGUSER_YELLOW("Synced " << current_blockchain_height << "/" << target_blockchain_height << progress_message << timing_message);
             if (previous_stripe != current_stripe)
               notify_new_stripe(context, current_stripe);
           }
@@ -1758,7 +1759,7 @@ skip:
   }
   //------------------------------------------------------------------------------------------------------------------------
   template<class t_core>
-  void t_cryptonote_protocol_handler<t_core>::skip_unneeded_hashes(cryptonote_connection_context& context, bool check_block_queue) const
+  size_t t_cryptonote_protocol_handler<t_core>::skip_unneeded_hashes(cryptonote_connection_context& context, bool check_block_queue) const
   {
     // take out blocks we already have
     size_t skip = 0;
@@ -1775,6 +1776,7 @@ skip:
       MDEBUG(context << "skipping " << skip << "/" << context.m_needed_objects.size() << " blocks");
       context.m_needed_objects = std::vector<std::pair<crypto::hash, uint64_t>>(context.m_needed_objects.begin() + skip, context.m_needed_objects.end());
     }
+    return skip;
   }
   //------------------------------------------------------------------------------------------------------------------------
   template<class t_core>
@@ -1822,7 +1824,11 @@ skip:
         const size_t block_queue_size_threshold = m_block_download_max_size ? m_block_download_max_size : BLOCK_QUEUE_SIZE_THRESHOLD;
         bool queue_proceed = nspans < BLOCK_QUEUE_NSPANS_THRESHOLD || size < block_queue_size_threshold;
         // get rid of blocks we already requested, or already have
-        skip_unneeded_hashes(context, true);
+        if (skip_unneeded_hashes(context, true) && context.m_needed_objects.empty() && context.m_num_requested == 0)
+        {
+          MERROR(context << "Nothing we can request from this peer, and we did not request anything previously");
+          return false;
+        }
         uint64_t next_needed_height = m_block_queue.get_next_needed_height(bc_height);
         uint64_t next_block_height;
         if (context.m_needed_objects.empty())
@@ -1957,8 +1963,11 @@ skip:
           context.m_last_response_height = 0;
           goto skip;
         }
-        // take out blocks we already have
-        skip_unneeded_hashes(context, false);
+        if (skip_unneeded_hashes(context, false) && context.m_needed_objects.empty() && context.m_num_requested == 0)
+        {
+          MERROR(context << "Nothing we can request from this peer, and we did not request anything previously");
+          return false;
+        }
 
         const uint64_t first_block_height = context.m_last_response_height - context.m_needed_objects.size() + 1;
         bool sync_pruned_blocks = m_sync_pruned_blocks && m_core.get_blockchain_pruning_seed();
@@ -2052,6 +2061,7 @@ skip:
           << "/" << tools::get_pruning_stripe(span.first + span.second - 1, context.m_remote_blockchain_height, CRYPTONOTE_PRUNING_LOG_STRIPES)
           << ", ours " << tools::get_pruning_stripe(m_core.get_blockchain_pruning_seed()) << ", peer stripe " << tools::get_pruning_stripe(context.m_pruning_seed));
         
+        context.m_num_requested += req.blocks.size();
         post_notify<NOTIFY_REQUEST_GET_OBJECTS>(req, context);
         MLOG_PEER_STATE("requesting objects");
         return true;
@@ -2286,6 +2296,7 @@ skip:
     if (arg.total_height > m_core.get_target_blockchain_height())
       m_core.set_target_blockchain_height(arg.total_height);
 
+    context.m_num_requested = 0;
     return 1;
   }
   //------------------------------------------------------------------------------------------------------------------------

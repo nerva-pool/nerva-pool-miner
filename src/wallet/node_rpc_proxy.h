@@ -43,7 +43,6 @@ class NodeRPCProxy
 public:
   NodeRPCProxy(epee::net_utils::http::http_simple_client &http_client, boost::recursive_mutex &mutex);
 
-  void set_client_secret_key(const crypto::secret_key &skey) { m_client_id_secret_key = skey; }
   void invalidate();
   void set_offline(bool offline) { m_offline = offline; }
 
@@ -58,7 +57,6 @@ private:
   boost::optional<std::string> get_info();
   epee::net_utils::http::http_simple_client &m_http_client;
   boost::recursive_mutex &m_daemon_rpc_mutex;
-  crypto::secret_key m_client_id_secret_key;
   bool m_offline;
 
   uint64_t m_height;

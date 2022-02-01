@@ -79,7 +79,11 @@
         "string": "cpp",
         "shared_mutex": "cpp",
         "variant": "cpp",
-        "bit": "cpp"
+        "bit": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "ranges": "cpp",
+        "stop_token": "cpp"
     },
     "C_Cpp.dimInactiveRegions": true,
     "C_Cpp.intelliSenseEngine": "Default",

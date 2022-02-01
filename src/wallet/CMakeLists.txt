@@ -125,7 +125,6 @@ if (BUILD_GUI_DEPS)
             common
             cncrypto
             device
-            hardforks
             ringct
             ringct_basic
             checkpoints
@@ -135,7 +134,7 @@ if (BUILD_GUI_DEPS)
     foreach(lib ${libs_to_merge})
         list(APPEND objlibs $<TARGET_OBJECTS:obj_${lib}>) # matches naming convention in src/CMakeLists.txt
     endforeach()
-    add_library(wallet_merged STATIC ${objlibs})
+    add_library(wallet_merged SHARED ${objlibs})
     if(IOS)
         set(lib_folder lib-${ARCH})
     else()
@@ -145,3 +144,5 @@ if (BUILD_GUI_DEPS)
         ARCHIVE DESTINATION ${lib_folder})
 
 endif()
+
+add_subdirectory(api)

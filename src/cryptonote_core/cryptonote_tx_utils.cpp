@@ -629,7 +629,7 @@ namespace cryptonote
     {
       crypto::hash h;
       blobdata blob = get_block_hashing_blob(bl);
-      crypto::cn_slow_hash(hash_context, blob.data(), blob.size(),  h, 0, 0x80001);
+      crypto::cn_slow_hash(hash_context, blob.data(), blob.size(), h, 0, 0x80001);
 
       if(check_hash(h, 1))
         break;

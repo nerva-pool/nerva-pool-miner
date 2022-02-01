@@ -32,7 +32,7 @@
 // IP blocking adapted from Boolberry
 
 #include <algorithm>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/optional/optional.hpp>
@@ -171,7 +171,7 @@ namespace nodetool
     auto it = m_blocked_hosts.find(address.host_str());
     if (it != m_blocked_hosts.end())
     {
-      if (now >= it->second)
+      if (now >= it->second.first)
       {
         m_blocked_hosts.erase(it);
         MCLOG_CYAN(el::Level::Info, "global", "Host " << address.host_str() << " unblocked.");
@@ -180,7 +180,7 @@ namespace nodetool
       else
       {
         if (t)
-          *t = it->second - now;
+          *t = it->second.first - now;
         return false;
       }
     }
@@ -213,7 +213,7 @@ namespace nodetool
   }
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
-  bool node_server<t_payload_net_handler>::block_host(const epee::net_utils::network_address &addr, time_t seconds)
+  bool node_server<t_payload_net_handler>::block_host(const epee::net_utils::network_address &addr, std::string reason, time_t seconds)
   {
     if (seconds == 0)
       seconds = m_nettype == cryptonote::MAINNET ? P2P_IP_BLOCKTIME_MAINNET : P2P_IP_BLOCKTIME_TESTNET;
@@ -229,7 +229,7 @@ namespace nodetool
       limit = std::numeric_limits<time_t>::max();
     else
       limit = now + seconds;
-    m_blocked_hosts[addr.host_str()] = limit;
+    m_blocked_hosts[addr.host_str()] = std::pair<time_t, std::string>(limit, reason);
 
     // drop any connection to that address. This should only have to look into
     // the zone related to the connection, but really make sure everything is
@@ -336,7 +336,7 @@ namespace nodetool
       auto it = m_host_fails_score.find(address.host_str());
       CHECK_AND_ASSERT_MES(it != m_host_fails_score.end(), false, "internal error");
       it->second = P2P_IP_FAILS_BEFORE_BLOCK/2;
-      block_host(address);
+      block_host(address, "Too many P2P failures");
     }
     return true;
   }
@@ -933,17 +933,21 @@ namespace nodetool
     {
       epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){ev.raise();});
 
+      std::string ban_reason;
+
       if(code < 0)
       {
         LOG_WARNING_CC(context, "COMMAND_REQUEST_PEER_ID invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
-        hsh_result = false;
         return;
       }
 
       if (rsp.version.size() == 0)
       {
-        LOG_PRINT_L0("Host " << context.m_remote_address.str() << " did not provide version information");
+        ban_reason = "Host " + context.m_remote_address.str() + " did not provide version information";
+        LOG_PRINT_L0(ban_reason);
+        block_host(context.m_remote_address, ban_reason);
         hsh_result = false;
+        return;
       }
 
       if (hsh_result)
@@ -952,8 +956,11 @@ namespace nodetool
         m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.get_core().get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
         if (rsp_ver < m_minimum_version)
         {
+          ban_reason = "Incorrect version (" + rsp.version + ")";
           LOG_PRINT_L0("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.version);
+          block_host(context.m_remote_address, ban_reason);
           hsh_result = false;
+          return;
         }
       }
 
@@ -991,7 +998,7 @@ namespace nodetool
       if (rsp.node_data.version.size() == 0)
       {
         LOG_PRINT_L0("Host " << context.m_remote_address.str() << " did not provide version information");
-        block_host(context.m_remote_address);
+        block_host(context.m_remote_address, "Did not provide version information");
         return;
       }
 
@@ -1000,7 +1007,7 @@ namespace nodetool
       if (rsp_ver < m_minimum_version)
       {
         LOG_PRINT_L0("Host " << context.m_remote_address.str() << " has incorrect version: " << rsp.node_data.version);
-        block_host(context.m_remote_address);
+        block_host(context.m_remote_address, "Incorrect version (" + rsp.node_data.version + ")");
         return;
       }
 
@@ -1237,20 +1244,17 @@ namespace nodetool
     peerid_type pi = AUTO_VAL_INIT(pi);
 
     bool res = do_request_peer_id(pi, *con, just_take_peerlist);
+
     if (!res)
-    {
-      block_host(con->m_remote_address);
       return false;
-    }
 
     res = do_handshake_with_peer(pi, *con, just_take_peerlist);
 
-    if(!res)
+    if (!res)
     {
       bool is_priority = is_priority_node(na);
-      LOG_PRINT_CC_PRIORITY_NODE(is_priority, *con, "Failed to HANDSHAKE with peer "
-        << na.str()
-        /*<< ", try " << try_count*/);
+
+      LOG_PRINT_CC_PRIORITY_NODE(is_priority, *con, "Failed to HANDSHAKE with peer " << na.str());
       zone.m_net_server.get_config_object().close(con->m_connection_id);
       return false;
     }
@@ -1311,14 +1315,12 @@ namespace nodetool
     bool res = do_request_peer_id(pi, *con, true);
 
     if (!res)
-    {
-      block_host(con->m_remote_address);
       return false;
-    }
 
     res = do_handshake_with_peer(pi, *con, true);
 
-    if (!res) {
+    if (!res)
+    {
       bool is_priority = is_priority_node(na);
 
       LOG_PRINT_CC_PRIORITY_NODE(is_priority, *con, "Failed to HANDSHAKE with peer " << na.str());
@@ -2280,11 +2282,13 @@ namespace nodetool
   template<class t_payload_net_handler>
   int node_server<t_payload_net_handler>::handle_handshake(int command, typename COMMAND_HANDSHAKE::request& arg, typename COMMAND_HANDSHAKE::response& rsp, p2p_connection_context& context)
   {
+    std::string ban_reason;
     if (arg.node_data.version.size() == 0)
     {
-      LOG_PRINT_L0("Host " << context.m_remote_address.str() << " did not provide version information");
+      ban_reason = "Host " + context.m_remote_address.str() + " did not provide version information";
+      LOG_PRINT_L0(ban_reason);
       drop_connection(context);
-      block_host(context.m_remote_address);
+      block_host(context.m_remote_address, ban_reason);
       return 1;
     }
 
@@ -2292,9 +2296,10 @@ namespace nodetool
     m_minimum_version = m_min_version_override ? m_minimum_version : m_payload_handler.get_core().get_blockchain_storage().get_minimum_version_for_fork(m_minimum_version);
     if (rsp_ver < m_minimum_version)
     {
+      ban_reason = "Incorrect version (" + arg.node_data.version + ")";
       LOG_PRINT_L0("Host " << context.m_remote_address.str() << " has incorrect version: " << arg.node_data.version);
       drop_connection(context);
-      block_host(context.m_remote_address);
+      block_host(context.m_remote_address, ban_reason);
       return 1;
     }
 

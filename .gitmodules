@@ -9,6 +9,3 @@
 [submodule "external/rapidjson"]
 	path = external/rapidjson
 	url = https://github.com/Tencent/rapidjson
-[submodule "external/curl"]
-	path = external/curl
-	url = https://github.com/curl/curl.git
